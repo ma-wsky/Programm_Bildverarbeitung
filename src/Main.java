@@ -5,18 +5,46 @@ import java.awt.image.BufferedImage;
 
 void main() {
     try {
-        FileWriter writer = new FileWriter("output.ppm");
-        writer.write("""
+        generatePPM();
+    } catch (IOException e) {
+        throw new RuntimeException(e);
+    }
+}
+
+void generatePPM() throws IOException {
+    FileWriter writer = new FileWriter("output.ppm");
+    // header
+    writer.write("""
+            P3
+            # Maximilian Dregewsky was here
+            255 255
+            255
+            """);
+
+    //data
+    int columnCounter = 0;
+    for (int r = 0; r < 255; r++){
+        for (int c = 0; c < 255; c++){
+            writer.write(" " + c + " " + (255-c) +" "+ r);
+            columnCounter = columnCounter + 12;
+            if (columnCounter >= 70){
+                writer.write("\n");
+                columnCounter = 0;
+            }
+        }
+    }
+    writer.close();
+}
+
+void generateColorTestPPM() throws IOException {
+    FileWriter writer = new FileWriter("colorTest.ppm");
+    writer.write("""
                 P3
                 3 2
                 255
                  255   0   0     0 255   0     0   0 255
                  255 255   0   255 255 255     0   0   0""");
-        writer.close();
-        System.out.println("successful writing");
-    } catch (IOException e) {
-        throw new RuntimeException(e);
-    }
+    writer.close();
 }
 
 void workflow(){
