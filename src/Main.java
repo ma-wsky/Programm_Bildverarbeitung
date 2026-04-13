@@ -4,40 +4,50 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 void main() {
+    workflow();
+}
 
+void workflow(){
     try {
-        //Datei lesen
-        File inputFile = new File("pics/Bild_A.jpg");
+        // read Image
+        BufferedImage original = readImage();
 
-        // Bilddaten im RAM
-        BufferedImage original = ImageIO.read(inputFile); //.read erkennt format automatisch
-
-        if (original != null) {
-            System.out.println("Bild erfolgreich geladen!");
-        } else {
-            System.out.println("Format wird nicht unterstützt.");
-        }
-
-        // Kopie erstellen
+        // copy original
         assert original != null;
         BufferedImage grayScale = copyImage(original);
         BufferedImage negative = copyImage(original);
         BufferedImage negativeGray = copyImage(original);
 
-        // Manipulation
+        // manipulate
         grayScale(grayScale);
         negative(negative);
         grayScale(negativeGray);
         negative(negativeGray);
 
-        // Anzeige
+        // display
         displayImage(original, negative, grayScale, negativeGray);
 
     } catch (IOException e) {
         System.err.println("Fehler beim Lesen der Datei: " + e.getMessage());
     }
-
 }
+
+BufferedImage readImage() throws IOException {
+    //Datei lesen
+    File inputFile = new File("pics/Bild_A.jpg");
+
+    // Bilddaten im RAM
+    BufferedImage readImage = ImageIO.read(inputFile); //.read erkennt format automatisch
+
+    if (readImage != null) {
+        System.out.println("Bild erfolgreich geladen!");
+        return readImage;
+    } else {
+        System.out.println("Format wird nicht unterstützt.");
+    }
+    return null;
+}
+
 
 void displayImage(BufferedImage... images) {
     JFrame frame = new JFrame("Bildanzeige");
