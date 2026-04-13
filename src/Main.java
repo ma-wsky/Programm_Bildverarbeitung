@@ -6,7 +6,12 @@ import java.awt.image.BufferedImage;
 void main() {
     try {
         FileWriter writer = new FileWriter("output.ppm");
-        writer.write("P3\n2 2\n255\n 0 0 0 255 0 0\n 0 0 255 0 0 0");
+        writer.write("""
+                P3
+                3 2
+                255
+                 255   0   0     0 255   0     0   0 255
+                 255 255   0   255 255 255     0   0   0""");
         writer.close();
         System.out.println("successful writing");
     } catch (IOException e) {
