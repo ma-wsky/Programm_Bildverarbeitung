@@ -5,10 +5,71 @@ import java.awt.image.BufferedImage;
 
 void main() {
     try {
-        generatePPM();
+        displayImage(convertToPPM(readImage("pics/castle.jpg")));
     } catch (IOException e) {
         throw new RuntimeException(e);
     }
+}
+
+BufferedImage convertToPPM(BufferedImage input) throws IOException {
+    FileWriter writer = new FileWriter("converted.ppm");
+
+    int width = input.getWidth();
+    int height = input.getHeight();
+
+    // header
+    writer.write("P3\n" + width + " " + height + "\n" + "255\n");
+
+    //data
+    int columnCounter = 0;
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int rgb = input.getRGB(x, y);
+
+            int r = (rgb >> 16) & 0xff;
+            int g = (rgb >> 8) & 0xff;
+            int b = rgb & 0xff;
+
+            writer.write(" " + r + " " + g + " " + b);
+            columnCounter = columnCounter + 12;
+
+            if (columnCounter >= 70){
+                writer.write("\n");
+                columnCounter = 0;
+            }
+        }
+    }
+
+    writer.close();
+
+    return readPPM(new File("converted.ppm"));
+}
+
+BufferedImage readPPM(File file) throws IOException {
+    Scanner scanner = new Scanner(file);
+    scanner.useDelimiter("(\\s+|#.*\\n)+");
+
+    if (!scanner.nextLine().equals("P3")){
+        return null;
+    }
+
+    int width = scanner.nextInt();
+    int height = scanner.nextInt();
+    int maxVal = scanner.nextInt();
+
+    BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            int r = scanner.nextInt();
+            int g = scanner.nextInt();
+            int b = scanner.nextInt();
+            int rgb = (r << 16) | (g << 8) | b;
+            image.setRGB(x, y, rgb);
+        }
+    }
+
+    return image;
 }
 
 void generatePPM() throws IOException {
@@ -16,7 +77,7 @@ void generatePPM() throws IOException {
     // header
     writer.write("""
             P3
-            # Maximilian Dregewsky was here
+            # Maximilian was here
             255 255
             255
             """);
@@ -26,6 +87,8 @@ void generatePPM() throws IOException {
     for (int r = 0; r < 255; r++){
         for (int c = 0; c < 255; c++){
             writer.write(" " + c + " " + (255-c) +" "+ r);
+
+
             columnCounter = columnCounter + 12;
             if (columnCounter >= 70){
                 writer.write("\n");
@@ -50,7 +113,7 @@ void generateColorTestPPM() throws IOException {
 void workflow(){
     try {
         // read Image
-        BufferedImage original = readImage();
+        BufferedImage original = readImage("pics/Bild_A.jpg");
 
         // copy original
         assert original != null;
@@ -72,9 +135,9 @@ void workflow(){
     }
 }
 
-BufferedImage readImage() throws IOException {
+BufferedImage readImage(String filename) throws IOException {
     //Datei lesen
-    File inputFile = new File("pics/Bild_A.jpg");
+    File inputFile = new File(filename);
 
     // Bilddaten im RAM
     BufferedImage readImage = ImageIO.read(inputFile); //.read erkennt format automatisch
