@@ -5,10 +5,128 @@ import java.awt.image.BufferedImage;
 
 void main() {
     try {
-        displayImage(convertToPPM(readImage("pics/castle.jpg")));
+        //displayImage(convertToPPM(readImage("pics/castle.jpg")));
+        BufferedImage rot = convertToPPM(readImage("pics/Bild_A.jpg"));
+        Point center = new Point(rot.getWidth()/2, rot.getHeight()/2);
+        //displayImage(rotateImageForwardMapping(rot, center, 90));
+        displayImage(rotateImageBackwardMapping(rot, center, 45));
     } catch (IOException e) {
         throw new RuntimeException(e);
     }
+}
+
+BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
+
+    double angle = Math.toRadians(degrees);
+    double cos = Math.cos(angle);
+    double sin = Math.sin(angle);
+
+    int newWidth = (int) (Math.abs(image.getWidth() * cos) + Math.abs(image.getHeight()) * sin);
+    int newHeight = (int) (Math.abs(image.getWidth() * sin) + Math.abs(image.getHeight() * cos));
+    BufferedImage rotatedImage = new BufferedImage(newWidth, newHeight, image.getType());
+
+    double xPivot = pivotPoint.x - 0.5;
+    double yPivot = pivotPoint.y - 0.5;
+
+    double xNewCenter = (rotatedImage.getWidth() / 2.0)  - 0.5;
+    double yNewCenter = (rotatedImage.getHeight() / 2.0) - 0.5;
+
+    for (int x = 0; x < rotatedImage.getWidth(); x++) {
+        for (int y = 0; y < rotatedImage.getHeight(); y++) {
+            double newX = x -  xNewCenter;
+            double newY = y -  yNewCenter;
+
+            int origX = (int) Math.round(cos * newX + sin * newY + xPivot); // Nearest Neighbour due to Math.round
+            int origY = (int) Math.round(-sin * newX + cos * newY + yPivot);
+
+            if (origX >= 0 && origX < image.getWidth() &&
+                    origY >= 0 && origY < image.getHeight()) {
+                rotatedImage.setRGB(x, y, image.getRGB(origX, origY));
+            }
+        }
+    }
+
+    return rotatedImage;
+}
+
+BufferedImage rotateImageForwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
+    BufferedImage rotatedImage = new BufferedImage(image.getHeight(), image.getWidth(), image.getType());
+
+    double angle = Math.toRadians(degrees);
+    double cos = Math.cos(angle);
+    double sin = Math.sin(angle);
+
+    int xPivot = pivotPoint.x;
+    int yPivot = pivotPoint.y;
+
+    double xNewCenter = rotatedImage.getWidth() / 2.0;
+    double yNewCenter = rotatedImage.getHeight() / 2.0;
+
+    for (int x = 0; x < image.getWidth(); x++) {
+        for (int y = 0; y < image.getHeight(); y++) {
+
+            // translate relative to pivot point
+            double transX = x -  xPivot;
+            double transY = y -  yPivot;
+
+            // rotate
+            int newX = (int) Math.floor(transX * cos - transY * sin + xNewCenter);
+            int newY = (int) Math.floor(transX * sin + transY * cos + yNewCenter);
+
+            if (newX >= 0 && newX < rotatedImage.getWidth() &&
+                    newY >= 0 && newY < rotatedImage.getHeight()) {
+                rotatedImage.setRGB(newX, newY, image.getRGB(x, y));
+            }
+        }
+    }
+
+    return rotatedImage;
+}
+
+BufferedImage rotateImage90s(BufferedImage image, int degrees) {
+
+    if (degrees == 360){
+        return image;
+    }
+
+    BufferedImage rotatedImage = null;
+
+    rotatedImage = switch (degrees) {
+        case 90, 270 -> new BufferedImage(image.getHeight(), image.getWidth(), image.getType());
+        case 180 -> new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
+        default -> rotatedImage;
+    };
+
+    for (int x = 0; x < image.getWidth(); x++) {
+        for (int y = 0; y < image.getHeight(); y++) {
+            int rgb = image.getRGB(x, y);
+
+            int newX = y;
+            int newY = x;
+
+            switch (degrees) {
+                case 90: {
+                    newX = (image.getHeight()-1) - y;
+                    break;
+                }
+                case 270: {
+                    newY = (image.getWidth()-1) - x;
+                    break;
+                }
+                case 180: {
+                    newX = (image.getWidth()-1) - x;
+                    newY = (image.getHeight()-1) - y;
+                    break;
+                }
+            }
+
+            if (rotatedImage != null) {
+                rotatedImage.setRGB(newX, newY, rgb);
+            }
+        }
+    }
+
+    return rotatedImage;
 }
 
 BufferedImage convertToPPM(BufferedImage input) throws IOException {
@@ -103,10 +221,11 @@ void generateColorTestPPM() throws IOException {
     FileWriter writer = new FileWriter("colorTest.ppm");
     writer.write("""
                 P3
-                3 2
+                3 3
                 255
                  255   0   0     0 255   0     0   0 255
-                 255 255   0   255 255 255     0   0   0""");
+                 255 255   0   255   0 255     0 255 255
+                 255 255 255     0   0   0   128 128 128""");
     writer.close();
 }
 
