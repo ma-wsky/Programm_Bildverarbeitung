@@ -14,8 +14,8 @@ void main() {
 
     try {
         BufferedImage image = readImage("pics/Bild_A.jpg");
-        BufferedImage ppm = convertToPPM(image);
-        Integer[][] grayMatrix = calculateGrayMatrix(image);
+        BufferedImage ppm = convertToPPM(image, "Bild_A.ppm");
+        Integer[][] grayMatrix = calculateGrayLevelMatrix(image);
 
         Integer[][] coOccurrenceMatrix = calculateCoOccurrenceMatrix(grayMatrix, 256);
         System.out.println(Arrays.deepToString(coOccurrenceMatrix));
@@ -26,7 +26,13 @@ void main() {
     }
 }
 
-Integer[][] calculateGrayMatrix(BufferedImage image) {
+/**
+ * Calculates the gray-level-matrix from a given BufferedImage.
+ * Extracts rgb-values and calculates gray-level for each pixel.
+ * @param image the BufferedImage
+ * @return Integer[][] matrix
+ */
+Integer[][] calculateGrayLevelMatrix(BufferedImage image) {
 
     Integer[][] grayMatrix = new Integer[image.getWidth()][image.getHeight()];
 
@@ -45,10 +51,17 @@ Integer[][] calculateGrayMatrix(BufferedImage image) {
     return grayMatrix;
 }
 
-Integer[][] calculateCoOccurrenceMatrix(Integer[][] grayMatrix, int numGrays){
+/**
+ * Calculates the co-occurrence-matrix from a given gray-level-matrix.
+ * Traverses gray-level-matrix and increments corresponding co-occurrence (right neighbour).
+ * @param grayLevelMatrix Integer[][] gray-level-matrix
+ * @param numGrays number of different gray values
+ * @return Integer[][] co-occurrence-matrix
+ */
+Integer[][] calculateCoOccurrenceMatrix(Integer[][] grayLevelMatrix, int numGrays){
 
-    int grayMatrixRows = grayMatrix.length;
-    int grayMatrixCols = grayMatrix[0].length;
+    int grayMatrixRows = grayLevelMatrix.length;
+    int grayMatrixCols = grayLevelMatrix[0].length;
 
     Integer[][] coOccurrenceMatrix = new Integer[numGrays][numGrays];
 
@@ -61,8 +74,8 @@ Integer[][] calculateCoOccurrenceMatrix(Integer[][] grayMatrix, int numGrays){
     for(int rows = 0; rows < grayMatrixRows; rows++){
         for(int cols = 0; cols < grayMatrixCols-1; cols++){
 
-            int grayValueCurrent = grayMatrix[rows][cols];
-            int grayValueNeighbour = grayMatrix[rows][cols+1];
+            int grayValueCurrent = grayLevelMatrix[rows][cols];
+            int grayValueNeighbour = grayLevelMatrix[rows][cols+1];
 
             coOccurrenceMatrix[grayValueCurrent][grayValueNeighbour]++;
         }
@@ -71,6 +84,16 @@ Integer[][] calculateCoOccurrenceMatrix(Integer[][] grayMatrix, int numGrays){
     return coOccurrenceMatrix;
 }
 
+/**
+ * Rotates a given BufferedImage around a given pivot point for 'degrees'°.
+ * Uses backward mapping to determine the color each rotated pixel had in image.
+ * Uses nearest neighbour to interpolate pixel color.
+ * Shifts the pivot point and new center to the middle of the pixel.
+ * @param image BufferedImage image to be rotated
+ * @param pivotPoint Point pivot point of rotation
+ * @param degrees number of degrees image is to be rotated
+ * @return BufferedImage rotated image
+ */
 BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
 
     double angle = Math.toRadians(degrees);
@@ -105,6 +128,14 @@ BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, 
     return rotatedImage;
 }
 
+/**
+ * Rotates a given BufferedImage around a given pivot point for 'degrees'°.
+ * Uses forward mapping to determine the position each pixel takes in rotated image.
+ * @param image BufferedImage to be rotated
+ * @param pivotPoint Point pivot point of rotation
+ * @param degrees number of degrees image is to be rotated
+ * @return BufferedImage rotated image
+ */
 BufferedImage rotateImageForwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
     BufferedImage rotatedImage = new BufferedImage(image.getHeight(), image.getWidth(), image.getType());
 
@@ -139,6 +170,13 @@ BufferedImage rotateImageForwardMapping(BufferedImage image, Point pivotPoint, i
     return rotatedImage;
 }
 
+/**
+ * Rotates a given image for multiples of 90° specified with 'degrees'.
+ * Flips the images axis to fit rotation angle. No rearranging of pixels.
+ * @param image BufferedImage to be rotated
+ * @param degrees number of degrees image is to be rotated
+ * @return BufferedImage rotated image
+ */
 BufferedImage rotateImage90s(BufferedImage image, int degrees) {
 
     if (degrees == 360){
@@ -185,8 +223,19 @@ BufferedImage rotateImage90s(BufferedImage image, int degrees) {
     return rotatedImage;
 }
 
-BufferedImage convertToPPM(BufferedImage input) throws IOException {
-    FileWriter writer = new FileWriter("converted.ppm");
+
+/**
+ * Converts a given BufferedImage with any format to ppm format.
+ * Writes the ppm image into a new file called 'filename'.
+ * Reads the ppm file with readPPM(file).
+ * @param input BufferedImage to be converted
+ * @param filename name of ppm file
+ * @return BufferedImage in ppm format
+ * @throws IOException if an I/O error occurs while writing the file
+ * @see #readPPM(File)
+ */
+BufferedImage convertToPPM(BufferedImage input, String filename) throws IOException {
+    FileWriter writer = new FileWriter(filename);
 
     int width = input.getWidth();
     int height = input.getHeight();
@@ -219,6 +268,14 @@ BufferedImage convertToPPM(BufferedImage input) throws IOException {
     return readPPM(new File("converted.ppm"));
 }
 
+
+/**
+ * Reads a file that has the ppm format.
+ * Disregards all comments and whitespaces and writes the data into a BufferedImage
+ * @param file the path of the ppm file to be read
+ * @return BufferedImage the ppm image
+ * @throws IOException if the file cannot be found
+ */
 BufferedImage readPPM(File file) throws IOException {
     Scanner scanner = new Scanner(file);
     scanner.useDelimiter("(\\s+|#.*\\n)+");
@@ -246,6 +303,11 @@ BufferedImage readPPM(File file) throws IOException {
     return image;
 }
 
+/**
+ * Generates a ppm file 'output.ppm'.
+ * Used for testing.
+ * @throws IOException if file is a directory
+ */
 void generatePPM() throws IOException {
     FileWriter writer = new FileWriter("output.ppm");
     // header
@@ -273,6 +335,11 @@ void generatePPM() throws IOException {
     writer.close();
 }
 
+/**
+ * Generates a color test ppm file called 'colorTest.ppm'
+ * Used for testing.
+ * @throws IOException if file is a directory
+ */
 void generateColorTestPPM() throws IOException {
     FileWriter writer = new FileWriter("colorTest.ppm");
     writer.write("""
@@ -285,31 +352,13 @@ void generateColorTestPPM() throws IOException {
     writer.close();
 }
 
-void workflow(){
-    try {
-        // read Image
-        BufferedImage original = readImage("pics/Bild_A.jpg");
-
-        // copy original
-        assert original != null;
-        BufferedImage grayScale = copyImage(original);
-        BufferedImage negative = copyImage(original);
-        BufferedImage negativeGray = copyImage(original);
-
-        // manipulate
-        grayScale(grayScale);
-        negative(negative);
-        grayScale(negativeGray);
-        negative(negativeGray);
-
-        // display
-        displayImage(original, negative, grayScale, negativeGray);
-
-    } catch (IOException e) {
-        System.err.println("Fehler beim Lesen der Datei: " + e.getMessage());
-    }
-}
-
+/**
+ * Reads a file as a BufferedImage.
+ * Can read any image format.
+ * @param filename name of file to be read
+ * @return BufferedImage read file
+ * @throws IOException if file cannot be found
+ */
 BufferedImage readImage(String filename) throws IOException {
     //Datei lesen
     File inputFile = new File(filename);
@@ -326,7 +375,13 @@ BufferedImage readImage(String filename) throws IOException {
     return null;
 }
 
-
+/**
+ * Displays BufferedImages inside JFrames.
+ * JFrames are wrapped to the images.
+ * Can display multiple images each inside the JFrame.
+ * Displays the JFrame centered on the screen.
+ * @param images the BufferedImages to be displayed
+ */
 void displayImage(BufferedImage... images) {
     JFrame frame = new JFrame("Bildanzeige");
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -344,6 +399,11 @@ void displayImage(BufferedImage... images) {
     frame.setVisible(true);
 }
 
+/**
+ * Copies a given BufferedImage
+ * @param image BufferedImage to be copied
+ * @return BufferedImage copy
+ */
 public static BufferedImage copyImage(BufferedImage image) {
     BufferedImage newImage = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
     java.awt.Graphics g = newImage.getGraphics();
@@ -352,6 +412,11 @@ public static BufferedImage copyImage(BufferedImage image) {
     return newImage;
 }
 
+/**
+ * Converts a given BufferedImage to grayscale.
+ * Reads each pixel and calculates grayscale value before overwriting the pixels color.
+ * @param image BufferedImage to be converted
+ */
 void grayScale(BufferedImage image) {
     for (int x = 0; x < image.getWidth(); x++) {
         for (int y = 0; y < image.getHeight(); y++) {
@@ -371,6 +436,11 @@ void grayScale(BufferedImage image) {
     }
 }
 
+/**
+ * Converts a given BufferedImage to negative.
+ * Reads each pixel and calculates negative value before overwriting the pixels color.
+ * @param image BufferedImage to be converted
+ */
 void negative(BufferedImage image) {
     for (int x = 0; x < image.getWidth(); x++) {
         for (int y = 0; y < image.getHeight(); y++) {
