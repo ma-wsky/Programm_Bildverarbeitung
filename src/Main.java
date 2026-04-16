@@ -4,15 +4,71 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 void main() {
+    Integer[][] grayMatrixTEST = {
+            {0, 1, 0, 1, 2, 3},
+            {0, 0, 1, 2, 2, 2},
+            {0, 0, 1, 1, 1, 2},
+            {0, 1, 2, 2, 3, 3},
+            {0, 2, 2, 3, 3, 3},
+            {2, 2, 2, 3, 3, 3}};
+
     try {
-        //displayImage(convertToPPM(readImage("pics/castle.jpg")));
-        BufferedImage rot = convertToPPM(readImage("pics/Bild_A.jpg"));
-        Point center = new Point(rot.getWidth()/2, rot.getHeight()/2);
-        //displayImage(rotateImageForwardMapping(rot, center, 90));
-        displayImage(rotateImageBackwardMapping(rot, center, 45));
+        BufferedImage image = readImage("pics/Bild_A.jpg");
+        BufferedImage ppm = convertToPPM(image);
+        Integer[][] grayMatrix = calculateGrayMatrix(image);
+
+        Integer[][] coOccurrenceMatrix = calculateCoOccurrenceMatrix(grayMatrix, 256);
+        System.out.println(Arrays.deepToString(coOccurrenceMatrix));
+        displayImage(ppm);
+
     } catch (IOException e) {
         throw new RuntimeException(e);
     }
+}
+
+Integer[][] calculateGrayMatrix(BufferedImage image) {
+
+    Integer[][] grayMatrix = new Integer[image.getWidth()][image.getHeight()];
+
+    for (int y = 0; y < image.getHeight(); y++) {
+        for (int x = 0; x < image.getWidth(); x++) {
+            int rgb = image.getRGB(x, y);
+            int r = (rgb >> 16) & 0xff;
+            int g = (rgb >> 8) & 0xff;
+            int b = rgb & 0xff;
+
+            int gray = (int) Math.floor(0.299 * r + 0.587 * g + 0.114 * b);
+            grayMatrix[x][y] = gray;
+        }
+    }
+
+    return grayMatrix;
+}
+
+Integer[][] calculateCoOccurrenceMatrix(Integer[][] grayMatrix, int numGrays){
+
+    int grayMatrixRows = grayMatrix.length;
+    int grayMatrixCols = grayMatrix[0].length;
+
+    Integer[][] coOccurrenceMatrix = new Integer[numGrays][numGrays];
+
+    for(int rows = 0; rows < numGrays; rows++){
+        for(int cols = 0; cols < numGrays; cols++){
+            coOccurrenceMatrix[rows][cols] = 0;
+        }
+    }
+
+    for(int rows = 0; rows < grayMatrixRows; rows++){
+        for(int cols = 0; cols < grayMatrixCols-1; cols++){
+
+            int grayValueCurrent = grayMatrix[rows][cols];
+            int grayValueNeighbour = grayMatrix[rows][cols+1];
+
+            coOccurrenceMatrix[grayValueCurrent][grayValueNeighbour]++;
+        }
+    }
+
+    return coOccurrenceMatrix;
 }
 
 BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
