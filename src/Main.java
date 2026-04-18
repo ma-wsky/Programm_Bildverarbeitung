@@ -5,25 +5,180 @@ import java.awt.image.BufferedImage;
 
 void main() {
     Integer[][] grayMatrixTEST = {
-            {0, 1, 0, 1, 2, 3},
-            {0, 0, 1, 2, 2, 2},
-            {0, 0, 1, 1, 1, 2},
-            {0, 1, 2, 2, 3, 3},
-            {0, 2, 2, 3, 3, 3},
-            {2, 2, 2, 3, 3, 3}};
+            {0, 255},
+            {255, 0}};
 
     try {
         BufferedImage image = readImage("pics/Bild_A.jpg");
         BufferedImage ppm = convertToPPM(image, "Bild_A.ppm");
         Integer[][] grayMatrix = calculateGrayLevelMatrix(image);
 
-        Integer[][] coOccurrenceMatrix = calculateCoOccurrenceMatrix(grayMatrix, 256);
-        System.out.println(Arrays.deepToString(coOccurrenceMatrix));
-        displayImage(ppm);
+        Integer[] grayValueArray = matrixToArray(grayMatrix);
+
+        int median = calculateMedian(grayValueArray);
+        double mean = calculateMean(grayValueArray);
+        double varianz = calculateVariance(grayValueArray);
+        double standardDeviation = calculateStandardDeviation(varianz);
+        double entropy = calculateEntropy(grayValueArray);
+        Double[] relativeFrequency = calculateRelativeFrequencyArray(grayValueArray);
+
+        System.out.println("Median: " + median);
+        System.out.println("Mean: " + mean);
+        System.out.println("Varianz: " + varianz);
+        System.out.println("Standard Deviation: " + standardDeviation);
+        System.out.println("Entropy: " + entropy);
+        System.out.println("RelativeFrequency: " + Arrays.toString(relativeFrequency));
 
     } catch (IOException e) {
         throw new RuntimeException(e);
     }
+}
+
+/**
+ * Calculates a relative frequency array from an array.
+ * @param array Integer[]
+ * @return Double[]
+ */
+Double[] calculateRelativeFrequencyArray(Integer[] array) {
+    Double[] amounts = new Double[256];
+
+    for (Integer integer : array) {
+        if (amounts[integer] == null) {
+            amounts[integer] = 1.0;
+        } else {
+            amounts[integer]++;
+        }
+    }
+
+    for (int i = 0; i < amounts.length; i++) {
+        if (amounts[i] == null) {
+            amounts[i] = 0.0;
+        }
+        amounts[i] = amounts[i] / array.length;
+    }
+
+    return amounts;
+}
+
+/**
+ * Calculates the entropy of an array
+ * @param array Integer[]
+ * @return double entropy
+ */
+double calculateEntropy(Integer[] array) {
+    Integer[] amounts = new Integer[256];
+    double entropy = 0.0;
+
+    for (Integer integer : array) {
+        if (amounts[integer] == null) {
+            amounts[integer] = 1;
+        } else {
+            amounts[integer]++;
+        }
+    }
+
+    for (int i = 0; i < 256; i++) {
+        if (amounts[i] != null) {
+            double prob = (double) amounts[i] / array.length;
+            entropy -= prob * log2(prob);
+        }
+    }
+
+    return entropy;
+}
+
+/**
+ * Helper function to calculate log2.
+ * @param x double
+ * @return double log2(x)
+ */
+double log2(double x) {
+    return Math.log(x) / Math.log(2);
+}
+
+/**
+ * Calculates standard deviation through variance.
+ * @param variance double
+ * @return double standard deviation
+ */
+double calculateStandardDeviation(double variance) {
+    return Math.sqrt(variance);
+}
+
+/**
+ * Calculates the variance of an array.
+ * @param array Integer[]
+ * @return double variance
+ * @see #calculateMean(Integer[])
+ */
+double calculateVariance(Integer[] array) {
+    double mean2 = Math.pow(calculateMean(array), 2);
+    double sum = 0;
+
+    for (Integer integer : array) {
+        sum += (int) Math.pow(integer, 2) - mean2;
+    }
+
+    return sum/array.length;
+}
+
+/**
+ * Calculates the mean of an array.
+ * @param array Integer[]
+ * @return double mean
+ */
+double calculateMean(Integer[] array) {
+    double sum = 0;
+
+    for (Integer integer : array) {
+        sum += integer;
+    }
+
+    return sum / array.length;
+}
+
+/**
+ * Calculates median of an array.
+ * Sorts array before determining median.
+ * @param array Integer[]
+ * @return int median
+ */
+int calculateMedian(Integer[] array) {
+    int middleElement = (array.length / 2);
+
+    for (int i = 0; i < array.length; i++) {
+        for (int j = i+1; j < array.length; j++) {
+            if (array[i] > array[j]) {
+                int temp = array[i];
+                array[i] = array[j];
+                array[j] = temp;
+            }
+        }
+    }
+
+    return array[middleElement];
+}
+
+/**
+ * Helper function to convert matrixes into arrays.
+ * @param matrix the matrix to convert to array
+ * @return Integer[] array from matrix
+ */
+Integer[] matrixToArray(Integer[][] matrix) {
+    int rows =  matrix.length;
+    int cols = matrix[0].length;
+
+    Integer[] array = new Integer[rows*cols];
+
+    int counter = 0;
+    for (int row = 0; row < rows; row++) {
+        for (int col = 0; col < cols; col++) {
+            array[counter] = matrix[row][col];
+            counter++;
+        }
+    }
+
+    return array;
 }
 
 /**
