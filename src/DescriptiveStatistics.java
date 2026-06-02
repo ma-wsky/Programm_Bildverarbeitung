@@ -141,10 +141,11 @@ public class DescriptiveStatistics {
         Integer[] sortedGrayValues = this.countingSort();
 
         int count = 0;
-        for (Integer grayValue : sortedGrayValues) {
-            count += grayValue;
-            if (count >= middleElement) {
-                this.median = grayValue;
+        for (int i=0; i < sortedGrayValues.length; i++){
+            count += sortedGrayValues[i];
+            if (count >= middleElement){
+                this.median = i;
+                break;
             }
         }
     }
