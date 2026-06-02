@@ -157,6 +157,60 @@ public class ImageManipulation {
         io.displayImage(image);
     }
 
+    void histogramEqualization(BufferedImage image){
+        ImageIO io = new ImageIO();
+        DescriptiveStatistics stats = new DescriptiveStatistics(image);
+        stats.calculateGrayValueMatrix();
+        stats.calculateRelativeCumulativeFrequencyArray();
+        Double[] cfreq = stats.getRelativeCumulativeFrequency();
+        int[] lut = new int[cfreq.length];
+
+        for(int i = 0; i < cfreq.length; i++){
+            lut[i] = (int) Math.floor(255*cfreq[i]);
+        }
+
+        for(int x = 0; x < image.getWidth(); x++){
+            for(int y = 0; y < image.getHeight(); y++){
+                int a =  (image.getRGB(x, y) >> 24) & 0xff;
+                int gray = this.calculateGrayValueFromRGB(image.getRGB(x, y));
+
+                int newGray = lut[gray];
+
+                int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
+
+                image.setRGB(x, y, newRgb);
+            }
+        }
+        try {
+            io.convertToPPM(image, "equalizedHistogram.ppm");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        io.displayImage(image);
+    }
+
+    void gammaCorrection(double gamma, BufferedImage image){
+        ImageIO io = new ImageIO();
+        for(int x = 0; x < image.getWidth(); x++){
+            for(int y = 0; y < image.getHeight(); y++){
+                int a =  (image.getRGB(x, y) >> 24) & 0xff;
+                int gray = this.calculateGrayValueFromRGB(image.getRGB(x, y));
+
+                int newGray = (int) (Math.pow(gray/255.0, gamma) * 255);
+
+                int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
+
+                image.setRGB(x, y, newRgb);
+            }
+        }
+        try {
+            io.convertToPPM(image, "gammaCorrected.ppm");
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        io.displayImage(image);
+    }
+
     int calculateGrayValueFromRGB(int rgb){
         int r = (rgb >> 16) & 0xff;
         int g = (rgb >> 8) & 0xff;

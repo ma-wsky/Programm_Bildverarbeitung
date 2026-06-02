@@ -8,10 +8,14 @@ void main() {
     io.displayImage(input);
 
     ImageManipulation manipulation = new ImageManipulation(input);
-    manipulation.equidensityFirstOrderGrayImage();
-    manipulation.equidensitySecondOrderGrayImage();
+    //manipulation.equidensityFirstOrderGrayImage();
+    //manipulation.equidensitySecondOrderGrayImage();
 
-    DescriptiveStatistics stats = new DescriptiveStatistics(input);
+    //manipulation.histogramEqualization(input);
+    manipulation.gammaCorrection(0.3, input);
+
+    BufferedImage gamma = io.readPPM(new File("gammaCorrected.ppm"));
+    DescriptiveStatistics stats = new DescriptiveStatistics(gamma);
     stats.calculateAllStatistics();
     stats.printStatistics();
 }
