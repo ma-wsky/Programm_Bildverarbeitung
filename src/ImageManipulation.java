@@ -3,55 +3,35 @@ import java.io.IOException;
 
 public class ImageManipulation {
 
-    private final BufferedImage image;
-    private final BufferedImage grayScale;
-
-    private final int[] LUT;
-
     /**
-     * initializes look up table and buffered image
-     * @param image image
-     */
-    ImageManipulation(BufferedImage image) {
-        this.image = image;
-        ImageIO io = new ImageIO();
-        this.grayScale = io.copyImage(this.image, "grayScale.jpg");
-        ColorManipulation colorManipulation = new ColorManipulation();
-        colorManipulation.grayScale(this.image);
-
-        this.LUT = new int[256];
-        for (int i = 0; i < 256; i++) {
-            this.LUT[i] = -1;
-        }
-    }
-
-    /**
-     * performs linear scale of gray values with equation f(g)=c2*g+c1*c2
+     * performs linear scale of gray values with equation f(g)=c2*g+c1*c2 on a BufferedImage.
+     * Saves the image in PPM format and returns it.
      * @param c1 c1
      * @param c2 c2
+     * @return BufferedImage after applying linear transformation
      */
-    void linearScaleGrayImage(int c1, double c2){
+    public static BufferedImage linearScaleGrayImage(BufferedImage image, int c1, double c2){
         // c2 = 1, c1 > 0 => brighter
         // c2 = 1, c1 < 0 => darker
         // 0 < c2 < 1 , c1 = 0 => lower contrast
         // c2 > 1 , c1 = 0 => higher contrast
-        ImageIO io = new ImageIO();
-        BufferedImage image = io.copyImage(this.grayScale, "linearScaleGrayImage.jpg");
+
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+        int[] lookUpTable = new int[grayScaleImage.getWidth() * grayScaleImage.getHeight()];
+        for (int i = 0; i < lookUpTable.length; i++) {
+            lookUpTable[i] = -1;
+        }
 
         double c = c1*c2;
 
-        for (int x = 0; x < image.getWidth(); x++) {
-            for (int y = 0; y < image.getHeight(); y++) {
-                int rgb = image.getRGB(x, y);
-
+        for (int x = 0; x < grayScaleImage.getWidth(); x++) {
+            for (int y = 0; y < grayScaleImage.getHeight(); y++) {
+                int rgb = grayScaleImage.getRGB(x, y);
                 int a = (rgb >> 24) & 0xff;
-                int r = (rgb >> 16) & 0xff;
-                int g = (rgb >> 8) & 0xff;
-                int b = rgb & 0xff;
 
-                int gray = (r + g + b) / 3;
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(rgb);
 
-                if (this.LUT[gray] == -1){
+                if (lookUpTable[gray] == -1){
                     //calc
                     int value = (int) (c2*gray+c);
                     if (value > 255) {
@@ -59,24 +39,30 @@ public class ImageManipulation {
                     }else if (value < 0){
                         value = 0;
                     }
-                    this.LUT[gray] = value;
+                    lookUpTable[gray] = value;
                 }
 
-                int newGray = this.LUT[gray];
+                int newGray = lookUpTable[gray];
 
                 int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
 
-                image.setRGB(x, y, newRgb);
+                grayScaleImage.setRGB(x, y, newRgb);
             }
         }
-        io.displayImage(image);
+        String filename = "generated/linearScaleGrayImage.ppm";
+        try {
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
+        } catch (IOException e) {
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
+        }
+
+        return grayScaleImage;
     }
 
-    void equidensityFirstOrderGrayImage(){
-        ImageIO io = new ImageIO();
-        BufferedImage image = io.copyImage(this.grayScale, "equidensityFirstOrderGrayImage.jpg");
+    public static BufferedImage equidensityFirstOrderGrayImage(BufferedImage image){
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
-        DescriptiveStatistics stats = new DescriptiveStatistics(image);
+        DescriptiveStatistics stats = new DescriptiveStatistics(grayScaleImage);
         stats.calculateGrayValueMatrix();
         stats.calculateMean();
         stats.calculateVariance();
@@ -85,15 +71,12 @@ public class ImageManipulation {
         int lowerBound = mean - bound;
         int upperBound = mean + bound;
 
-        for(int x = 0; x < image.getWidth(); x++){
-            for(int y = 0; y < image.getHeight(); y++){
-                int rgb = image.getRGB(x, y);
+        for(int x = 0; x < grayScaleImage.getWidth(); x++){
+            for(int y = 0; y < grayScaleImage.getHeight(); y++){
+                int rgb = grayScaleImage.getRGB(x, y);
                 int a = (rgb >> 24) & 0xff;
-                int r = (rgb >> 16) & 0xff;
-                int g = (rgb >> 8) & 0xff;
-                int b = rgb & 0xff;
 
-                int gray = (r + g + b) / 3;
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(rgb);
 
                 if (gray < lowerBound){
                     gray = 0;
@@ -105,34 +88,34 @@ public class ImageManipulation {
 
                 int newRgb = (a << 24) | (gray << 16) | (gray << 8) | gray;
 
-                image.setRGB(x, y, newRgb);
+                grayScaleImage.setRGB(x, y, newRgb);
             }
         }
+        String filename = "generated/firstOrderEquidensityGrayImage.ppm";
         try {
-            io.saveBufferedImageAsPPM(image, "equidensityFirstOrderGrayImage.ppm");
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
         }
-        io.displayImage(image);
+
+        return grayScaleImage;
     }
 
-    void equidensitySecondOrderGrayImage(){
-        ImageIO io = new ImageIO();
-        BufferedImage image = io.copyImage(this.grayScale, "equidensitySecondOrderGrayImage.jpg");
+    public static BufferedImage equidensitySecondOrderGrayImage(BufferedImage image){
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
         // calc first order
-        this.equidensityFirstOrderGrayImage();
-        BufferedImage firstOrder = io.readPPM("equidensityFirstOrderGrayImage.ppm");
+        BufferedImage firstOrderImage = ImageManipulation.equidensityFirstOrderGrayImage(image);
 
-        for(int x = 1; x < firstOrder.getWidth()-1; x++){
-            for(int y = 1; y < firstOrder.getHeight()-1; y++){
-                int a = (firstOrder.getRGB(x, y) >> 24) & 0xff;
+        for(int x = 1; x < firstOrderImage.getWidth()-1; x++){
+            for(int y = 1; y < firstOrderImage.getHeight()-1; y++){
+                int a = (firstOrderImage.getRGB(x, y) >> 24) & 0xff;
 
-                int gray = this.calculateGrayValueFromRGB(firstOrder.getRGB(x, y));
-                int grayNegY = this.calculateGrayValueFromRGB(firstOrder.getRGB(x, y-1));
-                int grayPosY = this.calculateGrayValueFromRGB(firstOrder.getRGB(x, y+1));
-                int grayNegX = this.calculateGrayValueFromRGB(firstOrder.getRGB(x-1, y));
-                int grayPosX = this.calculateGrayValueFromRGB(firstOrder.getRGB(x+1, y));
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(firstOrderImage.getRGB(x, y));
+                int grayNegY = GlobalHelperFunctions.calculateGrayValueFromRGB(firstOrderImage.getRGB(x, y-1));
+                int grayPosY = GlobalHelperFunctions.calculateGrayValueFromRGB(firstOrderImage.getRGB(x, y+1));
+                int grayNegX = GlobalHelperFunctions.calculateGrayValueFromRGB(firstOrderImage.getRGB(x-1, y));
+                int grayPosX = GlobalHelperFunctions.calculateGrayValueFromRGB(firstOrderImage.getRGB(x+1, y));
 
                 int diff = 4*gray - grayNegY - grayPosY - grayNegX - grayPosX;
                 int newGray;
@@ -145,21 +128,23 @@ public class ImageManipulation {
 
                 int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
 
-                image.setRGB(x, y, newRgb);
+                grayScaleImage.setRGB(x, y, newRgb);
             }
         }
+        String filename = "generated/secondOrderEquidensityGrayImage.ppm";
         try {
-            io.saveBufferedImageAsPPM(image, "equidensitySecondOrderGrayImage.ppm");
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
         }
-        io.displayImage(image);
+
+        return grayScaleImage;
     }
 
-    void histogramEqualization(BufferedImage image){
-        ImageIO io = new ImageIO();
-        DescriptiveStatistics stats = new DescriptiveStatistics(image);
-        stats.calculateGrayValueMatrix();
+    public static BufferedImage histogramEqualization(BufferedImage image){
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+
+        DescriptiveStatistics stats = new DescriptiveStatistics(grayScaleImage);
         stats.calculateRelativeCumulativeFrequencyArray();
         Double[] cfreq = stats.getRelativeCumulativeFrequency();
         int[] lut = new int[cfreq.length];
@@ -168,52 +153,51 @@ public class ImageManipulation {
             lut[i] = (int) Math.floor(255*cfreq[i]);
         }
 
-        for(int x = 0; x < image.getWidth(); x++){
-            for(int y = 0; y < image.getHeight(); y++){
-                int a =  (image.getRGB(x, y) >> 24) & 0xff;
-                int gray = this.calculateGrayValueFromRGB(image.getRGB(x, y));
+        for(int x = 0; x < grayScaleImage.getWidth(); x++){
+            for(int y = 0; y < grayScaleImage.getHeight(); y++){
+                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
 
                 int newGray = lut[gray];
 
                 int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
 
-                image.setRGB(x, y, newRgb);
+                grayScaleImage.setRGB(x, y, newRgb);
             }
         }
+        String filename = "generated/equalizedHistogramGrayImage.ppm";
         try {
-            io.saveBufferedImageAsPPM(image, "equalizedHistogram.ppm");
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
         }
-        io.displayImage(image);
+
+        return grayScaleImage;
     }
 
-    void gammaCorrection(double gamma, BufferedImage image){
-        ImageIO io = new ImageIO();
-        for(int x = 0; x < image.getWidth(); x++){
-            for(int y = 0; y < image.getHeight(); y++){
-                int a =  (image.getRGB(x, y) >> 24) & 0xff;
-                int gray = this.calculateGrayValueFromRGB(image.getRGB(x, y));
+    public static BufferedImage gammaCorrection(BufferedImage image, double gamma){
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+
+        for(int x = 0; x < grayScaleImage.getWidth(); x++){
+            for(int y = 0; y < grayScaleImage.getHeight(); y++){
+                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
 
                 int newGray = (int) (Math.pow(gray/255.0, gamma) * 255);
 
                 int newRgb = (a << 24) | (newGray << 16) | (newGray << 8) | newGray;
 
-                image.setRGB(x, y, newRgb);
+                grayScaleImage.setRGB(x, y, newRgb);
             }
         }
+        String filename = "generated/gammaCorrectedGrayImage.ppm";
         try {
-            io.saveBufferedImageAsPPM(image, "gammaCorrected.ppm");
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
         }
-        io.displayImage(image);
+
+        return grayScaleImage;
     }
 
-    int calculateGrayValueFromRGB(int rgb){
-        int r = (rgb >> 16) & 0xff;
-        int g = (rgb >> 8) & 0xff;
-        int b = rgb & 0xff;
-        return (r + g + b) / 3;
-    }
 }
