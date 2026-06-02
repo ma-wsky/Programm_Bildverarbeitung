@@ -28,6 +28,11 @@ public class DescriptiveStatistics {
         this.height = image.getHeight();
 
         this.grayValueMatrix = new Integer[this.width][this.height];
+        for(int x = 0; x < this.width; x++){
+            for(int y = 0; y < this.height; y++){
+                this.grayValueMatrix[x][y] = -1;
+            }
+        }
 
         this.median = -1;
         this.mean = -1;
@@ -36,9 +41,33 @@ public class DescriptiveStatistics {
     }
 
     /**
-     * {@code @Link} #timestep(String, Runnable)
+     * calls every function to calculates all statistics
+     * {@link #calculateGrayValueMatrix()}
+     * {@link #calculateCoOccurrenceMatrix()}
+     * {@link #calculateMean()}
+     * {@link #calculateMedian()}
+     * {@link #calculateVariance()}
+     * {@link #calculateStandardDeviation()}
+     * {@link #calculateEntropy()}
+     * {@link #calculateRelativeFrequencyArray()}
+     * {@link #calculateRelativeCumulativeFrequencyArray()}
      */
     void calculateAllStatistics() {
+        this.calculateGrayValueMatrix();
+        this.calculateCoOccurrenceMatrix();
+        this.calculateMean();
+        this.calculateMedian();
+        this.calculateVariance();
+        this.calculateStandardDeviation();
+        this.calculateEntropy();
+        this.calculateRelativeFrequencyArray();
+        this.calculateRelativeCumulativeFrequencyArray();
+    }
+
+    /**
+     * {@code @Link} #timestep(String, Runnable)
+     */
+    void timeCalculationOfAllStatistics() {
         System.out.println("\n--- Starting Statistics Pipeline ---\n");
 
         timeStep("Gray Value Matrix",     this::calculateGrayValueMatrix);
@@ -134,6 +163,9 @@ public class DescriptiveStatistics {
      * Sorts array with {@link #countingSort()} before determining median.
      */
     void calculateMedian() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         int middleElement = (grayValueArray.length / 2);
 
@@ -151,6 +183,9 @@ public class DescriptiveStatistics {
     }
 
     void calculateMean() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         double sum = 0;
 
@@ -166,6 +201,9 @@ public class DescriptiveStatistics {
      * Uses {@link #calculateMean()} for mean^2
      */
     void calculateVariance() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         if (this.mean == -1) {
             this.calculateMean();
@@ -198,6 +236,9 @@ public class DescriptiveStatistics {
      * Checks if probability is zero before adding.
      */
     void calculateEntropy() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         Integer[] amounts = this.countingSort();
         double entropy = 0.0;
@@ -217,6 +258,9 @@ public class DescriptiveStatistics {
      * Uses {@link #countingSort()} to sort the array
      */
     void calculateRelativeFrequencyArray() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         Integer[] amounts = this.countingSort();
         Double[] amountsD = new Double[256];
@@ -229,6 +273,9 @@ public class DescriptiveStatistics {
     }
 
     void calculateRelativeCumulativeFrequencyArray() {
+        if (this.grayValueMatrix[0][0] == -1){
+            this.calculateGrayValueMatrix();
+        }
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         Integer[] amounts = this.countingSort();
         Double[] amountsD = new Double[256];
@@ -298,6 +345,9 @@ public class DescriptiveStatistics {
      * Converts relative frequency array to histogram and removes bars with length 0.
      */
     void printStatistics() {
+        if (this.grayValueMatrix[0][0] == -1 || this.mean == -1 || this.median == -1 || this.variance == -1 || this.standardDeviation == -1 || this.entropy == -1) {
+            this.calculateAllStatistics();
+        }
         System.out.println("Median: " + this.getMedian());
         System.out.printf("Mean: %.2f\n", this.getMean());
         System.out.printf("Variance: %.2f\n", this.getVariance());
