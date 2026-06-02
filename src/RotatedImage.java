@@ -2,11 +2,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 
 public class RotatedImage {
-    BufferedImage image;
-
-    RotatedImage(BufferedImage image) {
-        this.image = image;
-    }
 
     /**
      * Rotates a given BufferedImage around a given pivot point for 'degrees'°.
@@ -18,7 +13,7 @@ public class RotatedImage {
      * @param degrees number of degrees image is to be rotated
      * @return BufferedImage rotated image
      */
-    BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
+    public static BufferedImage rotateImageBackwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
 
         double angle = Math.toRadians(degrees);
         double cos = Math.cos(angle);
@@ -60,7 +55,7 @@ public class RotatedImage {
      * @param degrees number of degrees image is to be rotated
      * @return BufferedImage rotated image
      */
-    BufferedImage rotateImageForwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
+    public static BufferedImage rotateImageForwardMapping(BufferedImage image, Point pivotPoint, int degrees) {
         BufferedImage rotatedImage = new BufferedImage(image.getHeight(), image.getWidth(), image.getType());
 
         double angle = Math.toRadians(degrees);
@@ -101,7 +96,7 @@ public class RotatedImage {
      * @param degrees number of degrees image is to be rotated
      * @return BufferedImage rotated image
      */
-    BufferedImage rotateImage90s(BufferedImage image, int degrees) {
+    public static BufferedImage rotateImage90s(BufferedImage image, int degrees) {
 
         if (degrees == 360){
             return image;
