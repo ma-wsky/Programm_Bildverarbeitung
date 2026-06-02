@@ -2,10 +2,15 @@ import java.awt.image.BufferedImage;
 
 void main() {
     ImageIO io = new ImageIO();
-    BufferedImage castlePPM = io.readImageToPPM("pics/castle.jpg", "castle.ppm");
-    io.displayImage(castlePPM);
+    BufferedImage input = io.readImageToPPM("pics/obama.jpg", "obama.ppm");
+    ColorManipulation colorManipulation = new ColorManipulation();
+    colorManipulation.grayScale(input);
+    io.displayImage(input);
 
-    DescriptiveStatistics stats = new DescriptiveStatistics(castlePPM);
+    ImageManipulation manipulation = new ImageManipulation(input);
+    manipulation.linearScaleGrayImage(100, 1);
+
+    DescriptiveStatistics stats = new DescriptiveStatistics(input);
     stats.calculateAllStatistics();
     stats.printStatistics();
 }
