@@ -8,7 +8,8 @@ void main() {
     io.displayImage(input);
 
     ImageManipulation manipulation = new ImageManipulation(input);
-    manipulation.linearScaleGrayImage(100, 1);
+    manipulation.equidensityFirstOrderGrayImage();
+    manipulation.equidensitySecondOrderGrayImage();
 
     DescriptiveStatistics stats = new DescriptiveStatistics(input);
     stats.calculateAllStatistics();
