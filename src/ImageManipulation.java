@@ -1,5 +1,4 @@
 import java.awt.image.BufferedImage;
-import java.io.File;
 import java.io.IOException;
 
 public class ImageManipulation {
@@ -110,7 +109,7 @@ public class ImageManipulation {
             }
         }
         try {
-            io.convertToPPM(image, "equidensityFirstOrderGrayImage.ppm");
+            io.saveBufferedImageAsPPM(image, "equidensityFirstOrderGrayImage.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -123,7 +122,7 @@ public class ImageManipulation {
 
         // calc first order
         this.equidensityFirstOrderGrayImage();
-        BufferedImage firstOrder = io.readPPM(new File("equidensityFirstOrderGrayImage.ppm"));
+        BufferedImage firstOrder = io.readPPM("equidensityFirstOrderGrayImage.ppm");
 
         for(int x = 1; x < firstOrder.getWidth()-1; x++){
             for(int y = 1; y < firstOrder.getHeight()-1; y++){
@@ -150,7 +149,7 @@ public class ImageManipulation {
             }
         }
         try {
-            io.convertToPPM(image, "equidensitySecondOrderGrayImage.ppm");
+            io.saveBufferedImageAsPPM(image, "equidensitySecondOrderGrayImage.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -182,7 +181,7 @@ public class ImageManipulation {
             }
         }
         try {
-            io.convertToPPM(image, "equalizedHistogram.ppm");
+            io.saveBufferedImageAsPPM(image, "equalizedHistogram.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -204,7 +203,7 @@ public class ImageManipulation {
             }
         }
         try {
-            io.convertToPPM(image, "gammaCorrected.ppm");
+            io.saveBufferedImageAsPPM(image, "gammaCorrected.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

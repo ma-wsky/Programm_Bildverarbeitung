@@ -9,7 +9,7 @@ public class ColorManipulation {
      * @return copy of the image in gray scale
      */
     public static BufferedImage grayScale(BufferedImage image) {
-        BufferedImage grayScaleImage = GlobalHelperFunctions.copyBufferedImage(image);
+        BufferedImage grayScaleImage = ImageIO.copyBufferedImage(image);
 
         for (int x = 0; x < grayScaleImage.getWidth(); x++) {
             for (int y = 0; y < grayScaleImage.getHeight(); y++) {
