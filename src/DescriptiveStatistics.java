@@ -10,6 +10,7 @@ public class DescriptiveStatistics {
     private final Integer[][] grayValueMatrix;
     private Integer[][] coOccurrenceMatrix;
     private Double[] relativeFrequency;
+    private Double[] relativeCumulativeFrequency;
 
     private int median;
     private double mean;
@@ -40,7 +41,7 @@ public class DescriptiveStatistics {
     void calculateAllStatistics() {
         System.out.println("\n--- Starting Statistics Pipeline ---\n");
 
-        timeStep("Gray Value Matrix",      this::calculateGrayValueMatrix);
+        timeStep("Gray Value Matrix",     this::calculateGrayValueMatrix);
         timeStep("Co-occurrence Matrix",  this::calculateCoOccurrenceMatrix);
         timeStep("Mean",                  this::calculateMean);
         timeStep("Median",                this::calculateMedian);
@@ -48,6 +49,7 @@ public class DescriptiveStatistics {
         timeStep("Standard Deviation",    this::calculateStandardDeviation);
         timeStep("Entropy",               this::calculateEntropy);
         timeStep("Relative Frequency",    this::calculateRelativeFrequencyArray);
+        timeStep("Relative Cumulative Frequency",this::calculateRelativeCumulativeFrequencyArray);
 
         System.out.println("--- All Calculations Complete ---\n");
     }
@@ -225,6 +227,21 @@ public class DescriptiveStatistics {
         this.relativeFrequency = amountsD;
     }
 
+    void calculateRelativeCumulativeFrequencyArray() {
+        Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
+        Integer[] amounts = this.countingSort();
+        Double[] amountsD = new Double[256];
+
+        for (int i = 0; i < amounts.length; i++) {
+            amountsD[i] = (double) amounts[i] / grayValueArray.length;
+            if (i > 0){
+                amountsD[i] += amountsD[i-1];
+            }
+        }
+
+        this.relativeCumulativeFrequency = amountsD;
+    }
+
 
 
 
@@ -286,20 +303,31 @@ public class DescriptiveStatistics {
         System.out.printf("Standard Deviation: %.2f\n", this.getStandardDeviation());
         System.out.printf("Entropy: %.2f\n", this.getEntropy());
 
+        // relative frequency
         Double[] freq = this.getRelativeFrequency();
-
-        System.out.println("Index | Frequency Histogram");
-        System.out.println("---------------------------");
-
         double maxFreq = Arrays.stream(freq).max(Double::compare).orElse(1.0);
         int screenWidth = 40;
 
+        System.out.println("Index | Frequency Histogram");
+        System.out.println("---------------------------");
+        this.printHistogram(freq, maxFreq, screenWidth);
+
+        // relative cumulative frequency
+        freq = this.getRelativeCumulativeFrequency();
+        maxFreq = Arrays.stream(freq).max(Double::compare).orElse(1.0);
+        System.out.println("Index | Cumulative Frequency Histogram");
+        System.out.println("---------------------------");
+        this.printHistogram(freq, maxFreq, screenWidth);
+    }
+
+    void printHistogram(Double[] freq, double maxFreq, int screenWidth) {
         for (int i = 0; i < freq.length; i++) {
             int barLength = (int) ((freq[i] / maxFreq) * screenWidth);
             if (barLength > 0) {
                 String bar = "█".repeat(barLength);
                 System.out.printf("[%3d] | %s (%.4f)%n", i, bar, freq[i]);
-            }        }
+            }
+        }
     }
 
 
@@ -329,6 +357,10 @@ public class DescriptiveStatistics {
 
     public Double[] getRelativeFrequency() {
         return relativeFrequency;
+    }
+
+    public Double[] getRelativeCumulativeFrequency() {
+        return relativeCumulativeFrequency;
     }
 
     public int getMedian() {
