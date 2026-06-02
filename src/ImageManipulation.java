@@ -59,6 +59,13 @@ public class ImageManipulation {
         return grayScaleImage;
     }
 
+    /**
+     * Performs first order equidensity operation on given image.
+     * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
+     * Saves the image in generated/firstOrderEquidensityGrayImage.ppm
+     * @param image image to be operated on
+     * @return BufferedImage
+     */
     public static BufferedImage equidensityFirstOrderGrayImage(BufferedImage image){
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
@@ -101,6 +108,14 @@ public class ImageManipulation {
         return grayScaleImage;
     }
 
+    /**
+     * Performs second order equidensity operation on given image.
+     * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
+     * Calls {@link #equidensityFirstOrderGrayImage(BufferedImage)} for the first order
+     * Saves the image in generated/secondOrderEquidensityGrayImage.ppm
+     * @param image image to be operated on
+     * @return BufferedImage
+     */
     public static BufferedImage equidensitySecondOrderGrayImage(BufferedImage image){
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
@@ -141,6 +156,14 @@ public class ImageManipulation {
         return grayScaleImage;
     }
 
+    /**
+     * Calculates histogram equalization for given BufferedImage.
+     * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
+     * Uses {@link DescriptiveStatistics#calculateRelativeCumulativeFrequencyArray()} to get the cumulative frequency.
+     * Saves the image in generated/equalizedHistogramGrayImage.ppm
+     * @param image BufferedImage to perform on
+     * @return equalized BufferedImage
+     */
     public static BufferedImage histogramEqualization(BufferedImage image){
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
@@ -175,6 +198,14 @@ public class ImageManipulation {
         return grayScaleImage;
     }
 
+
+    /**
+     * Performs a gamma correction on a given BufferedImage.
+     * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
+     * @param image BufferedImage to correct
+     * @param gamma gamma value
+     * @return corrected BufferedImage
+     */
     public static BufferedImage gammaCorrection(BufferedImage image, double gamma){
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
 
