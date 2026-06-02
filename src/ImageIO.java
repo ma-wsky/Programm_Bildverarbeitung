@@ -1,6 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileWriter;
@@ -9,35 +11,25 @@ import java.util.Scanner;
 
 public class ImageIO {
 
-    BufferedImage image;
-    BufferedImage imagePPM;
-
-    File file;
-    String filename;
-
-    ImageIO() {}
-
     /**
      * Reads a file as a BufferedImage.
      * Can read any image format.
      * @param filename name of file to be read
      * @return BufferedImage read file
      */
-    BufferedImage readImage(String filename) {
+    public static BufferedImage readImage(String filename) {
         //Datei lesen
-        this.filename = filename;
-        this.file = new File(this.filename);
+        File file = new File(filename);
 
         // Bilddaten im RAM
-        BufferedImage readImage; //.read erkennt format automatisch
+        BufferedImage readImage;
         try {
-            readImage = javax.imageio.ImageIO.read(this.file);
-            System.out.println("Image loaded successfully!");
-            this.image = readImage;
+            readImage = javax.imageio.ImageIO.read(file);   //.read erkennt format automatisch
+            System.out.println("Image " + filename + " loaded successfully!");
             return readImage;
 
         } catch (IOException e) {
-            System.err.println("Error reading image file " + this.filename + e.getMessage());
+            System.err.println("Error reading image file " + filename + e.getMessage());
             return null;
         }
     }
@@ -45,20 +37,22 @@ public class ImageIO {
     /**
      * Reads a file that has the ppm format.
      * Disregards all comments and whitespaces and writes the data into a BufferedImage
-     * @param file the path of the ppm file to be read
+     * @param filename the name of the ppm file to be read
      * @return BufferedImage the ppm image
      */
-    BufferedImage readPPM(File file) {
+    public static BufferedImage readPPM(String filename) {
+        File file = new File(filename);
         Scanner scanner;
         try {
             scanner = new Scanner(file);
         } catch (FileNotFoundException e) {
-            System.err.println("Source not Found!" + e.getMessage());
+            System.err.println("File " + filename + " not Found!" + e.getMessage());
             return null;
         }
 
         scanner.useDelimiter("(\\s+|#.*\\n)+"); // remove comments and whitespace
 
+        // check for PPM ASCII-RGB
         if (!scanner.nextLine().equals("P3")){
             return null;
         }
@@ -78,21 +72,17 @@ public class ImageIO {
                 image.setRGB(x, y, rgb);
             }
         }
-
-        this.imagePPM = image;
         return image;
     }
 
     /**
      * Converts a given BufferedImage with any format to ppm format.
      * Writes the ppm image into a new file called 'filenameOutput'.
-     * Reads the ppm file with {@link #readPPM(File)}.
      * @param input BufferedImage to be converted
      * @param filenameOutput name of ppm file
-     * @return BufferedImage in ppm format
      * @throws IOException if an I/O error occurs while writing the file
      */
-    BufferedImage convertToPPM(BufferedImage input, String filenameOutput) throws IOException {
+    public static void saveBufferedImageAsPPM(BufferedImage input, String filenameOutput) throws IOException {
         FileWriter writer = new FileWriter(filenameOutput);
 
         int width = input.getWidth();
@@ -120,26 +110,25 @@ public class ImageIO {
                 }
             }
         }
-
         writer.close();
-
-        return readPPM(new File(filenameOutput));
     }
 
     /**
-     * Reads an image and converts it to ppm format
+     * Reads an image {@link #readImage(String)} and converts it to ppm format.
+     * Calls {@link #readPPM(String)} for return value.
      * @param filename file name of image
      * @param filenamePPM file name of ppm
      * @return BufferedImage ppm
      */
-    BufferedImage readImageToPPM(String filename, String filenamePPM) {
-        this.readImage(filename);
+    BufferedImage readImageAndConvertToPPM(String filename, String filenamePPM) {
+        BufferedImage readImage = ImageIO.readImage(filename);
         try {
-            this.convertToPPM(this.image, filenamePPM);
+            assert readImage != null;
+            ImageIO.saveBufferedImageAsPPM(readImage, filenamePPM);
         } catch (IOException e) {
             System.err.println("Unable to create image file " + filenamePPM);
         }
-        return this.imagePPM;
+        return ImageIO.readPPM(filenamePPM);
     }
 
     /**
@@ -149,7 +138,7 @@ public class ImageIO {
      * Displays the JFrame centered on the screen.
      * @param images the BufferedImages to be displayed
      */
-    void displayImage(BufferedImage... images) {
+    public static void displayImage(BufferedImage... images) {
         JFrame frame = new JFrame("Bildanzeige");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(new GridLayout(1, images.length));
@@ -171,7 +160,7 @@ public class ImageIO {
      * Used for testing.
      * @throws IOException if file is a directory
      */
-    void generatePPM() throws IOException {
+    public static void generatePPM() throws IOException {
         FileWriter writer = new FileWriter("output.ppm");
         // header
         writer.write("""
@@ -200,10 +189,10 @@ public class ImageIO {
 
     /**
      * Generates a color test ppm file called 'colorTest.ppm'.
-     * Reads the file using {@link #readPPM(File)}.
+     * Reads the file using {@link #readPPM(String)}.
      * @return BufferedImage ppm
      */
-    BufferedImage generateColorTestPPM() {
+    public static BufferedImage generateColorTestPPM() {
         FileWriter writer;
         try {
             writer = new FileWriter("colorTest.ppm");
@@ -215,7 +204,7 @@ public class ImageIO {
                  255 255   0   255   0 255     0 255 255
                  255 255 255     0   0   0   128 128 128""");
             writer.close();
-            return this.readPPM(new File("colorTest.ppm"));
+            return ImageIO.readPPM("colorTest.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -223,10 +212,10 @@ public class ImageIO {
 
     /**
      * Generates a checkered test ppm file called 'checkeredTest.ppm'.
-     * Reads the file using {@link #readPPM(File)}.
+     * Reads the file using {@link #readPPM(String)}.
      * @return BufferedImage ppm
      */
-    BufferedImage generateCheckeredTestPPM(){
+    public static BufferedImage generateCheckeredTestPPM(){
         FileWriter writer;
         try {
             writer = new FileWriter("checkeredTest.ppm");
@@ -239,23 +228,23 @@ public class ImageIO {
                    0   0   0   255 255 255     0   0   0   255 255 255
                  255 255 255     0   0   0   255 255 255   0   0   0""");
             writer.close();
-            return this.readPPM(new File("checkeredTest.ppm"));
+            return ImageIO.readPPM("checkeredTest.ppm");
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
     /**
-     * Copies a given BufferedImage in ppm format ({@link #convertToPPM(BufferedImage, String)}, {@link #readPPM(File)})
+     * Copies a given BufferedImage in ppm format ({@link #saveBufferedImageAsPPM(BufferedImage, String)}, {@link #readPPM(String)})
      * @param ppm BufferedImage to be copied
      * @param filenameOutput filename of copy
      * @return BufferedImage copy or null
      */
-    BufferedImage copyPPM(BufferedImage ppm, String filenameOutput){
+    public static BufferedImage copyPPM(BufferedImage ppm, String filenameOutput){
         try {
             File newPPM = new File(filenameOutput);
-            convertToPPM(ppm, filenameOutput);
-            return readPPM(newPPM);
+            ImageIO.saveBufferedImageAsPPM(ppm, filenameOutput);
+            return ImageIO.readPPM(filenameOutput);
         } catch (IOException e) {
             System.err.println("Error copying to ppm file " + filenameOutput);
             return null;
@@ -263,19 +252,32 @@ public class ImageIO {
     }
 
     /**
-     * Copies a given BufferedImage ({@link #readImage(String)})
+     * Copies a given BufferedImage as a file.
+     * Reads the copied file with {@link #readImage(String)}
      * @param image BufferedImage to be copied
      * @param filenameOutput filename of copy
      * @return BufferedImage copy or null
      */
-    BufferedImage copyImage(BufferedImage image, String filenameOutput){
+    public static BufferedImage copyImage(BufferedImage image, String filenameOutput){
         File newImage =  new File(filenameOutput);
         try {
             javax.imageio.ImageIO.write(image, "png", newImage);
-            return this.readImage(filenameOutput);
+            return ImageIO.readImage(filenameOutput);
         } catch (IOException e) {
             System.err.println("Error copying to image file " + filenameOutput);
             return null;
         }
+    }
+
+    /**
+     * Returns a copy of the given BufferedImage
+     * @param image BufferedImage to be copied
+     * @return copy of BufferedImage
+     */
+    public static BufferedImage copyBufferedImage(BufferedImage image){
+        ColorModel cm = image.getColorModel();
+        boolean alpha = cm.isAlphaPremultiplied();
+        WritableRaster raster = image.copyData(null);
+        return new BufferedImage(cm, raster, alpha, null);
     }
 }
