@@ -34,16 +34,7 @@ public class Convolution {
         for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {
             for (int y = distance; y < grayScaleImage.getHeight()-distance; y++) {
 
-                double mean = 0;
-
-                for (int c = -distance; c <= distance; c++) {
-                    for (int r = -distance; r <= distance; r++) {
-                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
-                        double grayXmask = grayValue * mask[c+distance][r+distance];
-                        mean += grayXmask;
-
-                    }
-                }
+                double mean = calculateValueAndMask(mask, grayScaleImage, distance, x, y);
 
                 double maskSum = 0;
                 for (double[] r : mask){
@@ -133,18 +124,11 @@ public class Convolution {
         for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {
             for (int y = distance; y < grayScaleImage.getHeight()-distance; y++) {
 
-                double value = 0;
-
-                for (int c = -distance; c <= distance; c++) {
-                    for (int r = -distance; r <= distance; r++) {
-                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
-                        double grayXmask = grayValue * mask[c+distance][r+distance];
-                        value += grayXmask;
-
-                    }
-                }
+                double value = calculateValueAndMask(mask, grayScaleImage, distance, x, y);
 
                 value = Math.abs(value);
+
+                //TODO: dividing by too much for laplace
                 value = value / positiveSum;
 
                 if (value > 255.0) value = 255.0;
@@ -237,4 +221,19 @@ public class Convolution {
         return Convolution.differenceOperator(image, mask);
     }
 
+
+    // Helper
+    private static double calculateValueAndMask(double[][] mask, BufferedImage grayScaleImage, int distance, int x, int y) {
+        double value = 0;
+
+        for (int c = -distance; c <= distance; c++) {
+            for (int r = -distance; r <= distance; r++) {
+                double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+                double grayXmask = grayValue * mask[c+distance][r+distance];
+                value += grayXmask;
+
+            }
+        }
+        return  value;
+    }
 }
