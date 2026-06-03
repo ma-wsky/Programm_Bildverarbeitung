@@ -1,4 +1,5 @@
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 
 public class Convolution {
 
@@ -24,6 +25,7 @@ public class Convolution {
         }
 
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
 
         int maskSize = mask.length;
         int distance = maskSize / 2;
@@ -34,10 +36,10 @@ public class Convolution {
 
                 double mean = 0;
 
-                for (int r = -distance; r <= distance; r++) {
-                    for (int c = -distance; c <= distance; c++) {
-                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+r, y+c));
-                        double grayXmask = grayValue * mask[r+distance][c+distance];
+                for (int c = -distance; c <= distance; c++) {
+                    for (int r = -distance; r <= distance; r++) {
+                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+                        double grayXmask = grayValue * mask[c+distance][r+distance];
                         mean += grayXmask;
 
                     }
@@ -50,14 +52,16 @@ public class Convolution {
                     }
                 }
 
-                mean /= maskSum;
+                if (maskSum != 0){
+                    mean /= maskSum;
+                }
 
                 int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
                 int newRgb = (a << 24) | ((int)mean << 16) | ((int)mean << 8) | (int)mean;
-                grayScaleImage.setRGB(x, y, newRgb);
+                newImage.setRGB(x, y, newRgb);
             }
         }
-        return grayScaleImage;
+        return newImage;
     }
 
 
@@ -88,6 +92,139 @@ public class Convolution {
         }
 
         return Convolution.movingMean(image, mask);
+    }
+
+    /**
+     * Operates on the given image with a difference operator mask.
+     * Sum of mask elements must be zero.
+     * @param image BufferedImage to operate on
+     * @param mask difference operator
+     * @return BufferedImage
+     */
+    public static BufferedImage differenceOperator(BufferedImage image, double[][] mask){
+        //checks
+        if(mask.length != mask[0].length){
+            // matrix not square
+            System.err.println("The mask must be a square matrix.");
+            return null;
+        }
+        if(mask.length % 2 == 0){
+            // matrix has no middle
+            System.err.println("The mask must have uneven number of elements.");
+            return null;
+        }
+
+        double maskSum = 0;
+        for (double[] r : mask){
+            for (double c : r){
+                maskSum += c;
+            }
+        }
+        if(maskSum != 0){
+            System.err.println("Sum of mask elements must be 0.");
+            return null;
+        }
+
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
+
+        int maskSize = mask.length;
+        int distance = maskSize / 2;
+
+        // edge case: cutting
+        for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {
+            for (int y = distance; y < grayScaleImage.getHeight()-distance; y++) {
+
+                double value = 0;
+
+                for (int c = -distance; c <= distance; c++) {
+                    for (int r = -distance; r <= distance; r++) {
+                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+                        double grayXmask = grayValue * mask[c+distance][r+distance];
+                        value += grayXmask;
+
+                    }
+                }
+
+                value = Math.abs(value);
+                value = value / 4.0;
+
+                if (value > 255.0) value = 255.0;
+                if (value < 0.0) value = 0.0;
+
+                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
+                newImage.setRGB(x, y, newRgb);
+            }
+        }
+        try {
+            ImageIO.saveBufferedImageAsPPM(newImage, "generated/differenceOperator.ppm");
+        } catch (IOException e) {
+            System.err.println("Error while saving the difference operator ppm file.");
+        }
+        return newImage;
+    }
+
+    /**
+     * Finds edges in a BufferedImage by using sobel filters for horizontal and/or vertical edge detection.
+     * @param image BufferedImage to find edges in
+     * @param flag 1 for horizontal, 2 for vertical, 3 for both
+     * @return BufferedImage with edges
+     */
+    public static BufferedImage sobelFilter(BufferedImage image, int flag){
+        double[][] maskV = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
+        double[][] maskH = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
+
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
+
+        int maskSize = 3;
+        int distance = maskSize / 2;
+
+        // edge case: cutting
+        for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {
+            for (int y = distance; y < grayScaleImage.getHeight()-distance; y++) {
+
+                double valueH = 0;
+                double valueV = 0;
+
+                for (int c = -distance; c <= distance; c++) {
+                    for (int r = -distance; r <= distance; r++) {
+                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+
+                        if (flag == 1 || flag == 3){
+                            valueH += grayValue * maskH[c+distance][r+distance];
+                        }
+                        if (flag == 2 || flag == 3){
+                            valueV += grayValue * maskV[c+distance][r+distance];
+                        }
+                    }
+                }
+
+                double finalValue = 0;
+
+                if (flag == 1){
+                    finalValue = Math.abs(valueH) / 4.0;
+                }else if (flag == 2){
+                    finalValue = Math.abs(valueV) / 4.0;
+                }else if (flag == 3){
+                    finalValue = Math.sqrt(Math.pow(valueH, 2) + Math.pow(valueV, 2)) / 4.0;
+                }
+
+                if (finalValue > 255.0) finalValue = 255.0;
+                if (finalValue < 0.0) finalValue = 0.0;
+
+                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)finalValue << 16) | ((int)finalValue << 8) | (int)finalValue;
+                newImage.setRGB(x, y, newRgb);
+            }
+        }
+        try {
+            ImageIO.saveBufferedImageAsPPM(newImage, "generated/differenceOperator.ppm");
+        } catch (IOException e) {
+            System.err.println("Error while saving the difference operator ppm file.");
+        }
+        return newImage;
     }
 
 }
