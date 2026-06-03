@@ -144,6 +144,10 @@ public class ImageIO {
         frame.setLayout(new GridLayout(1, images.length));
 
         for (BufferedImage image : images) {
+            if (image == null) {
+                System.err.println("Image is null!");
+                return;
+            }
             // Bild anzeigen
             JLabel label = new JLabel(new ImageIcon(image));
             label.setBorder(BorderFactory.createLineBorder(Color.BLACK));
