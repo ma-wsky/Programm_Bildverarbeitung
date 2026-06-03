@@ -114,15 +114,13 @@ public class Convolution {
             return null;
         }
 
-        double maskSum = 0;
+        double positiveSum = 0;
         for (double[] r : mask){
             for (double c : r){
-                maskSum += c;
+                if (c > 0){
+                    positiveSum += c;
+                }
             }
-        }
-        if(maskSum != 0){
-            System.err.println("Sum of mask elements must be 0.");
-            return null;
         }
 
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
@@ -147,7 +145,7 @@ public class Convolution {
                 }
 
                 value = Math.abs(value);
-                value = value / 4.0;
+                value = value / positiveSum;
 
                 if (value > 255.0) value = 255.0;
                 if (value < 0.0) value = 0.0;
@@ -225,6 +223,18 @@ public class Convolution {
             System.err.println("Error while saving the difference operator ppm file.");
         }
         return newImage;
+    }
+
+    /**
+     * Find edges in image using laplace operator.
+     * Calls {@link Convolution#differenceOperator(BufferedImage, double[][])} with the laplace operator.
+     * @param image BufferedImage to find edges in
+     * @return BufferedImage with found edges
+     */
+    public static BufferedImage laplaceFilter(BufferedImage image){
+        double[][] mask = {{1, 1, 1}, {1, -8, 1}, {1, 1, 1}};
+
+        return Convolution.differenceOperator(image, mask);
     }
 
 }
