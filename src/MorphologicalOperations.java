@@ -8,7 +8,10 @@ public class MorphologicalOperations {
      * @param mask marks neighbours to consider
      * @return dilated BufferedImage
      */
-    public static BufferedImage dilation (BufferedImage image, boolean[][] mask){
+    public static BufferedImage dilation (BufferedImage image, boolean[][] mask, int times){
+        for (int i = 0; i < times; i++){
+            image = MorphologicalOperations.morph(image, mask, true);
+        }
         return MorphologicalOperations.morph(image, mask, true);
     }
 
@@ -18,7 +21,10 @@ public class MorphologicalOperations {
      * @param mask marks neighbours to consider
      * @return eroded BufferedImage
      */
-    public static BufferedImage erosion (BufferedImage image, boolean[][] mask){
+    public static BufferedImage erosion (BufferedImage image, boolean[][] mask, int times){
+        for (int i = 0; i < times; i++){
+            image = MorphologicalOperations.morph(image, mask, false);
+        }
         return MorphologicalOperations.morph(image, mask, false);
     }
 

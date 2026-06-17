@@ -109,6 +109,56 @@ public class ImageManipulation {
     }
 
     /**
+     * Performs first order equidensity operation on given image.
+     * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
+     * Saves the image in generated/firstOrderEquidensityGrayImage.ppm
+     * @param image image to be operated on
+     * @param lowerBound value of lower bound
+     * @param upperBound value of upper bound
+     * @param valueLowest value pixels between 0 and lowerBound should take
+     * @param valueBetween value pixels between lowerBound and upperBound should take
+     * @param valueHighest value pixels between upperBound and 255 should take
+     * @return BufferedImage
+     */
+    public static BufferedImage equidensityFirstOrderGrayImageCustomBounds(BufferedImage image, int lowerBound, int upperBound, int valueLowest, int valueBetween, int valueHighest){
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+
+        DescriptiveStatistics stats = new DescriptiveStatistics(grayScaleImage);
+        stats.calculateGrayValueMatrix();
+        stats.calculateMean();
+        stats.calculateVariance();
+
+        for(int x = 0; x < grayScaleImage.getWidth(); x++){
+            for(int y = 0; y < grayScaleImage.getHeight(); y++){
+                int rgb = grayScaleImage.getRGB(x, y);
+                int a = (rgb >> 24) & 0xff;
+
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(rgb);
+
+                if (gray < lowerBound){
+                    gray = valueLowest;
+                }else if (gray < upperBound){
+                    gray = valueHighest;
+                }else {
+                    gray = valueBetween;
+                }
+
+                int newRgb = (a << 24) | (gray << 16) | (gray << 8) | gray;
+
+                grayScaleImage.setRGB(x, y, newRgb);
+            }
+        }
+        String filename = "generated/firstOrderEquidensityGrayImage.ppm";
+        try {
+            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
+        } catch (IOException e) {
+            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
+        }
+
+        return grayScaleImage;
+    }
+
+    /**
      * Performs second order equidensity operation on given image.
      * Converts given image to gray scale with {@link ColorManipulation#grayScale(BufferedImage)}.
      * Calls {@link #equidensityFirstOrderGrayImage(BufferedImage)} for the first order
