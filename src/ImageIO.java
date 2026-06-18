@@ -120,7 +120,7 @@ public class ImageIO {
      * @param filenamePPM file name of ppm
      * @return BufferedImage ppm
      */
-    BufferedImage readImageAndConvertToPPM(String filename, String filenamePPM) {
+    public static BufferedImage readImageAndConvertToPPM(String filename, String filenamePPM) {
         BufferedImage readImage = ImageIO.readImage(filename);
         try {
             assert readImage != null;
