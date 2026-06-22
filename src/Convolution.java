@@ -70,6 +70,9 @@ public class Convolution {
             System.err.println("The mask must have uneven number of elements.");
             return null;
         }
+        if (maskSize < 3){
+            maskSize = 3;
+        }
         double[][] mask = new double[maskSize][maskSize];
         int distance = maskSize / 2;
 

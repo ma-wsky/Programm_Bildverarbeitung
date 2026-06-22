@@ -7,50 +7,147 @@ public class Pipeline {
     public static void vorfahrt(){
         // 1. read image
         String filenamePPMImage = "vorfahrt.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/vorfahrt/images (1).jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/vorfahrt/images.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
+        ImageIO.displayImage(input);
 
-        // 2. preprocess image
-        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(input);
+        // copy for displaying signs
+        BufferedImage copy = ImageIO.copyBufferedImage(input);
+        Graphics2D g = copy.createGraphics();
+        g.drawImage(input, 0, 0, null);
+        g.setColor(java.awt.Color.RED); // Knallrot für Erkennungen
+        g.setStroke(new java.awt.BasicStroke(3)); // Die Linie schön dick machen (3 Pixel)
 
-        // 3. look for sign-geometry
-        BufferedImage signGeometry = Pipeline.lookForSignGeometry(preProcessedImage);
-        ImageIO.displayImage(signGeometry);
+        // moving window
+        for (double scaleFactor = 1; scaleFactor > 0.25; scaleFactor -= 0.25){
+            int windowSize = 64;
+            int stride = 16;
 
-        // 4. check signs geometry
-        boolean[] isSquare = {false};
-        BufferedImage rotatedSignGeometry = Pipeline.rotateImageAndCheckGeometry(signGeometry, 0.1, isSquare);
-        ImageIO.displayImage(rotatedSignGeometry);
-        if (isSquare[0]){
-            System.out.println("Quadrat erkannt!");
+            // scale image
+            BufferedImage scaledImage = scaleImage(input, scaleFactor);
+            if (scaledImage == null) continue;
+            //ImageIO.displayImage(scaledImage);
+
+            for (int x = 0; x <= scaledImage.getWidth() - windowSize; x += stride){
+                for (int y = 0; y <= scaledImage.getHeight() - windowSize; y += stride){
+                    BufferedImage croppedToWindow = Pipeline.cropImage(scaledImage, x, y, windowSize, windowSize);
+
+                    // 2. preprocess image
+                    BufferedImage preProcessedImage = Pipeline.imagePreprocessing(croppedToWindow);
+                    //ImageIO.displayImage(preProcessedImage);
+
+                    // 3. look for sign-geometry
+                    //TODO: what if the shape is not closed -> look for square before filling in?
+                    //TODO: what if the sign is way too small -> moving window
+                    BufferedImage signGeometry = Pipeline.lookForSignGeometry(preProcessedImage);
+                    //ImageIO.displayImage(signGeometry);
+
+                    // 4. check signs geometry
+                    boolean[] isSquare = {false};
+                    BufferedImage rotatedSignGeometry = Pipeline.rotateImageAndCheckGeometry(signGeometry, 0.1, isSquare);
+                    //ImageIO.displayImage(rotatedSignGeometry);
+                    System.out.println(x +"," + y + "," + scaleFactor);
+                    // TODO freeze bei 64,16,0.5
+                    if (isSquare[0]){
+                        System.out.println("Quadrat erkannt!");
+
+                        // 2. Koordinaten zurückrechnen (wie wir es schon hatten)
+                        int origX = Math.round((float) (x / scaleFactor));
+                        int origY = Math.round((float) (y / scaleFactor));
+                        int origSize = Math.round((float) (windowSize / scaleFactor));
+
+                        // 3. Den roten Rahmen direkt in das Audit-Bild malen!
+                        g.drawRect(origX, origY, origSize, origSize);
+
+                        // Optional: Schreibe noch die Stufe als Text dazu!
+                        // g.drawString("S" + currentFactor, origX, origY - 5);
+                        System.out.println("--- TREFFER ---");
+                        System.out.println("Stufe: " + scaleFactor);
+                        System.out.println("Fenster im skalierten Bild bei: X=" + x + ", Y=" + y);
+                        System.out.println("Umgerechnet fürs Originalbild: origX=" + origX + ", origY=" + origY);
+                        System.out.println("Originalgröße des Bildes zum Vergleich: " + input.getWidth() + "x" + input.getHeight());
+                    }
+
+                }
+            }
+        }
+        g.dispose();
+        ImageIO.displayImage(copy);
+
+
+//        // 5. check sign statistics
+//
+//        // rotate original
+//        Point centerPoint = Pipeline.calculateCenterPointOfSign(signGeometry);
+//        BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(input, centerPoint, 45);
+//        ImageIO.displayImage(rotatedOriginal);
+//
+//        // crop original
+//        BufferedImage croppedRotatedOriginal = Pipeline.cropAndMaskSign(rotatedOriginal, rotatedSignGeometry);
+//        ImageIO.displayImage(croppedRotatedOriginal);
+//
+//        // stats
+//        DescriptiveStatistics stats = new DescriptiveStatistics(croppedRotatedOriginal);
+//        stats.calculateAllStatistics();
+//        //stats.printStatistics();
+//
+//        // scoring
+//        // TODO: rework scoring to make it more general
+//        // TODO: check relativeCumulativeFrequency for two peaks with valley between, cumulate pixels in yellow and white in HSV values
+//
+//        // isSquare
+//        // entropy
+//        // median
+//        // white and yellow proportions of sign area -> and ratio
+//        // white and yellow centerpoints should be the same +/- tolerance
+
+    }
+
+    private static BufferedImage cropImage(BufferedImage image, int x, int y, int width, int height){
+        if (width < 0 || height < 0){
+            return null;
         }
 
-        // 5. check sign statistics
+        if (x + width > image.getWidth())  width = image.getWidth() - x;
+        if (y + height > image.getHeight()) height = image.getHeight() - y;
 
-        // rotate original
-        Point centerPoint = Pipeline.calculateCenterPointOfSign(signGeometry);
-        BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(input, centerPoint, 45);
-        ImageIO.displayImage(rotatedOriginal);
+        BufferedImage newImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
-        // crop original
-        BufferedImage croppedRotatedOriginal = Pipeline.cropAndMaskSign(rotatedOriginal, rotatedSignGeometry);
-        ImageIO.displayImage(croppedRotatedOriginal);
+        for (int i = 0; i < width; i++){
+            for (int j = 0; j < height; j++){
+                newImage.setRGB(i, j, image.getRGB(x + i, y + j));
+            }
+        }
 
-        // stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(croppedRotatedOriginal);
-        stats.calculateAllStatistics();
-        //stats.printStatistics();
+        return newImage;
+    }
 
-        // scoring
-        // TODO: rework scoring to make it more general
-        // TODO: check relativeCumulativeFrequency for two peaks with valley between, cumulate pixels in yellow and white in HSV values
+    private static BufferedImage scaleImage(BufferedImage image, double factor){
+        if (factor > 2 || factor < 0.1) return null;
 
-        // isSquare
-        // entropy
-        // median
-        // white and yellow proportions of sign area -> and ratio
-        // white and yellow centerpoints should be the same +/- tolerance
+        double reach = 1.0 / factor;
+        int maskSize = (int) (2 * reach + 1);
+        if (maskSize % 2 == 0){
+            maskSize += 1;
+        }
 
+        BufferedImage lowpass = Convolution.gaussianLowPass(image, maskSize);
+
+        int newWidth = (int) (image.getWidth() * factor);
+        int newHeight = (int) (image.getHeight() * factor);
+
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, image.getType());
+
+        for (int x = 0; x < newWidth; x++){
+            for (int y = 0; y < newHeight; y++){
+                int oldPixelX = Math.round((float) (x / factor)); // nearest neighbour
+                int oldPixelY = Math.round((float) (y / factor));
+
+                scaledImage.setRGB(x, y, lowpass.getRGB(oldPixelX, oldPixelY));
+            }
+        }
+
+        return scaledImage;
     }
 
     /**
@@ -88,11 +185,31 @@ public class Pipeline {
         int centerY = (yMin + yMax) / 2;
         BufferedImage rotatedImage = RotatedImage.rotateImageBackwardMapping(image, new Point(centerX, centerY), 45);
 
+        // count white pixels
+        int pixelCount = 0;
+        for (int x = 0; x < image.getWidth(); x++) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y));
+                if (gray == 255) { // Wenn es ein echter Kantenpixel ist
+                    pixelCount++;
+                }
+            }
+        }
+        double density = pixelCount / (double) (image.getWidth() * image.getHeight());
+
         double distanceX = xMax - xMin;
         double distanceY = yMax - yMin;
-        double ratio = distanceX / distanceY;
 
-        isSquare[0] = (ratio < (1 + squareTolerancePercent) || ratio > (1 - squareTolerancePercent));
+        int minAllowedSize = 15;
+
+        if (distanceX < minAllowedSize || distanceY < minAllowedSize) {
+            isSquare[0] = false;
+        } else if (density < 0.15) {
+            isSquare[0] = false;
+        } else {
+            double ratio = distanceX / distanceY;
+            isSquare[0] = (ratio < (1 + squareTolerancePercent) && ratio > (1 - squareTolerancePercent));
+        }
 
         return rotatedImage;
     }
@@ -111,27 +228,27 @@ public class Pipeline {
 
         // 2. lowpass
         BufferedImage lowpass = Convolution.gaussianLowPass(image, 5);
-        System.out.println("Successfully calculated Gauß lowpass");
-        ImageIO.displayImage(lowpass);
+        //System.out.println("Successfully calculated Gauß lowpass");
+        //ImageIO.displayImage(lowpass);
 
         // 3. histogram equalization
         BufferedImage equalizedHistogram = ImageManipulation.histogramEqualization(lowpass);
-        System.out.println("Successfully calculated histogram equalization");
-        ImageIO.displayImage(equalizedHistogram);
+        //System.out.println("Successfully calculated histogram equalization");
+        //ImageIO.displayImage(equalizedHistogram);
 
         // sobel
         BufferedImage sobel = Convolution.sobelFilter(equalizedHistogram, 3);
-        System.out.println("Successfully calculated Sobel filter");
-        ImageIO.displayImage(sobel);
+        //System.out.println("Successfully calculated Sobel filter");
+        //ImageIO.displayImage(sobel);
 
         // 4. equidensity
         BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 100, 200, 255, 0, 0);
-        System.out.println("Successfully calculated equidensity");
-        ImageIO.displayImage(equidensity);
+        //System.out.println("Successfully calculated equidensity");
+        //ImageIO.displayImage(equidensity);
 
         // negative
         BufferedImage negative = ColorManipulation.negative(equidensity);
-        ImageIO.displayImage(negative);
+        //ImageIO.displayImage(negative);
 
         return negative;
     }
@@ -230,6 +347,21 @@ public class Pipeline {
             }
         }
 
+        // failsafe for entirely black images
+        int edgePixelCount = 0;
+        for (int x = 0; x < image.getWidth(); x++) {
+            for (int y = 0; y < image.getHeight(); y++) {
+                int gray = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y));
+                if (gray == 255) { // Wenn es ein echter Kantenpixel ist
+                    edgePixelCount++;
+                }
+            }
+        }
+
+        if (edgePixelCount < 80) {
+            return image;
+        }
+
         // sort into regions
         int[][] regions = new int[width][height];
         int currentRegion = 1;
@@ -288,8 +420,9 @@ public class Pipeline {
 
         // fill the found region
         boolean[][] visited = new boolean[width][height];
+        //BufferedImage filled = Pipeline.fillInterior(regionImage, visited, centerPoint);
 
-        return Pipeline.fillInterior(regionImage, visited, centerPoint);
+        return regionImage;
     }
 
     /**
