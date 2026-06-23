@@ -7,7 +7,7 @@ public class PipelinePrototype {
     public static void vorfahrt(){
         // 1. read image
         String filenamePPMImage = "vorfahrt.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/S.jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/A.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
@@ -19,7 +19,6 @@ public class PipelinePrototype {
         ImageIO.displayImage(lines);
         BufferedImage filled = PipelinePrototype.findSignAndFill(lines);
         ImageIO.displayImage(filled);
-        //TODO: check angles, not hardcode 4 prominent lines
 
         // 3. look for sign-geometry
         //BufferedImage signGeometry = PipelinePrototype.lookForSignGeometry(lines);
@@ -30,7 +29,7 @@ public class PipelinePrototype {
         BufferedImage rotatedSignGeometry = PipelinePrototype.rotateImageAndCheckGeometry(filled, 0.1, isSquare);
         ImageIO.displayImage(rotatedSignGeometry);
         if (isSquare[0]){
-            System.out.println("Quadrat erkannt!");
+            //System.out.println("Quadrat erkannt!");
         }
 
         // 5. check sign statistics
@@ -121,7 +120,7 @@ public class PipelinePrototype {
             }
         }
 
-        // copy for displaying signs
+        // copy for displaying lines
         BufferedImage lineImage = new BufferedImage(image.getWidth(), image.getHeight(), image.getType());
         Graphics2D g = lineImage.createGraphics();
         g.setColor(Color.WHITE);
@@ -130,8 +129,9 @@ public class PipelinePrototype {
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = PipelinePrototype.houghTransformation(image);
         int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(image.getHeight(), 2) + Math.pow(image.getWidth(), 2)));
-        int threshold = 20;
+        int threshold = 50;
 
+        // accumulate lines
         for (int phi = 0; phi < accumulator.length; phi++){
             for (int r = 0; r < accumulator[phi].length; r++){
                 int votes = accumulator[phi][r];
@@ -143,13 +143,59 @@ public class PipelinePrototype {
             }
         }
 
+        // sort lines
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int lineCount = Math.min(4, lines.size());
 
-        for (int i = 0; i < lineCount; i++){
-            HoughLine topLine = lines.get(i);
-            int r = topLine.r;
-            int phi = topLine.phi;
+        // classification based on angle groups
+        //TODO: triangle: why sometimes inner lines instead of outer
+        int amountOfDirections = getAmountOfDirections(lines);
+        System.out.println(amountOfDirections + " different directions");
+
+
+        ArrayList<HoughLine> differentAngledLines = new ArrayList<>();
+        int tolerance = 15;
+
+        if (amountOfDirections == 3) {
+
+            for (HoughLine line : lines) {
+                boolean angleAlreadySelected = false;
+                for (HoughLine selected : differentAngledLines) {
+                    if (getAngleDiff(line.phi, selected.phi) <= tolerance) {
+                        angleAlreadySelected = true;
+                        break;
+                    }
+                }
+                if (!angleAlreadySelected) {
+                    differentAngledLines.add(line);
+                }
+                if (differentAngledLines.size() == 3) break;
+            }
+
+        } else if (amountOfDirections == 2 || amountOfDirections == 4) {
+
+            for (HoughLine line : lines) {
+                int linesWithAngle = 0;
+
+                for (HoughLine selected : differentAngledLines) {
+                    if (getAngleDiff(line.phi, selected.phi) <= tolerance) {
+                        linesWithAngle++;
+                    }
+                }
+
+                if (linesWithAngle < 2) {
+                    differentAngledLines.add(line);
+                }
+
+                if (differentAngledLines.size() == amountOfDirections*2) break;
+            }
+        } else {
+            System.out.println("other");
+        }
+
+        // draw lines
+        for (HoughLine line : differentAngledLines){
+            int r = line.r;
+            int phi = line.phi;
             int x1, x2, y1, y2;
             int distance = r- diagonal;
             double radPhi = Math.toRadians(phi);
@@ -174,6 +220,50 @@ public class PipelinePrototype {
         g.dispose();
 
         return lineImage;
+    }
+
+    /**
+     * Calculates the difference of two angles.
+     * Takes into account that 179° and 1° differ by 2°
+     * @param angle1 first angle
+     * @param angle2 second angle
+     * @return difference between angles 1 and 2
+     */
+    private static int getAngleDiff(int angle1, int angle2) {
+        int diff = Math.abs(angle1 - angle2);
+        return (diff > 90) ? (180 - diff) : diff;
+    }
+
+    /**
+     * Calculates amount of directions of lines array.
+     * Checks each angle and puts different angles in a list.
+     * @param lines array of lines
+     * @return Size of list
+     */
+    private static int getAmountOfDirections(ArrayList<HoughLine> lines) {
+        int lineCount = Math.min(8, lines.size());
+        ArrayList<Integer> angleGroups = new ArrayList<>();
+        int tolerance = 15;
+
+        for (int i = 0; i < lineCount; i++) {
+            int currentAngle = lines.get(i).phi;
+            boolean isPartOfGroup = false;
+
+            for (int angle : angleGroups) {
+                int diff = PipelinePrototype.getAngleDiff(currentAngle, angle);
+
+                if (diff <= tolerance) {
+                    isPartOfGroup = true;
+                    break;
+                }
+            }
+
+            if (!isPartOfGroup) {
+                angleGroups.add(currentAngle);
+            }
+        }
+
+        return angleGroups.size();
     }
 
     /**
@@ -283,9 +373,9 @@ public class PipelinePrototype {
         ImageIO.displayImage(lowpass);
 
         // 3. histogram equalization
-        BufferedImage equalizedHistogram = ImageManipulation.histogramEqualization(lowpass);
+        //BufferedImage equalizedHistogram = ImageManipulation.histogramEqualization(lowpass);
         //System.out.println("Successfully calculated histogram equalization");
-        ImageIO.displayImage(equalizedHistogram);
+        //ImageIO.displayImage(equalizedHistogram);
 
         // sobel
         BufferedImage sobel = Convolution.sobelFilter(lowpass, 3);
