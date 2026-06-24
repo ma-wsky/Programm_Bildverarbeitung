@@ -6,8 +6,8 @@ public class PipelinePrototype {
 
     public static void vorfahrt(){
         // 1. read image
-        String filenamePPMImage = "vorfahrt.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/A.jpg", filenamePPMImage);
+        String filenamePPMImage = "sign.ppm";
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/P.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
@@ -73,24 +73,28 @@ public class PipelinePrototype {
      * @param r distance
      * @return boolean if local maximum
      */
-    private static boolean isLocalMaximum(int[][] accumulator, int phi, int r){
-        for (int dPhi = -1; dPhi <= 1; dPhi++){
-            for (int dR = -1; dR <= 1; dR++){
+    private static boolean isLocalMaximum(int[][] accumulator, int phi, int r, int sizeOfWindow){
+
+        for (int dPhi = -sizeOfWindow; dPhi <= sizeOfWindow; dPhi++){
+            for (int dR = -sizeOfWindow; dR <= sizeOfWindow; dR++){
                 if (dPhi == 0 && dR == 0) continue;
 
                 int targetPhi = phi + dPhi;
                 int targetR = r + dR;
 
+                // closed loop for angles
                 if (targetPhi < 0){
                     targetPhi = accumulator.length - 1;
                 } else if (targetPhi >= accumulator.length) {
                     targetPhi = 0;
                 }
 
+                // bounds for r
                 if (targetR < 0 || targetR >= accumulator[targetPhi].length){
                     continue;
                 }
 
+                // neighbour is bigger
                 if (accumulator[targetPhi][targetR] > accumulator[phi][r]){
                     return false;
                 }
@@ -101,7 +105,7 @@ public class PipelinePrototype {
 
     /**
      * Calls {@link PipelinePrototype#houghTransformation(BufferedImage)} to determine Hough room.
-     * Calls {@link PipelinePrototype#isLocalMaximum(int[][], int, int)} to determine local maximum of possible line.
+     * Calls {@link PipelinePrototype#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line.
      * Sorts found lines and draws the largest lines.
      * @param image BufferedImage
      * @return BufferedImage with the largest lines
@@ -136,7 +140,9 @@ public class PipelinePrototype {
             for (int r = 0; r < accumulator[phi].length; r++){
                 int votes = accumulator[phi][r];
                 if (votes > threshold){
-                    if (isLocalMaximum(accumulator, phi, r)){
+                    int minLength = 20;
+                    int maxAllowedGap = 5;
+                    if (PipelinePrototype.isLocalMaximum(accumulator, phi, r, 10) && PipelinePrototype.isLineSolid(image, new HoughLine(phi, r, votes), minLength, maxAllowedGap)){
                         lines.add(new HoughLine(phi, r, votes));
                     }
                 }
@@ -145,55 +151,145 @@ public class PipelinePrototype {
 
         // sort lines
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
+        int lineCount = Math.min(16, lines.size());
 
-        // classification based on angle groups
-        //TODO: triangle: why sometimes inner lines instead of outer
-        int amountOfDirections = getAmountOfDirections(lines);
-        System.out.println(amountOfDirections + " different directions");
+        // check intersection angle for pairs of lines
+        ArrayList<HoughLinePair> pairs = new ArrayList<>();
+        int tolerance = 5;
+        for (int i = 0; i < lineCount; i++){
+            for (int j = i + 1; j < lineCount; j++){
 
+                HoughLine line1 = lines.get(i);
+                HoughLine line2 = lines.get(j);
+                int angleOfIntersection = 0;
 
-        ArrayList<HoughLine> differentAngledLines = new ArrayList<>();
-        int tolerance = 15;
+                int deltaPhi = Math.abs(line1.phi - line2.phi);
+                if (deltaPhi > 90) deltaPhi = 180 - deltaPhi;
 
-        if (amountOfDirections == 3) {
-
-            for (HoughLine line : lines) {
-                boolean angleAlreadySelected = false;
-                for (HoughLine selected : differentAngledLines) {
-                    if (getAngleDiff(line.phi, selected.phi) <= tolerance) {
-                        angleAlreadySelected = true;
-                        break;
-                    }
+                if (deltaPhi >= 90 - tolerance && deltaPhi <= 90 + tolerance){
+                    angleOfIntersection = 90;
                 }
-                if (!angleAlreadySelected) {
-                    differentAngledLines.add(line);
+                else if (deltaPhi >= 60 - tolerance && deltaPhi <= 60 + tolerance) {
+                    angleOfIntersection = 60;
                 }
-                if (differentAngledLines.size() == 3) break;
+                else if (deltaPhi >= 45 - tolerance && deltaPhi <= 45 + tolerance) {
+                    angleOfIntersection = 45;
+                }
+
+                if (angleOfIntersection != 0) pairs.add(new HoughLinePair(line1, line2, angleOfIntersection));
+
             }
-
-        } else if (amountOfDirections == 2 || amountOfDirections == 4) {
-
-            for (HoughLine line : lines) {
-                int linesWithAngle = 0;
-
-                for (HoughLine selected : differentAngledLines) {
-                    if (getAngleDiff(line.phi, selected.phi) <= tolerance) {
-                        linesWithAngle++;
-                    }
-                }
-
-                if (linesWithAngle < 2) {
-                    differentAngledLines.add(line);
-                }
-
-                if (differentAngledLines.size() == amountOfDirections*2) break;
-            }
-        } else {
-            System.out.println("other");
         }
 
-        // draw lines
-        for (HoughLine line : differentAngledLines){
+        // determine sign geometry based on number of intersection angles
+        int count90 = 0;
+        int count60 = 0;
+        int count45 = 0;
+
+        for (HoughLinePair pair : pairs) {
+            if (pair.angleOfIntersection == 90) count90++;
+            else if (pair.angleOfIntersection == 60) count60++;
+            else if (pair.angleOfIntersection == 45) count45++;
+        }
+
+        int edgeCountSign = 0;
+
+        if (count45 >= 4 && count90 >= 2) {
+            edgeCountSign = 8;
+        }
+        else if (count90 >= 2 && count90 > count60) {
+            edgeCountSign = 4;
+        }
+        else if (count60 >= 2) {
+            edgeCountSign = 3;
+        } else {
+            // other
+            System.err.println("No valid geometry found!");
+        }
+
+//        for (HoughLinePair pair : pairs){
+//            int r = pair.line1.r;
+//            int phi = pair.line1.phi;
+//            int x1, x2, y1, y2;
+//            int distance = r- diagonal;
+//            double radPhi = Math.toRadians(phi);
+//
+//            if (phi > 45 && phi < 135){
+//                x1 = 0;
+//                x2 = image.getWidth();
+//
+//                y1 = (int) (distance / Math.sin(radPhi));
+//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
+//            }else {
+//                y1 = 0;
+//                y2 = image.getHeight();
+//
+//                x1 = (int) (distance / Math.cos(radPhi));
+//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
+//            }
+//
+//            g.drawLine(x1, y1, x2, y2);
+//
+//            r = pair.line2.r;
+//            phi = pair.line2.phi;
+//            distance = r- diagonal;
+//            radPhi = Math.toRadians(phi);
+//
+//            if (phi > 45 && phi < 135){
+//                x1 = 0;
+//                x2 = image.getWidth();
+//
+//                y1 = (int) (distance / Math.sin(radPhi));
+//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
+//            }else {
+//                y1 = 0;
+//                y2 = image.getHeight();
+//
+//                x1 = (int) (distance / Math.cos(radPhi));
+//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
+//            }
+//
+//            g.drawLine(x1, y1, x2, y2);
+//        }
+
+
+        //ArrayList<Integer> directions = PipelinePrototype.getDirections(lines);
+
+        // find valid lines based on distance to other lines and number of parallel lines in a sign
+        ArrayList<HoughLine> validLines = new ArrayList<>();
+
+        if (edgeCountSign == 3) {
+
+            for (HoughLinePair pair : pairs) {
+                if (pair.angleOfIntersection == 60){
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 1)) validLines.add(pair.line1);
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 1)) validLines.add(pair.line2);
+                    if (validLines.size() >= 3) break;
+                }
+            }
+
+        } else if (edgeCountSign == 4) {
+
+            for (HoughLinePair pair : pairs) {
+                if (pair.angleOfIntersection == 90){
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
+                    if (validLines.size() >= 4) break;
+                }
+            }
+        } else if (edgeCountSign == 8){
+
+            for (HoughLinePair pair : pairs) {
+                if (pair.angleOfIntersection == 45 || pair.angleOfIntersection == 90){
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
+                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
+                    if (validLines.size() >= 8) break;
+                }
+            }
+        }
+
+        // draw valid lines
+        for (HoughLine line : validLines){
             int r = line.r;
             int phi = line.phi;
             int x1, x2, y1, y2;
@@ -223,6 +319,117 @@ public class PipelinePrototype {
     }
 
     /**
+     * Checks if a line has a minimumLength of a segment and a maximumAllowedGap between segments.
+     * @param image BufferedImage
+     * @param line HoughLine
+     * @param minLength minimum length of segment
+     * @param maxAllowedGap maximum allowed gap between segments
+     * @return boolean if line is solid
+     */
+    private static boolean isLineSolid(BufferedImage image, HoughLine line, int minLength, int maxAllowedGap) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        int diagonal = (int) Math.ceil(Math.sqrt(height*height + width*width));
+
+        int distance = line.r - diagonal;
+        double radPhi = Math.toRadians(line.phi);
+
+        int longestChain = 0;
+        int currentChain = 0;
+        int currentGap = 0;
+
+        if (line.phi > 45 && line.phi < 135){
+            // more horizontal
+            for (int x = 0; x < width; x++){
+                int y = (int) ((distance - x * Math.cos(radPhi)) / Math.sin(radPhi));
+
+                if (y >= 0 && y < height){
+                    boolean isWhite = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y)) == 255;
+
+                    if (isWhite){
+                        currentChain++;
+                        currentGap = 0;
+                    }else{
+                        currentGap++;
+                        if (currentGap > maxAllowedGap){
+                            if (currentChain > longestChain) longestChain = currentChain;
+                            currentChain = 0;
+                        }
+
+                    }
+                }
+            }
+        } else {
+            // more vertical
+            for (int y = 0; y < height; y++) {
+                int x = (int) ((distance - y * Math.sin(radPhi)) / Math.cos(radPhi));
+
+                if (x >= 0 && x < width) {
+                    boolean isWhite = (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y)) == 255);
+
+                    if (isWhite) {
+                        currentChain++;
+                        currentGap = 0;
+                    } else {
+                        currentGap++;
+                        if (currentGap > maxAllowedGap) {
+                            if (currentChain > longestChain) longestChain = currentChain;
+                            currentChain = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (currentChain > longestChain) longestChain = currentChain;
+        return longestChain >= minLength;
+    }
+
+    /**
+     * Determines validity of a line based on parallel lines and distance between lines.
+     * Calls {@link PipelinePrototype#areLinesFarEnough(HoughLine, HoughLine, int)}
+     * @param tolerance tolerance for angle difference
+     * @param validLines list of valid lines
+     * @param line HoughLine
+     * @param maxParallelAllowed maximum allowed parallel lines
+     * @return boolean if line is valid
+     */
+    private static boolean isLineValid(int tolerance, ArrayList<HoughLine> validLines, HoughLine line, int maxParallelAllowed) {
+        int parallelCount = 0;
+        for (HoughLine houghLine : validLines) {
+            int diff = Math.abs(houghLine.phi - line.phi);
+            if (diff > 90) {
+                diff = 180 - diff;
+            }
+
+            if (diff <= tolerance){
+                if (!PipelinePrototype.areLinesFarEnough(houghLine, line, 50)){
+                    return false;
+                }
+                parallelCount++;
+            }
+        }
+
+        if (parallelCount < maxParallelAllowed){
+            if (!validLines.contains(line)) return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if distance between two lines is greater than minPixelDistance.
+     * @param line1 first line
+     * @param line2 second line
+     * @param minPixelDistance minimum distance
+     * @return boolean if lines are far enough apart
+     */
+    private static boolean areLinesFarEnough(HoughLine line1, HoughLine line2, int minPixelDistance){
+        int diffR = Math.abs(line1.r - line2.r);
+        return diffR >= minPixelDistance;
+    }
+
+    /**
      * Calculates the difference of two angles.
      * Takes into account that 179° and 1° differ by 2°
      * @param angle1 first angle
@@ -240,7 +447,7 @@ public class PipelinePrototype {
      * @param lines array of lines
      * @return Size of list
      */
-    private static int getAmountOfDirections(ArrayList<HoughLine> lines) {
+    private static ArrayList<Integer> getDirections(ArrayList<HoughLine> lines) {
         int lineCount = Math.min(8, lines.size());
         ArrayList<Integer> angleGroups = new ArrayList<>();
         int tolerance = 15;
@@ -263,7 +470,7 @@ public class PipelinePrototype {
             }
         }
 
-        return angleGroups.size();
+        return angleGroups;
     }
 
     /**
@@ -383,12 +590,23 @@ public class PipelinePrototype {
         ImageIO.displayImage(sobel);
 
         // 4. equidensity
-        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 100, 200, 255, 0, 0);
+        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
         //System.out.println("Successfully calculated equidensity");
         ImageIO.displayImage(equidensity);
 
+        // closing with dilation and erosion
+        boolean[][] mask = new boolean[3][3];
+        for (boolean[] bool : mask){
+            Arrays.fill(bool, true);
+        }
+        BufferedImage erosion = MorphologicalOperations.erosion(equidensity, mask, 1);
+        ImageIO.displayImage(erosion);
+
+        BufferedImage dilation = MorphologicalOperations.dilation(erosion, mask, 1);
+        ImageIO.displayImage(dilation);
+
         // negative
-        BufferedImage negative = ColorManipulation.negative(equidensity);
+        BufferedImage negative = ColorManipulation.negative(dilation);
         ImageIO.displayImage(negative);
 
         return negative;
