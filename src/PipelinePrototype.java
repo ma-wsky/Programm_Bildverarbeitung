@@ -133,16 +133,17 @@ public class PipelinePrototype {
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = PipelinePrototype.houghTransformation(image);
         int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(image.getHeight(), 2) + Math.pow(image.getWidth(), 2)));
-        int threshold = 50;
+        int threshold = 50; //TODO: abhängig von bild größe
 
         // accumulate lines
         for (int phi = 0; phi < accumulator.length; phi++){
             for (int r = 0; r < accumulator[phi].length; r++){
                 int votes = accumulator[phi][r];
                 if (votes > threshold){
-                    int minLength = 20;
-                    int maxAllowedGap = 5;
-                    if (PipelinePrototype.isLocalMaximum(accumulator, phi, r, 10) && PipelinePrototype.isLineSolid(image, new HoughLine(phi, r, votes), minLength, maxAllowedGap)){
+                    int minLength = 20;//TODO: abhängig von bild größe
+                    int maxAllowedGap = 5;//TODO: abhängig von bild größe
+                    int sizeOfNeighbourhood = 3;//TODO: abhängig von bild größe
+                    if (PipelinePrototype.isLocalMaximum(accumulator, phi, r, sizeOfNeighbourhood) && PipelinePrototype.isLineSolid(image, new HoughLine(phi, r, votes), minLength, maxAllowedGap)){
                         lines.add(new HoughLine(phi, r, votes));
                     }
                 }
@@ -155,6 +156,7 @@ public class PipelinePrototype {
 
         // check intersection angle for pairs of lines
         ArrayList<HoughLinePair> pairs = new ArrayList<>();
+        ArrayList<HoughLine> validLines = new ArrayList<>();
         int tolerance = 5;
         for (int i = 0; i < lineCount; i++){
             for (int j = i + 1; j < lineCount; j++){
@@ -176,36 +178,94 @@ public class PipelinePrototype {
                     angleOfIntersection = 45;
                 }
 
-                if (angleOfIntersection != 0) pairs.add(new HoughLinePair(line1, line2, angleOfIntersection));
+                if (angleOfIntersection != 0) {
+                    pairs.add(new HoughLinePair(line1, line2, angleOfIntersection));
+                    validLines.add(line1);
+                    validLines.add(line2);
+                }
 
             }
         }
 
-        // determine sign geometry based on number of intersection angles
-        int count90 = 0;
-        int count60 = 0;
-        int count45 = 0;
+        PipelinePrototype.drawLines(g, validLines, width, height, diagonal);
 
-        for (HoughLinePair pair : pairs) {
-            if (pair.angleOfIntersection == 90) count90++;
-            else if (pair.angleOfIntersection == 60) count60++;
-            else if (pair.angleOfIntersection == 45) count45++;
+        //TODO: check for each signs geometry separately by excluding unused angles
+
+        // triangle check
+        ArrayList<HoughLine> validTriangleLines = new ArrayList<>();
+        for (HoughLinePair pair : pairs){
+            if (pair.angleOfIntersection > 60 - tolerance && pair.angleOfIntersection < 60 + tolerance) {
+                if (!validTriangleLines.contains(pair.line1)) validTriangleLines.add(pair.line1);
+                if (!validTriangleLines.contains(pair.line2)) validTriangleLines.add(pair.line2);
+            }
         }
 
-        int edgeCountSign = 0;
-
-        if (count45 >= 4 && count90 >= 2) {
-            edgeCountSign = 8;
-        }
-        else if (count90 >= 2 && count90 > count60) {
-            edgeCountSign = 4;
-        }
-        else if (count60 >= 2) {
-            edgeCountSign = 3;
+        System.out.println("checking triangle form...");
+        ArrayList<ArrayList<Point>> allFoundTriangles = PipelinePrototype.detectTriangleForm(validTriangleLines, image.getWidth(), image.getHeight());
+        if (!allFoundTriangles.isEmpty()){
+            System.out.println("triangles found - drawing triangles...");
+            for (ArrayList<Point> triangle : allFoundTriangles){
+                PipelinePrototype.drawForm(g, triangle);
+            }
+            g.dispose();
+            return lineImage;
         } else {
-            // other
-            System.err.println("No valid geometry found!");
+            System.out.println("no triangle detected!");
         }
+
+        // TODO: octagon check before rectangle
+
+        // rectangle check
+        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
+        for (HoughLinePair pair : pairs){
+            if (pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) {
+                if (!validRectangleLines.contains(pair.line1)) validRectangleLines.add(pair.line1);
+                if (!validRectangleLines.contains(pair.line2)) validRectangleLines.add(pair.line2);
+            }
+        }
+
+        System.out.println("checking rectangle form...");
+        ArrayList<ArrayList<Point>> allFoundRectangles = PipelinePrototype.detectRectangleForm(validRectangleLines, image.getWidth(), image.getHeight());
+        if (!allFoundRectangles.isEmpty()){
+            System.out.println("rectangles found - drawing rectangles...");
+            for (ArrayList<Point> rectangle : allFoundRectangles){
+                PipelinePrototype.drawForm(g, rectangle);
+            }
+            g.dispose();
+            return lineImage;
+        } else {
+            System.err.println("no rectangle detected!");
+        }
+
+        g.dispose();
+        return lineImage;
+
+
+        // determine sign geometry based on number of intersection angles
+//        int count90 = 0;
+//        int count60 = 0;
+//        int count45 = 0;
+//
+//        for (HoughLinePair pair : pairs) {
+//            if (pair.angleOfIntersection == 90) count90++;
+//            else if (pair.angleOfIntersection == 60) count60++;
+//            else if (pair.angleOfIntersection == 45) count45++;
+//        }
+//
+//        int edgeCountSign = 0;
+//
+//        if (count45 >= 4 && count90 >= 2) {
+//            edgeCountSign = 8;
+//        }
+//        else if (count90 >= 2 && count90 > count60) {
+//            edgeCountSign = 4;
+//        }
+//        else if (count60 >= 2) {
+//            edgeCountSign = 3;
+//        } else {
+//            // other
+//            System.err.println("No valid geometry found!");
+//        }
 
 //        for (HoughLinePair pair : pairs){
 //            int r = pair.line1.r;
@@ -256,39 +316,79 @@ public class PipelinePrototype {
         //ArrayList<Integer> directions = PipelinePrototype.getDirections(lines);
 
         // find valid lines based on distance to other lines and number of parallel lines in a sign
-        ArrayList<HoughLine> validLines = new ArrayList<>();
+//        ArrayList<HoughLine> validLines = new ArrayList<>();
+//
+//        if (edgeCountSign == 3) {
+//
+//            for (HoughLinePair pair : pairs) {
+//                if (pair.angleOfIntersection == 60){
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 1)) validLines.add(pair.line1);
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 1)) validLines.add(pair.line2);
+//                    if (validLines.size() >= 3) break;
+//                }
+//            }
+//
+//        } else if (edgeCountSign == 4) {
+//
+//            for (HoughLinePair pair : pairs) {
+//                if (pair.angleOfIntersection == 90){
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
+//                    if (validLines.size() >= 4) break;
+//                }
+//            }
+//        } else if (edgeCountSign == 8){
+//
+//            for (HoughLinePair pair : pairs) {
+//                if (pair.angleOfIntersection == 45 || pair.angleOfIntersection == 90){
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
+//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
+//                    if (validLines.size() >= 8) break;
+//                }
+//            }
+//        }
+//
+//        // draw valid lines
+//        for (HoughLine line : validLines){
+//            int r = line.r;
+//            int phi = line.phi;
+//            int x1, x2, y1, y2;
+//            int distance = r- diagonal;
+//            double radPhi = Math.toRadians(phi);
+//
+//            if (phi > 45 && phi < 135){
+//                x1 = 0;
+//                x2 = image.getWidth();
+//
+//                y1 = (int) (distance / Math.sin(radPhi));
+//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
+//            }else {
+//                y1 = 0;
+//                y2 = image.getHeight();
+//
+//                x1 = (int) (distance / Math.cos(radPhi));
+//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
+//            }
+//
+//            g.drawLine(x1, y1, x2, y2);
+//        }
+//
+//        g.dispose();
+//
+//        return lineImage;
+    }
 
-        if (edgeCountSign == 3) {
-
-            for (HoughLinePair pair : pairs) {
-                if (pair.angleOfIntersection == 60){
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 1)) validLines.add(pair.line1);
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 1)) validLines.add(pair.line2);
-                    if (validLines.size() >= 3) break;
-                }
-            }
-
-        } else if (edgeCountSign == 4) {
-
-            for (HoughLinePair pair : pairs) {
-                if (pair.angleOfIntersection == 90){
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
-                    if (validLines.size() >= 4) break;
-                }
-            }
-        } else if (edgeCountSign == 8){
-
-            for (HoughLinePair pair : pairs) {
-                if (pair.angleOfIntersection == 45 || pair.angleOfIntersection == 90){
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
-                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
-                    if (validLines.size() >= 8) break;
-                }
-            }
-        }
-
-        // draw valid lines
+    /**
+     * Draws all lines in validLines in red with Graphics2D g.
+     * @param g Graphics2D
+     * @param validLines ArrayList<HoughLine>
+     * @param width int width of image
+     * @param height int height of image
+     * @param diagonal diagonal of image for r correction
+     */
+    private static void drawLines(Graphics2D g, ArrayList<HoughLine> validLines, int width, int height, int diagonal) {
+        g.setColor(Color.RED);
+        g.setStroke(new java.awt.BasicStroke(1));
         for (HoughLine line : validLines){
             int r = line.r;
             int phi = line.phi;
@@ -298,13 +398,13 @@ public class PipelinePrototype {
 
             if (phi > 45 && phi < 135){
                 x1 = 0;
-                x2 = image.getWidth();
+                x2 = width;
 
                 y1 = (int) (distance / Math.sin(radPhi));
                 y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
             }else {
                 y1 = 0;
-                y2 = image.getHeight();
+                y2 = height;
 
                 x1 = (int) (distance / Math.cos(radPhi));
                 x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
@@ -312,10 +412,263 @@ public class PipelinePrototype {
 
             g.drawLine(x1, y1, x2, y2);
         }
+    }
 
-        g.dispose();
+    /**
+     * Draws a geometric form based on vertices.
+     * Fills the resulting form with white
+     * @param g2d Graphics2D
+     * @param vertices ArrayList<Point>
+     */
+    public static void drawForm(Graphics2D g2d, ArrayList<Point> vertices) {
+        int numPoints = vertices.size();
+        int[] xPoints = new int[numPoints];
+        int[] yPoints = new int[numPoints];
 
-        return lineImage;
+        for (int i = 0; i < numPoints; i++){
+            xPoints[i] = vertices.get(i).x;
+            yPoints[i] = vertices.get(i).y;
+        }
+
+        // fill
+        g2d.setColor(Color.WHITE);
+        g2d.setStroke(new java.awt.BasicStroke(2));
+        g2d.fillPolygon(xPoints, yPoints, numPoints);
+    }
+
+    /**
+     * Function for validating that validRectangleLines construct a rectangle.
+     * Sorts candidates into parallel groups and checks for 2 members each.
+     * Checks intersections of candidates for validating intersection points (members of different groups must intersect).
+     * Checks if intersection points are inside the image with tolerance.
+     * Checks ratio of shortest and longest sidelengths with tolerance.
+     * @param validRectangleLines ArrayList<HoughLines>
+     * @param width int width of image
+     * @param height int height of image
+     * @return ArrayList<ArrayList<Point>> all found rectangles
+     */
+    private static ArrayList<ArrayList<Point>> detectRectangleForm(ArrayList<HoughLine> validRectangleLines, int width, int height) {
+        int size = validRectangleLines.size();
+        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
+        int minSideLength = 30;//TODO: abhängig von bild größe
+        ArrayList<ArrayList<Point>> allFoundRectangles = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            for (int j = i + 1; j < size; j++) {
+                for (int k = j + 1; k < size; k++) {
+                    for (int l = k + 1; l < size; l++) {
+
+                        HoughLine a = validRectangleLines.get(i);
+                        HoughLine b = validRectangleLines.get(j);
+                        HoughLine c = validRectangleLines.get(k);
+                        HoughLine d = validRectangleLines.get(l);
+
+                        // sort into parallel groups
+                        ArrayList<HoughLine> group1 = new ArrayList<>();
+                        ArrayList<HoughLine> group2 = new ArrayList<>();
+                        group1.add(a);
+
+                        HoughLine[] remaining = {b, c, d};
+                        int toleranz = 10;
+
+                        for (HoughLine line : remaining) {
+                            int diff = Math.abs(line.phi - a.phi);
+                            if (diff > 90) diff = 180 - diff;
+
+                            if (diff <= toleranz) {
+                                group1.add(line);
+                            } else {
+                                group2.add(line);
+                            }
+                        }
+
+                        if (group1.size() != 2 || group2.size() != 2) {
+                            continue;
+                        }
+
+                        HoughLine h1 = group1.get(0);
+                        HoughLine h2 = group1.get(1);
+                        HoughLine v1 = group2.get(0);
+                        HoughLine v2 = group2.get(1);
+
+                        // check intersections
+                        Point p1 = PipelinePrototype.getIntersection(h1, v1, diagonal);
+                        Point p2 = PipelinePrototype.getIntersection(h1, v2, diagonal);
+                        Point p3 = PipelinePrototype.getIntersection(h2, v2, diagonal);
+                        Point p4 = PipelinePrototype.getIntersection(h2, v1, diagonal);
+
+                        if (p1 == null || p2 == null || p3 == null || p4 == null) continue;
+
+                        // check geometry
+                        int tolerance = 25; //TODO: abhängig von bild größe
+                        if (isInsideImage(p1, width, height, tolerance) &&
+                                isInsideImage(p2, width, height, tolerance) &&
+                                isInsideImage(p3, width, height, tolerance) &&
+                                isInsideImage(p4, width, height, tolerance)) {
+
+                            // check side length
+                            double s1 = p1.distance(p2);
+                            double s2 = p2.distance(p3);
+                            double s3 = p3.distance(p4);
+                            double s4 = p4.distance(p1);
+
+                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength) {
+                                double t = 0.1;
+                                double maxSide = Math.max(Math.max(s1, s2), Math.max(s3, s4));
+                                double minSide = Math.min(Math.min(s1, s2), Math.min(s3, s4));
+                                double ratio = minSide/maxSide;
+                                if (ratio >= 1-t && ratio <= 1+t){
+                                    ArrayList<Point> rectangle = new ArrayList<>();
+                                    rectangle.add(p1);
+                                    rectangle.add(p2);
+                                    rectangle.add(p3);
+                                    rectangle.add(p4);
+                                    allFoundRectangles.add(rectangle);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return allFoundRectangles;
+    }
+
+    /**
+     * Function for validating that validTriangleLines construct a triangle.
+     * Checks intersections of candidates for validating intersection points.
+     * Checks if intersection points are inside the image with tolerance.
+     * Checks ratio of shortest and longest sidelengths with tolerance.
+     * @param validTriangleLines ArrayList<HoughLines>
+     * @param width int width of image
+     * @param height int height of image
+     * @return ArrayList<ArrayList<Point>> all found triangles
+     */
+    private static ArrayList<ArrayList<Point>> detectTriangleForm(ArrayList<HoughLine> validTriangleLines, int width, int height) {
+        int size = validTriangleLines.size();
+        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
+        int minSideLength = 30;
+        ArrayList<ArrayList<Point>> allFoundTriangles = new ArrayList<>();
+
+        for (int i = 0; i < size; i++){
+            for (int j = i + 1; j < size; j++){
+                for (int k = j + 1; k < size; k++){
+                    HoughLine a = validTriangleLines.get(i);
+                    HoughLine b = validTriangleLines.get(j);
+                    HoughLine c = validTriangleLines.get(k);
+
+                    // check angles
+                    if (!PipelinePrototype.isTriangleAngles(a, b, c)){
+                        continue;
+                    }
+
+                    // check intersections
+                    Point pAB = PipelinePrototype.getIntersection(a, b, diagonal);
+                    Point pAC = PipelinePrototype.getIntersection(a, c, diagonal);
+                    Point pBC = PipelinePrototype.getIntersection(b, c, diagonal);
+
+                    if (pAB == null || pBC == null || pAC == null) continue;
+
+                    // check geometry
+                    int tolerance = 15;
+                    if (PipelinePrototype.isInsideImage(pAB, width, height, tolerance) &&
+                            PipelinePrototype.isInsideImage(pBC, width, height, tolerance) &&
+                            PipelinePrototype.isInsideImage(pAC, width, height, tolerance)) {
+
+                        // check side length
+                        double side1 = pAB.distance(pBC);
+                        double side2 = pBC.distance(pAC);
+                        double side3 = pAC.distance(pAB);
+
+                        if (side1 >= minSideLength && side2 >= minSideLength && side3 >= minSideLength) {
+                            double t = 0.1;
+                            double maxSide = Math.max(Math.max(side1, side2), side3);
+                            double minSide = Math.min(Math.min(side1, side2), side3);
+                            double ratio = minSide/maxSide;
+                            if (ratio >= 1-t && ratio <= 1+t){
+                                ArrayList<Point> triangle = new ArrayList<>();
+                                triangle.add(pAB);
+                                triangle.add(pAC);
+                                triangle.add(pBC);
+                                allFoundTriangles.add(triangle);
+                            }
+
+                        }
+                    }
+                }
+            }
+        }
+        return allFoundTriangles;
+    }
+
+    private static boolean isInsideImage(Point pAB, int width, int height, int t) {
+        return (pAB.x < (width+t) && pAB.x > (-t)) && (pAB.y < (height+t) && pAB.y > -t);
+    }
+
+    /**
+     * Returns intersection point of lines a and b
+     * @param a HoughLine
+     * @param b HoughLine
+     * @param diagonal image diagonal
+     * @return Point intersection point
+     */
+    public static Point getIntersection(HoughLine a, HoughLine b, int diagonal) {
+        double r1 = a.r - diagonal;
+        double r2 = b.r - diagonal;
+
+        double phi1 = Math.toRadians(a.phi);
+        double phi2 = Math.toRadians(b.phi);
+
+        double denominator = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2);
+
+        // return if parallel
+        if (Math.abs(denominator) < 0.0001) {
+            return null;
+        }
+
+        int x = (int) Math.round((r1 * Math.sin(phi2) - r2 * Math.sin(phi1)) / denominator);
+        int y = (int) Math.round((r2 * Math.cos(phi1) - r1 * Math.cos(phi2)) / denominator);
+
+        return new Point(x, y);
+    }
+
+    private static boolean isRectangleAngles(HoughLine a, HoughLine b, HoughLine c, HoughLine d) {
+        int[] phi = {a.phi, b.phi, c.phi, d.phi};
+        Arrays.sort(phi);
+
+        int tolerance = 5;
+
+        int diff1 = phi[1] - phi[0];
+        int diff2 = phi[2] - phi[1];
+        int diff3 = phi[3] - phi[2];
+        int diff4 = 180 - (phi[3] - phi[0]);
+
+        return Math.abs(diff1 - 90) <= tolerance &&
+                Math.abs(diff2 - 90) <= tolerance &&
+                Math.abs(diff3 - 90) <= tolerance &&
+                Math.abs(diff4 - 90) <= tolerance;
+    }
+
+    /**
+     * Checks lines a, b, c for an angle difference of 60° with tolerance.
+     * @param a HoughLine
+     * @param b HoughLine
+     * @param c HoughLine
+     * @return boolean if angles match 60°
+     */
+    private static boolean isTriangleAngles(HoughLine a, HoughLine b, HoughLine c) {
+        int[] phi = {a.phi, b.phi, c.phi};
+        Arrays.sort(phi);
+
+        int tolerance = 5;
+
+        int diff1 = phi[1] - phi[0];
+        int diff2 = phi[2] - phi[1];
+        int diff3 = 180 - (phi[2] - phi[0]);
+
+        return Math.abs(diff1 - 60) <= tolerance &&
+                Math.abs(diff2 - 60) <= tolerance &&
+                Math.abs(diff3 - 60) <= tolerance;
     }
 
     /**
@@ -344,9 +697,16 @@ public class PipelinePrototype {
                 int y = (int) ((distance - x * Math.cos(radPhi)) / Math.sin(radPhi));
 
                 if (y >= 0 && y < height){
-                    boolean isWhite = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y)) == 255;
-
-                    if (isWhite){
+                    boolean isEdge = false;
+                    for (int dy = -1; dy <= 1; dy++) {
+                        if (y + dy >= 0 && y + dy < height) {
+                            if (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y + dy)) == 255) {
+                                isEdge = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isEdge){
                         currentChain++;
                         currentGap = 0;
                     }else{
@@ -365,9 +725,16 @@ public class PipelinePrototype {
                 int x = (int) ((distance - y * Math.sin(radPhi)) / Math.cos(radPhi));
 
                 if (x >= 0 && x < width) {
-                    boolean isWhite = (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y)) == 255);
-
-                    if (isWhite) {
+                    boolean isEdge = false;
+                    for (int dx = -1; dx <= 1; dx++) {
+                        if (x + dx >= 0 && x + dx < width) {
+                            if (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x + dx, y)) == 255) {
+                                isEdge = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (isEdge) {
                         currentChain++;
                         currentGap = 0;
                     } else {
