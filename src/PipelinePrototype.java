@@ -7,7 +7,7 @@ public class PipelinePrototype {
     public static void vorfahrt(){
         // 1. read image
         String filenamePPMImage = "sign.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/P.jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/A.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
@@ -46,6 +46,8 @@ public class PipelinePrototype {
         //stats
         DescriptiveStatistics stats = new DescriptiveStatistics(croppedRotatedOriginal);
         stats.calculateAllStatistics();
+
+        System.out.println("Calculations ended.");
 
         // scoring
         // TODO: rework scoring to make it more general
@@ -152,12 +154,12 @@ public class PipelinePrototype {
 
         // sort lines
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int lineCount = Math.min(16, lines.size());
+        int lineCount = Math.min(30, lines.size()); //TODO: abhängigkeitskriterium für mindestanzahl
 
         // check intersection angle for pairs of lines
         ArrayList<HoughLinePair> pairs = new ArrayList<>();
         ArrayList<HoughLine> validLines = new ArrayList<>();
-        int tolerance = 5;
+        int tolerance = 15;
         for (int i = 0; i < lineCount; i++){
             for (int j = i + 1; j < lineCount; j++){
 
@@ -213,7 +215,19 @@ public class PipelinePrototype {
             System.out.println("no triangle detected!");
         }
 
-        // TODO: octagon check before rectangle
+        // octagon check
+        ArrayList<HoughLine> validOctagonLines = new ArrayList<>();
+        for (HoughLinePair pair : pairs){
+            if ((pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) ||
+                    (pair.angleOfIntersection > 45 - tolerance && pair.angleOfIntersection < 45 + tolerance)) {
+                if (!validOctagonLines.contains(pair.line1)) validOctagonLines .add(pair.line1);
+                if (!validOctagonLines.contains(pair.line2)) validOctagonLines .add(pair.line2);
+            }
+        }
+
+        System.out.println("checking octagon form...");
+        ArrayList<ArrayList<Point>> allFoundOctagons = PipelinePrototype.detectOctagonForm(validOctagonLines, image.getWidth(), image.getHeight());
+
 
         // rectangle check
         ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
@@ -222,6 +236,16 @@ public class PipelinePrototype {
                 if (!validRectangleLines.contains(pair.line1)) validRectangleLines.add(pair.line1);
                 if (!validRectangleLines.contains(pair.line2)) validRectangleLines.add(pair.line2);
             }
+        }
+        if (!allFoundOctagons.isEmpty()){
+            System.out.println("octagons found - drawing octagons...");
+            for (ArrayList<Point> octagon : allFoundOctagons){
+                PipelinePrototype.drawForm(g, octagon);
+            }
+            g.dispose();
+            return lineImage;
+        } else {
+            System.out.println("no octagon detected!");
         }
 
         System.out.println("checking rectangle form...");
@@ -234,7 +258,7 @@ public class PipelinePrototype {
             g.dispose();
             return lineImage;
         } else {
-            System.err.println("no rectangle detected!");
+            System.out.println("no rectangle detected!");
         }
 
         g.dispose();
@@ -434,6 +458,182 @@ public class PipelinePrototype {
         g2d.setColor(Color.WHITE);
         g2d.setStroke(new java.awt.BasicStroke(2));
         g2d.fillPolygon(xPoints, yPoints, numPoints);
+    }
+
+    /**
+     * Function for validating that validOctagonLines construct an octagon.
+     * Sorts candidates into parallel groups and checks for 2 members each.
+     * Groups are sorted by angle to ensure correct cyclical intersection calculation.
+     * Checks cyclical intersections of adjacent groups to find all 16 potential vertices.
+     * Filters out invalid or distant intersections to isolate the 8 true corner points.
+     * Sorts the 8 true corner points by polar angle to establish a proper circular order.
+     * Checks if the sorted vertices are inside the image with tolerance.
+     * Checks ratio of shortest and longest sidelengths with tolerance.
+     * @param validOctagonLines ArrayList<HoughLine>
+     * @param width int width of image
+     * @param height int height of image
+     * @return ArrayList<ArrayList<Point>> all found octagons
+     */
+    private static ArrayList<ArrayList<Point>> detectOctagonForm(ArrayList<HoughLine> validOctagonLines, int width, int height) {
+        int size = validOctagonLines.size();
+        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
+        int minSideLength = 30; // TODO: abhängig von bild größe
+        ArrayList<ArrayList<Point>> allFoundOctagons = new ArrayList<>();
+
+        for (int i = 0; i < size; i++) {
+            for (int j = i + 1; j < size; j++) {
+                for (int k = j + 1; k < size; k++) {
+                    for (int l = k + 1; l < size; l++) {
+                        for (int m = l + 1; m < size; m++){
+                            for (int n = m + 1; n < size; n++){
+                                for (int o = n + 1; o < size; o++){
+                                    for (int p = o + 1; p < size; p++){
+                                        HoughLine a = validOctagonLines.get(i);
+                                        HoughLine b = validOctagonLines.get(j);
+                                        HoughLine c = validOctagonLines.get(k);
+                                        HoughLine d = validOctagonLines.get(l);
+                                        HoughLine e = validOctagonLines.get(m);
+                                        HoughLine f = validOctagonLines.get(n);
+                                        HoughLine g = validOctagonLines.get(o);
+                                        HoughLine h = validOctagonLines.get(p);
+
+                                        // sort into parallel groups
+                                        ArrayList<ArrayList<HoughLine>> groups = new ArrayList<>();
+                                        ArrayList<HoughLine> group1 = new ArrayList<>();
+                                        group1.add(a);
+                                        groups.add(group1);
+
+                                        HoughLine[] remaining = {b, c, d, e, f, g, h};
+                                        int toleranz = 10;
+
+                                        for (HoughLine line : remaining) {
+                                            boolean assigned = false;
+
+                                            for (ArrayList<HoughLine> group : groups){
+                                                int diff = Math.abs(line.phi - group.get(0).phi);
+                                                if (diff > 90) diff = 180 - diff;
+
+                                                if (diff <= toleranz){
+                                                    group.add(line);
+                                                    assigned = true;
+                                                    break;
+                                                }
+                                            }
+
+                                            if (!assigned && groups.size() < 4){
+                                                ArrayList<HoughLine> newGroup = new ArrayList<>();
+                                                newGroup.add(line);
+                                                groups.add(newGroup);
+                                            }
+                                        }
+
+                                        if (groups.size() != 4 ||
+                                                groups.get(0).size() != 2 ||
+                                                groups.get(1).size() != 2 ||
+                                                groups.get(2).size() != 2 ||
+                                                groups.get(3).size() != 2){
+                                            continue;
+                                        }
+
+                                        // sort groups by angle
+                                        groups.sort(Comparator.comparingDouble(group -> group.get(0).phi));
+
+                                        // check intersections
+                                        HoughLine[] p1 = { groups.get(0).get(0), groups.get(0).get(1) }; // 0°
+                                        HoughLine[] p2 = { groups.get(1).get(0), groups.get(1).get(1) }; // 45°
+                                        HoughLine[] p3 = { groups.get(2).get(0), groups.get(2).get(1) }; // 90°
+                                        HoughLine[] p4 = { groups.get(3).get(0), groups.get(3).get(1) }; // 135°
+
+                                        ArrayList<Point> intersections = new ArrayList<>();
+                                        for (int q = 0; q < 2; q++) {
+                                            for (int r = 0; r < 2; r++) {
+                                                intersections.add(PipelinePrototype.getIntersection(p1[q], p2[r], diagonal)); // 0° mit 45°
+                                                intersections.add(PipelinePrototype.getIntersection(p2[q], p3[r], diagonal)); // 45° mit 90°
+                                                intersections.add(PipelinePrototype.getIntersection(p3[q], p4[r], diagonal)); // 90° mit 135°
+                                                intersections.add(PipelinePrototype.getIntersection(p4[q], p1[r], diagonal)); // 135° mit 0°
+                                            }
+                                        }
+
+                                        ArrayList<Point> validVertices = new ArrayList<>();
+                                        int randToleranz = 40; //TODO: abhängig von größe des bildes
+                                        for (Point v : intersections) {
+                                            if (v != null && v.x >= -randToleranz && v.x < width + randToleranz
+                                                    && v.y >= -randToleranz && v.y < height + randToleranz) {
+                                                validVertices.add(v);
+                                            }
+                                        }
+
+                                        if (validVertices.size() < 8) {
+                                            continue;
+                                        }
+
+                                        // calculate center point
+                                        double sumX = 0;
+                                        double sumY = 0;
+                                        for (Point v : validVertices){
+                                            sumX += v.x;
+                                            sumY += v.y;
+                                        }
+                                        double centerX = sumX / 8.0;
+                                        double centerY = sumY / 8.0;
+
+                                        // find 8 closest to center
+                                        validVertices.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
+
+                                        ArrayList<Point> vertices = new ArrayList<>();
+                                        for (int v = 0; v < 8; v++) {
+                                            vertices.add(validVertices.get(v));
+                                        }
+
+                                        // sort vertices by polar angle
+                                        vertices.sort((vert1, vert2) -> {
+                                            double angle1 = Math.atan2(vert1.y - centerY, vert1.x - centerX);
+                                            double angle2 = Math.atan2(vert2.y - centerY, vert2.x - centerX);
+                                            return Double.compare(angle1, angle2);
+                                        });
+
+                                        // check geometry
+                                        int tolerance = 25; //TODO: abhängig von bild größe
+                                        if (isInsideImage(vertices.get(0), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(1), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(2), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(3), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(4), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(5), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(6), width, height, tolerance) &&
+                                                isInsideImage(vertices.get(7), width, height, tolerance)) {
+
+                                            // check side length
+                                            double s1 = vertices.get(0).distance(vertices.get(1));
+                                            double s2 = vertices.get(1).distance(vertices.get(2));
+                                            double s3 = vertices.get(2).distance(vertices.get(3));
+                                            double s4 = vertices.get(3).distance(vertices.get(4));
+                                            double s5 = vertices.get(4).distance(vertices.get(5));
+                                            double s6 = vertices.get(5).distance(vertices.get(6));
+                                            double s7 = vertices.get(6).distance(vertices.get(7));
+                                            double s8 = vertices.get(7).distance(vertices.get(0));
+
+                                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength &&
+                                                s5 > minSideLength && s6 > minSideLength && s7 > minSideLength && s8 > minSideLength) {
+                                                double t = 0.2;
+                                                double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
+                                                double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
+                                                double ratio = minSide/maxSide;
+                                                if (ratio >= 1-t && ratio <= 1+t){
+                                                    ArrayList<Point> octagon = new ArrayList<>(vertices);
+                                                    allFoundOctagons.add(octagon);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return allFoundOctagons;
     }
 
     /**
