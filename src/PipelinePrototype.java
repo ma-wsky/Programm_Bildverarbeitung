@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Array;
 import java.util.*;
 
 public class PipelinePrototype {
@@ -7,7 +8,7 @@ public class PipelinePrototype {
     public static void vorfahrt(){
         // 1. read image
         String filenamePPMImage = "sign.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/A.jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/V.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
@@ -15,50 +16,15 @@ public class PipelinePrototype {
         BufferedImage preProcessedImage = PipelinePrototype.imagePreprocessing(input);
 
         // hough path
-        BufferedImage lines = PipelinePrototype.lookForStraightLinesAndDraw(preProcessedImage);
-        ImageIO.displayImage(lines);
-        BufferedImage filled = PipelinePrototype.findSignAndFill(lines);
-        ImageIO.displayImage(filled);
+        PipelinePrototype.lookForStraightLinesAndDraw(preProcessedImage, input);
 
-        // 3. look for sign-geometry
-        //BufferedImage signGeometry = PipelinePrototype.lookForSignGeometry(lines);
-        //ImageIO.displayImage(signGeometry);
-
-        // 4. check signs geometry
-        boolean[] isSquare = {false};
-        BufferedImage rotatedSignGeometry = PipelinePrototype.rotateImageAndCheckGeometry(filled, 0.1, isSquare);
-        ImageIO.displayImage(rotatedSignGeometry);
-        if (isSquare[0]){
-            //System.out.println("Quadrat erkannt!");
-        }
-
-        // 5. check sign statistics
-
-        // rotate original
-        Point centerPoint = PipelinePrototype.calculateCenterPointOfSign(filled);
-        BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(input, centerPoint, 45);
-        ImageIO.displayImage(rotatedOriginal);
-
-        // crop original
-        BufferedImage croppedRotatedOriginal = PipelinePrototype.cropAndMaskSign(rotatedOriginal, rotatedSignGeometry);
-        ImageIO.displayImage(croppedRotatedOriginal);
-
-        //stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(croppedRotatedOriginal);
-        stats.calculateAllStatistics();
-
-        System.out.println("Calculations ended.");
-
-        // scoring
-        // TODO: rework scoring to make it more general
-        // TODO: check relativeCumulativeFrequency for two peaks with valley between, cumulate pixels in yellow and white in HSV values
-
+        System.out.println("Calulations ended.");
     }
 
     /**
      * Calls {@link PipelinePrototype#findCoordsOfSign(BufferedImage)} to find the outermost corner coordinates.
      * Calls {@link PipelinePrototype#fillInterior(BufferedImage, boolean[][], Point)} to fill the shape.
-     * Must only be called with an image after line detection with hough ({@link PipelinePrototype#lookForStraightLinesAndDraw(BufferedImage)}).
+     * Must only be called with an image after line detection with hough ({@link PipelinePrototype#lookForStraightLinesAndDraw(BufferedImage, BufferedImage)}).
      * @param image BufferedImage with lines forming a closed shape
      * @return BufferedImage with filled shape
      */
@@ -112,7 +78,7 @@ public class PipelinePrototype {
      * @param image BufferedImage
      * @return BufferedImage with the largest lines
      */
-    private static BufferedImage lookForStraightLinesAndDraw(BufferedImage image){
+    private static BufferedImage lookForStraightLinesAndDraw(BufferedImage image, BufferedImage originalImage){
         //make edge black
         int width = image.getWidth();
         int height = image.getHeight();
@@ -191,8 +157,212 @@ public class PipelinePrototype {
 
         PipelinePrototype.drawLines(g, validLines, width, height, diagonal);
 
-        //TODO: check for each signs geometry separately by excluding unused angles
 
+        // TODO: each found form should be checked individually for color/stats. write functions for triangle and octagon
+
+
+        BufferedImage trianglesImage = checkTriangleForm(image, pairs, tolerance, g, lineImage);
+        if (trianglesImage != null) {
+            g.dispose();
+            return trianglesImage;
+        }
+
+        BufferedImage octagonsImage = checkOctagonForm(image, pairs, tolerance, g, lineImage);
+        if (octagonsImage != null) {
+            g.dispose();
+            return octagonsImage;
+        }
+
+        checkRectangleForm(originalImage, pairs, tolerance);
+
+        g.dispose();
+        return lineImage;
+    }
+
+    private static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
+        // rectangle check
+        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
+        for (HoughLinePair pair : pairs){
+            if (pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) {
+                if (!validRectangleLines.contains(pair.line1)) validRectangleLines.add(pair.line1);
+                if (!validRectangleLines.contains(pair.line2)) validRectangleLines.add(pair.line2);
+            }
+        }
+
+        System.out.println("checking rectangle form...");
+        ArrayList<ArrayList<Point>> allFoundRectangles = PipelinePrototype.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+        if (!allFoundRectangles.isEmpty()){
+            System.out.println(allFoundRectangles.size() + " rectangles found...");
+            for (int i = 0; i < allFoundRectangles.size(); i++){
+                System.out.println("checking rectangle " + (i+1) + "...");
+                //TODO: check each for color and stats before drawing (no match, no sign, no reason to continue
+
+                BufferedImage rectangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                Graphics2D g = rectangleMask.createGraphics();
+                PipelinePrototype.drawEdgesAndFill(g, allFoundRectangles.get(i));
+
+                // rotate original
+                int[] coords = PipelinePrototype.findCoordsOfSign(rectangleMask);
+                int centerX = (coords[1] - coords[0]) / 2;
+                int centerY = (coords[3] - coords[2]) / 2;
+                Point centerPoint = new Point(centerX, centerY);
+                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 45);
+                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(rectangleMask, centerPoint, 45);
+
+                BufferedImage maskedSign = PipelinePrototype.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                ImageIO.displayImage(maskedSign);
+
+                if (isVorfahrtColorsAndStats(maskedSign)){
+                    // valid sign
+                    System.out.println("valid vorfahrt-sign found!");
+
+                    // TODO: mark found sign on original image
+                    Graphics2D gOriginal = originalImage.createGraphics();
+                    gOriginal.setColor(Color.GREEN);
+                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+
+                    ArrayList<Point> currentRectangle = allFoundRectangles.get(i);
+
+                    for (int j = 0; j < 4; j++) {
+                        Point pStart = currentRectangle.get(j);
+                        Point pEnd = currentRectangle.get((j + 1) % 4);
+                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                    }
+
+                    gOriginal.dispose();
+
+                    ImageIO.displayImage(originalImage);
+                    break;
+                }
+
+                g.dispose();
+            }
+        } else {
+            System.out.println("no rectangle detected!");
+        }
+    }
+
+    private static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign) {
+
+        // stats
+        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+        stats.calculateAllStatistics();
+        boolean entropyValid = (stats.getEntropy() < 3.0);
+        boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
+        int width = maskedSign.getWidth();
+        int height = maskedSign.getHeight();
+
+        int countYellowPixels = 0;
+        int countWhitePixels = 0;
+        int totalPixels = 0;
+
+        double sumXYellow = 0, sumYYellow = 0;
+        double sumXWhite = 0, sumYWhite = 0;
+
+        int innerMinX = (int) (width * 0.25);
+        int innerMaxX = (int) (width * 0.75);
+        int innerMinY = (int) (height * 0.25);
+        int innerMaxY = (int) (height * 0.75);
+
+        int whitePixelsInCenter = 0;
+
+        for (int x = 0; x < width; x++){
+            for (int y = 0; y < height; y++){
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+                totalPixels++;
+
+                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
+                double h = hsv[0];
+                double s = hsv[1];
+                double v = hsv[2];
+
+                // yellow
+                boolean isHueYellow = (h >= 35.0 && h <= 60.0);
+                boolean isSaturated = (s >= 0.3);
+                boolean isBright = (v >= 0.4);
+
+                // white
+                boolean isWhite = (s <= 0.30);
+                boolean isBrightWhite = (v >= 0.7);
+
+                if (isHueYellow && isSaturated && isBright){
+                    countYellowPixels++;
+                    sumXYellow += x;
+                    sumYYellow += y;
+                } else if (isWhite && isBrightWhite){
+                    countWhitePixels++;
+                    sumXWhite += x;
+                    sumYWhite += y;
+
+                    if (x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY){
+                        whitePixelsInCenter++;
+                    }
+                }
+            }
+        }
+
+        // evaluate
+        if (countWhitePixels == 0 || countYellowPixels == 0) return false;
+
+        // ratio yellow white
+        double ratioYellowWhite = (double) countYellowPixels / countWhitePixels;
+        boolean ratioValid = (ratioYellowWhite >= 0.5 && ratioYellowWhite <= 1);
+
+        // sign coverage
+        double signCoverage = (double) (countYellowPixels + countWhitePixels) / totalPixels;
+        boolean coverageValid = (signCoverage > 0.75);
+
+        // yellow and white center points
+        double centerXYellow = sumXYellow / countYellowPixels;
+        double centerYYellow = sumYYellow / countYellowPixels;
+        double centerXWhite = sumXWhite / countWhitePixels;
+        double centerYWhite = sumYWhite / countWhitePixels;
+
+        double centerTolerance = Math.max(width, height) * 0.10;
+        double centerDistance = Math.sqrt(Math.pow(centerXYellow - centerXWhite, 2) + Math.pow(centerYYellow - centerYWhite, 2));
+        boolean centersMatch = (centerDistance <= centerTolerance);
+
+        // white pixels in center
+        int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY);
+        boolean centerIsYellow = ((double) whitePixelsInCenter / totalCenterPixels < 0.05);
+
+        return entropyValid &&
+                medianValid &&
+                ratioValid &&
+                coverageValid &&
+                centersMatch;
+    }
+
+    private static BufferedImage checkOctagonForm(BufferedImage image, ArrayList<HoughLinePair> pairs, int tolerance, Graphics2D g, BufferedImage lineImage) {
+        // octagon check
+        ArrayList<HoughLine> validOctagonLines = new ArrayList<>();
+        for (HoughLinePair pair : pairs){
+            if ((pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) ||
+                    (pair.angleOfIntersection > 45 - tolerance && pair.angleOfIntersection < 45 + tolerance)) {
+                if (!validOctagonLines.contains(pair.line1)) validOctagonLines .add(pair.line1);
+                if (!validOctagonLines.contains(pair.line2)) validOctagonLines .add(pair.line2);
+            }
+        }
+
+        System.out.println("checking octagon form...");
+        ArrayList<ArrayList<Point>> allFoundOctagons = PipelinePrototype.detectOctagonForm(validOctagonLines, image.getWidth(), image.getHeight());
+        if (!allFoundOctagons.isEmpty()){
+            System.out.println("octagons found - drawing octagons...");
+            for (ArrayList<Point> octagon : allFoundOctagons){
+                PipelinePrototype.drawEdgesAndFill(g, octagon);
+            }
+            g.dispose();
+            return lineImage;
+        } else {
+            System.out.println("no octagon detected!");
+        }
+        return null;
+    }
+
+    private static BufferedImage checkTriangleForm(BufferedImage image, ArrayList<HoughLinePair> pairs, int tolerance, Graphics2D g, BufferedImage lineImage) {
         // triangle check
         ArrayList<HoughLine> validTriangleLines = new ArrayList<>();
         for (HoughLinePair pair : pairs){
@@ -207,199 +377,14 @@ public class PipelinePrototype {
         if (!allFoundTriangles.isEmpty()){
             System.out.println("triangles found - drawing triangles...");
             for (ArrayList<Point> triangle : allFoundTriangles){
-                PipelinePrototype.drawForm(g, triangle);
+                PipelinePrototype.drawEdgesAndFill(g, triangle);
             }
             g.dispose();
             return lineImage;
         } else {
             System.out.println("no triangle detected!");
         }
-
-        // octagon check
-        ArrayList<HoughLine> validOctagonLines = new ArrayList<>();
-        for (HoughLinePair pair : pairs){
-            if ((pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) ||
-                    (pair.angleOfIntersection > 45 - tolerance && pair.angleOfIntersection < 45 + tolerance)) {
-                if (!validOctagonLines.contains(pair.line1)) validOctagonLines .add(pair.line1);
-                if (!validOctagonLines.contains(pair.line2)) validOctagonLines .add(pair.line2);
-            }
-        }
-
-        System.out.println("checking octagon form...");
-        ArrayList<ArrayList<Point>> allFoundOctagons = PipelinePrototype.detectOctagonForm(validOctagonLines, image.getWidth(), image.getHeight());
-
-
-        // rectangle check
-        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
-        for (HoughLinePair pair : pairs){
-            if (pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) {
-                if (!validRectangleLines.contains(pair.line1)) validRectangleLines.add(pair.line1);
-                if (!validRectangleLines.contains(pair.line2)) validRectangleLines.add(pair.line2);
-            }
-        }
-        if (!allFoundOctagons.isEmpty()){
-            System.out.println("octagons found - drawing octagons...");
-            for (ArrayList<Point> octagon : allFoundOctagons){
-                PipelinePrototype.drawForm(g, octagon);
-            }
-            g.dispose();
-            return lineImage;
-        } else {
-            System.out.println("no octagon detected!");
-        }
-
-        System.out.println("checking rectangle form...");
-        ArrayList<ArrayList<Point>> allFoundRectangles = PipelinePrototype.detectRectangleForm(validRectangleLines, image.getWidth(), image.getHeight());
-        if (!allFoundRectangles.isEmpty()){
-            System.out.println("rectangles found - drawing rectangles...");
-            for (ArrayList<Point> rectangle : allFoundRectangles){
-                PipelinePrototype.drawForm(g, rectangle);
-            }
-            g.dispose();
-            return lineImage;
-        } else {
-            System.out.println("no rectangle detected!");
-        }
-
-        g.dispose();
-        return lineImage;
-
-
-        // determine sign geometry based on number of intersection angles
-//        int count90 = 0;
-//        int count60 = 0;
-//        int count45 = 0;
-//
-//        for (HoughLinePair pair : pairs) {
-//            if (pair.angleOfIntersection == 90) count90++;
-//            else if (pair.angleOfIntersection == 60) count60++;
-//            else if (pair.angleOfIntersection == 45) count45++;
-//        }
-//
-//        int edgeCountSign = 0;
-//
-//        if (count45 >= 4 && count90 >= 2) {
-//            edgeCountSign = 8;
-//        }
-//        else if (count90 >= 2 && count90 > count60) {
-//            edgeCountSign = 4;
-//        }
-//        else if (count60 >= 2) {
-//            edgeCountSign = 3;
-//        } else {
-//            // other
-//            System.err.println("No valid geometry found!");
-//        }
-
-//        for (HoughLinePair pair : pairs){
-//            int r = pair.line1.r;
-//            int phi = pair.line1.phi;
-//            int x1, x2, y1, y2;
-//            int distance = r- diagonal;
-//            double radPhi = Math.toRadians(phi);
-//
-//            if (phi > 45 && phi < 135){
-//                x1 = 0;
-//                x2 = image.getWidth();
-//
-//                y1 = (int) (distance / Math.sin(radPhi));
-//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
-//            }else {
-//                y1 = 0;
-//                y2 = image.getHeight();
-//
-//                x1 = (int) (distance / Math.cos(radPhi));
-//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
-//            }
-//
-//            g.drawLine(x1, y1, x2, y2);
-//
-//            r = pair.line2.r;
-//            phi = pair.line2.phi;
-//            distance = r- diagonal;
-//            radPhi = Math.toRadians(phi);
-//
-//            if (phi > 45 && phi < 135){
-//                x1 = 0;
-//                x2 = image.getWidth();
-//
-//                y1 = (int) (distance / Math.sin(radPhi));
-//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
-//            }else {
-//                y1 = 0;
-//                y2 = image.getHeight();
-//
-//                x1 = (int) (distance / Math.cos(radPhi));
-//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
-//            }
-//
-//            g.drawLine(x1, y1, x2, y2);
-//        }
-
-
-        //ArrayList<Integer> directions = PipelinePrototype.getDirections(lines);
-
-        // find valid lines based on distance to other lines and number of parallel lines in a sign
-//        ArrayList<HoughLine> validLines = new ArrayList<>();
-//
-//        if (edgeCountSign == 3) {
-//
-//            for (HoughLinePair pair : pairs) {
-//                if (pair.angleOfIntersection == 60){
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 1)) validLines.add(pair.line1);
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 1)) validLines.add(pair.line2);
-//                    if (validLines.size() >= 3) break;
-//                }
-//            }
-//
-//        } else if (edgeCountSign == 4) {
-//
-//            for (HoughLinePair pair : pairs) {
-//                if (pair.angleOfIntersection == 90){
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
-//                    if (validLines.size() >= 4) break;
-//                }
-//            }
-//        } else if (edgeCountSign == 8){
-//
-//            for (HoughLinePair pair : pairs) {
-//                if (pair.angleOfIntersection == 45 || pair.angleOfIntersection == 90){
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line1, 2)) validLines.add(pair.line1);
-//                    if (PipelinePrototype.isLineValid(tolerance, validLines, pair.line2, 2)) validLines.add(pair.line2);
-//                    if (validLines.size() >= 8) break;
-//                }
-//            }
-//        }
-//
-//        // draw valid lines
-//        for (HoughLine line : validLines){
-//            int r = line.r;
-//            int phi = line.phi;
-//            int x1, x2, y1, y2;
-//            int distance = r- diagonal;
-//            double radPhi = Math.toRadians(phi);
-//
-//            if (phi > 45 && phi < 135){
-//                x1 = 0;
-//                x2 = image.getWidth();
-//
-//                y1 = (int) (distance / Math.sin(radPhi));
-//                y2 = (int) ((distance - x2 * Math.cos(radPhi)) / Math.sin(radPhi));
-//            }else {
-//                y1 = 0;
-//                y2 = image.getHeight();
-//
-//                x1 = (int) (distance / Math.cos(radPhi));
-//                x2 = (int) ((distance - y2 * Math.sin(radPhi)) / Math.cos(radPhi));
-//            }
-//
-//            g.drawLine(x1, y1, x2, y2);
-//        }
-//
-//        g.dispose();
-//
-//        return lineImage;
+        return null;
     }
 
     /**
@@ -444,7 +429,7 @@ public class PipelinePrototype {
      * @param g2d Graphics2D
      * @param vertices ArrayList<Point>
      */
-    public static void drawForm(Graphics2D g2d, ArrayList<Point> vertices) {
+    public static void drawEdgesAndFill(Graphics2D g2d, ArrayList<Point> vertices) {
         int numPoints = vertices.size();
         int[] xPoints = new int[numPoints];
         int[] yPoints = new int[numPoints];
@@ -1236,7 +1221,8 @@ public class PipelinePrototype {
         Queue<Point> queue = new LinkedList<>();
 
         visited[startPoint.x][startPoint.y] = true;
-        image.setRGB(startPoint.x, startPoint.y, 0xFFFFFFFF);
+        BufferedImage newImage = ImageIO.copyBufferedImage(image);
+        newImage.setRGB(startPoint.x, startPoint.y, 0xFFFFFFFF);
         queue.add(startPoint);
 
         // 4 cardinal directions
@@ -1251,21 +1237,21 @@ public class PipelinePrototype {
                 int neighbourY = currentPoint.y + dy[i];
 
                 // check bounds
-                if (neighbourX < 0 || neighbourX >= image.getWidth() || neighbourY < 0 || neighbourY >= image.getHeight()) {
+                if (neighbourX < 0 || neighbourX >= newImage.getWidth() || neighbourY < 0 || neighbourY >= newImage.getHeight()) {
                     continue;
                 }
 
-                int neighbourValue = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(neighbourX, neighbourY));
+                int neighbourValue = GlobalHelperFunctions.calculateGrayValueFromRGB(newImage.getRGB(neighbourX, neighbourY));
 
                 if (neighbourValue == 0 && !visited[neighbourX][neighbourY]) {
                     visited[neighbourX][neighbourY] = true;
-                    image.setRGB(neighbourX, neighbourY, 0xFFFFFFFF);
+                    newImage.setRGB(neighbourX, neighbourY, 0xFFFFFFFF);
 
                     queue.add(new Point(neighbourX, neighbourY));
                 }
             }
         }
-        return image;
+        return newImage;
     }
 
     /**
