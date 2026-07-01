@@ -1,6 +1,5 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Array;
 import java.util.*;
 
 public class PipelinePrototype {
@@ -8,7 +7,7 @@ public class PipelinePrototype {
     public static void vorfahrt(){
         // 1. read image
         String filenamePPMImage = "sign.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/V.jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/P.jpg", filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
@@ -156,22 +155,15 @@ public class PipelinePrototype {
         }
 
         PipelinePrototype.drawLines(g, validLines, width, height, diagonal);
+        ImageIO.displayImage(lineImage);
 
 
         // TODO: each found form should be checked individually for color/stats. write functions for triangle and octagon
 
 
-        BufferedImage trianglesImage = checkTriangleForm(image, pairs, tolerance, g, lineImage);
-        if (trianglesImage != null) {
-            g.dispose();
-            return trianglesImage;
-        }
+        checkTriangleForm(originalImage, pairs, tolerance);
 
-        BufferedImage octagonsImage = checkOctagonForm(image, pairs, tolerance, g, lineImage);
-        if (octagonsImage != null) {
-            g.dispose();
-            return octagonsImage;
-        }
+        checkOctagonForm(originalImage, pairs, tolerance);
 
         checkRectangleForm(originalImage, pairs, tolerance);
 
@@ -179,6 +171,15 @@ public class PipelinePrototype {
         return lineImage;
     }
 
+    /**
+     * Validates lines of rectangle based on intersection angles of pairs.
+     * Validates form of rectangle by calling {@link PipelinePrototype#detectRectangleForm(ArrayList, int, int)}.
+     * Calls {@link PipelinePrototype#isVorfahrtsstraßeColorsAndStats(BufferedImage)}.
+     * Draws bounds of sign on original if found.
+     * @param originalImage BufferedImage original
+     * @param pairs ArrayList<HoughLinePair> pairs of lines
+     * @param tolerance int tolerance for intersection angle
+     */
     private static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
         // rectangle check
         ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
@@ -210,11 +211,12 @@ public class PipelinePrototype {
                 BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(rectangleMask, centerPoint, 45);
 
                 BufferedImage maskedSign = PipelinePrototype.cropAndMaskSign(rotatedOriginal, rotatedMask);
-                ImageIO.displayImage(maskedSign);
+                if (maskedSign == null) continue;
+                //ImageIO.displayImage(maskedSign);
 
-                if (isVorfahrtColorsAndStats(maskedSign)){
+                if (isVorfahrtsstraßeColorsAndStats(maskedSign)){
                     // valid sign
-                    System.out.println("valid vorfahrt-sign found!");
+                    System.out.println("valid vorfahrtstraße-sign found!");
 
                     // TODO: mark found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -242,7 +244,13 @@ public class PipelinePrototype {
         }
     }
 
-    private static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign) {
+    /**
+     * Checks entropy and colours of Rectangle to determine if it is a vorfahrtstraße-sign.
+     * Checks: ratio yellow white, area coverage of yellow white, center points of yellow white, white pixels in center.
+     * @param maskedSign BufferedImage rectangle to check
+     * @return boolean if vorfahrtstraße-sign
+     */
+    private static boolean isVorfahrtsstraßeColorsAndStats(BufferedImage maskedSign) {
 
         // stats
         DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
@@ -336,7 +344,16 @@ public class PipelinePrototype {
                 centersMatch;
     }
 
-    private static BufferedImage checkOctagonForm(BufferedImage image, ArrayList<HoughLinePair> pairs, int tolerance, Graphics2D g, BufferedImage lineImage) {
+    /**
+     * Validates lines of octagon based on intersection angles of pairs.
+     * Validates form of octagon by calling {@link PipelinePrototype#detectOctagonForm(ArrayList, int, int)}.
+     * Calls {@link PipelinePrototype#isStoppColorAndStats(BufferedImage)}.
+     * Draws bounds of sign on original if found.
+     * @param originalImage BufferedImage original
+     * @param pairs ArrayList<HoughLinePair> pairs of lines
+     * @param tolerance int tolerance for intersection angle
+     */
+    private static void checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
         // octagon check
         ArrayList<HoughLine> validOctagonLines = new ArrayList<>();
         for (HoughLinePair pair : pairs){
@@ -348,21 +365,152 @@ public class PipelinePrototype {
         }
 
         System.out.println("checking octagon form...");
-        ArrayList<ArrayList<Point>> allFoundOctagons = PipelinePrototype.detectOctagonForm(validOctagonLines, image.getWidth(), image.getHeight());
+        ArrayList<ArrayList<Point>> allFoundOctagons = PipelinePrototype.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
         if (!allFoundOctagons.isEmpty()){
-            System.out.println("octagons found - drawing octagons...");
-            for (ArrayList<Point> octagon : allFoundOctagons){
-                PipelinePrototype.drawEdgesAndFill(g, octagon);
+            System.out.println(allFoundOctagons.size() + " octagons found...");
+            for (int i = 0; i < allFoundOctagons.size(); i++){
+                System.out.println("checking octagon " + (i+1) + "...");
+                //TODO: check each for color and stats before drawing (no match, no sign, no reason to continue
+
+                BufferedImage octagonMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                Graphics2D g = octagonMask.createGraphics();
+                PipelinePrototype.drawEdgesAndFill(g, allFoundOctagons.get(i));
+
+                // rotate original
+                int[] coords = PipelinePrototype.findCoordsOfSign(octagonMask);
+                int centerX = (coords[1] - coords[0]) / 2;
+                int centerY = (coords[3] - coords[2]) / 2;
+                Point centerPoint = new Point(centerX, centerY);
+                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 90);
+                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(octagonMask, centerPoint, 90);
+
+                BufferedImage maskedSign = PipelinePrototype.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                ImageIO.displayImage(maskedSign);
+
+                if (isStoppColorAndStats(maskedSign)){
+                    // valid sign
+                    System.out.println("valid stopp-sign found!");
+
+                    // TODO: mark found sign on original image
+                    Graphics2D gOriginal = originalImage.createGraphics();
+                    gOriginal.setColor(Color.GREEN);
+                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+
+                    ArrayList<Point> currentTriangle = allFoundOctagons.get(i);
+
+                    for (int j = 0; j < 8; j++) {
+                        Point pStart = currentTriangle.get(j);
+                        Point pEnd = currentTriangle.get((j + 1) % 8);
+                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                    }
+
+                    gOriginal.dispose();
+
+                    ImageIO.displayImage(originalImage);
+                    break;
+                }
+
+                g.dispose();
             }
-            g.dispose();
-            return lineImage;
         } else {
             System.out.println("no octagon detected!");
         }
-        return null;
     }
 
-    private static BufferedImage checkTriangleForm(BufferedImage image, ArrayList<HoughLinePair> pairs, int tolerance, Graphics2D g, BufferedImage lineImage) {
+    /**
+     * Checks entropy and colours of octagon to determine if it is a stopp-sign.
+     * Checks: entropy, ratio red white, area coverage of red white, center point of red.
+     * @param maskedSign BufferedImage octagon to check
+     * @return boolean if stopp-sign
+     */
+    private static boolean isStoppColorAndStats(BufferedImage maskedSign) {
+
+        // stats
+        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+        stats.calculateAllStatistics();
+        boolean entropyValid = (stats.getEntropy() < 3.3);
+        //boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
+        int width = maskedSign.getWidth();
+        int height = maskedSign.getHeight();
+
+        int countRedPixels = 0;
+        int countWhitePixels = 0;
+        int totalPixels = 0;
+
+        double sumXRed = 0, sumYRed = 0;
+
+        for (int x = 0; x < width; x++){
+            for (int y = 0; y < height; y++){
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+                totalPixels++;
+
+                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
+                double h = hsv[0];
+                double s = hsv[1];
+                double v = hsv[2];
+
+                // red
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isSaturated = (s >= 0.3);
+                boolean isBright = (v >= 0.4);
+
+                // white
+                boolean isWhite = (s <= 0.30);
+                boolean isBrightWhite = (v >= 0.7);
+
+                if (isHueRed && isSaturated && isBright){
+                    countRedPixels++;
+                    sumXRed += x;
+                    sumYRed += y;
+
+                } else if (isWhite && isBrightWhite){
+                    countWhitePixels++;
+
+                }
+            }
+        }
+
+        // evaluate
+        if (countWhitePixels == 0 || countRedPixels == 0) return false;
+
+        // ratio red white
+        double ratioRedWhite = (double) countRedPixels / countWhitePixels;
+        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 2.3);
+
+        // sign coverage
+        double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
+        boolean coverageValid = (signCoverage > 0.90);
+
+        // center red
+        double centerXRed = sumXRed / countRedPixels;
+        double centerYRed = sumYRed / countRedPixels;
+        double expectedCenterX = width / 2.0;
+        double expectedCenterY = height / 2.0;
+
+        double tolerance = Math.max(width, height) * 0.07;
+        double distance = Math.sqrt(Math.pow(centerXRed - expectedCenterX, 2) + Math.pow(centerYRed - expectedCenterY, 2));
+        boolean redIsCentered = (distance <= tolerance);
+
+        return entropyValid &&
+                //medianValid &&
+                ratioValid &&
+                coverageValid &&
+                redIsCentered;
+    }
+
+    /**
+     * Validates lines of triangle based on intersection angles of pairs.
+     * Validates form of triangle by calling {@link PipelinePrototype#detectTriangleForm(ArrayList, int, int)}.
+     * Calls {@link PipelinePrototype#isVorfahrtAchtenColorsAndStats(BufferedImage)} and {@link PipelinePrototype#isVorfahrtColorsAndStats(BufferedImage)}.
+     * Draws bounds of sign on original if found.
+     * @param originalImage BufferedImage original
+     * @param pairs ArrayList<HoughLinePair> pairs of lines
+     * @param tolerance int tolerance for intersection angle
+     */
+    private static void checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
         // triangle check
         ArrayList<HoughLine> validTriangleLines = new ArrayList<>();
         for (HoughLinePair pair : pairs){
@@ -373,18 +521,273 @@ public class PipelinePrototype {
         }
 
         System.out.println("checking triangle form...");
-        ArrayList<ArrayList<Point>> allFoundTriangles = PipelinePrototype.detectTriangleForm(validTriangleLines, image.getWidth(), image.getHeight());
+        ArrayList<ArrayList<Point>> allFoundTriangles = PipelinePrototype.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
         if (!allFoundTriangles.isEmpty()){
-            System.out.println("triangles found - drawing triangles...");
-            for (ArrayList<Point> triangle : allFoundTriangles){
-                PipelinePrototype.drawEdgesAndFill(g, triangle);
+            System.out.println(allFoundTriangles.size() + " triangles found...");
+            for (int i = 0; i < allFoundTriangles.size(); i++){
+                System.out.println("checking triangle " + (i+1) + "...");
+                //TODO: check each for color and stats before drawing (no match, no sign, no reason to continue
+
+                BufferedImage triangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                Graphics2D g = triangleMask.createGraphics();
+                PipelinePrototype.drawEdgesAndFill(g, allFoundTriangles.get(i));
+
+                // rotate original
+                int[] coords = PipelinePrototype.findCoordsOfSign(triangleMask);
+                int centerX = (coords[1] - coords[0]) / 2;
+                int centerY = (coords[3] - coords[2]) / 2;
+                Point centerPoint = new Point(centerX, centerY);
+                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 60);
+                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(triangleMask, centerPoint, 60);
+
+                BufferedImage maskedSign = PipelinePrototype.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                ImageIO.displayImage(maskedSign);
+
+                if (isVorfahrtAchtenColorsAndStats(maskedSign) || isVorfahrtColorsAndStats(maskedSign)){
+                    // valid sign
+                    System.out.println("valid vorfahrt-achten-sign found!");
+
+                    // TODO: mark found sign on original image
+                    Graphics2D gOriginal = originalImage.createGraphics();
+                    gOriginal.setColor(Color.GREEN);
+                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+
+                    ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
+
+                    for (int j = 0; j < 3; j++) {
+                        Point pStart = currentTriangle.get(j);
+                        Point pEnd = currentTriangle.get((j + 1) % 3);
+                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                    }
+
+                    gOriginal.dispose();
+
+                    ImageIO.displayImage(originalImage);
+                    break;
+                }
+
+                g.dispose();
+
             }
-            g.dispose();
-            return lineImage;
         } else {
             System.out.println("no triangle detected!");
         }
-        return null;
+    }
+
+    /**
+     * Checks entropy and colours of triangle to determine if it is a vorfahrt-sign.
+     * Checks: entropy, ratio red white, area coverage of red white, center points of red white, red pixels in center, black pixels in center.
+     * @param maskedSign BufferedImage octagon to check
+     * @return boolean if vorfahrt-sign
+     */
+    private static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign) {
+
+        // stats
+        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+        stats.calculateAllStatistics();
+        boolean entropyValid = (stats.getEntropy() < 3.3);
+        //boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
+        int width = maskedSign.getWidth();
+        int height = maskedSign.getHeight();
+
+        int countRedPixels = 0;
+        int countWhitePixels = 0;
+        int totalPixels = 0;
+
+        double sumXRed = 0, sumYRed = 0;
+        double sumXWhite = 0, sumYWhite = 0;
+
+        int innerMinX = (int) (width * 0.25);
+        int innerMaxX = (int) (width * 0.75);
+        int innerMinY = (int) (height * 0.25);
+        int innerMaxY = (int) (height * 0.75);
+
+        int redPixelsInCenter = 0;
+        int blackPixelsInCenter = 0;
+
+        for (int x = 0; x < width; x++){
+            for (int y = 0; y < height; y++){
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+                totalPixels++;
+
+                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
+                double h = hsv[0];
+                double s = hsv[1];
+                double v = hsv[2];
+
+                // red
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isSaturated = (s >= 0.3);
+                boolean isBright = (v >= 0.4);
+
+                // white
+                boolean isWhite = (s <= 0.30);
+                boolean isBrightWhite = (v >= 0.7);
+
+                // black
+                boolean isBlack = (s <= 0.30);
+                boolean isPitchBlack = (v <= 0.2);
+
+                boolean innerPixel = x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY;
+                if (isHueRed && isSaturated && isBright){
+                    countRedPixels++;
+                    sumXRed += x;
+                    sumYRed += y;
+
+                    if (innerPixel){
+                        redPixelsInCenter++;
+                    }
+                } else if (isWhite && isBrightWhite){
+                    countWhitePixels++;
+                    sumXWhite += x;
+                    sumYWhite += y;
+                } else if (isBlack && isPitchBlack) {
+                    if (innerPixel){
+                        blackPixelsInCenter++;
+                    }
+                }
+            }
+        }
+
+        // evaluate
+        if (countWhitePixels == 0 || countRedPixels == 0) return false;
+
+        // ratio red white
+        double ratioRedWhite = (double) countRedPixels / countWhitePixels;
+        boolean ratioValid = (ratioRedWhite >= 1.0 && ratioRedWhite <= 1.5);
+
+        // sign coverage
+        double signCoverage = (double) (countRedPixels + countWhitePixels + blackPixelsInCenter) / totalPixels;
+        boolean coverageValid = (signCoverage > 0.75);
+
+        // red and white center points
+        double centerXRed = sumXRed / countRedPixels;
+        double centerYRed = sumYRed / countRedPixels;
+        double centerXWhite = sumXWhite / countWhitePixels;
+        double centerYWhite = sumYWhite / countWhitePixels;
+
+        double centerTolerance = Math.max(width, height) * 0.10;
+        double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
+        boolean centersMatch = (centerDistance <= centerTolerance);
+
+        // red pixels in center
+        int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY) / 2;
+        boolean centerIsRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+
+        // black pixels in center
+        boolean centerHasBlack = ((double) blackPixelsInCenter / totalCenterPixels > 0.2);
+
+        return entropyValid &&
+                //medianValid &&
+                ratioValid &&
+                coverageValid &&
+                centersMatch &&
+                !centerIsRed &&
+                centerHasBlack;
+    }
+
+    /**
+     * Checks entropy and colours of triangle to determine if it is a vorfahrt-achten-sign.
+     * Checks: entropy, ratio red white, area coverage of red white, center points of red white, red pixels in center.
+     * @param maskedSign BufferedImage octagon to check
+     * @return boolean if vorfahrt-achten-sign
+     */
+    private static boolean isVorfahrtAchtenColorsAndStats(BufferedImage maskedSign) {
+
+        // stats
+        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+        stats.calculateAllStatistics();
+        boolean entropyValid = (stats.getEntropy() < 3.3);
+        //boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
+        int width = maskedSign.getWidth();
+        int height = maskedSign.getHeight();
+
+        int countRedPixels = 0;
+        int countWhitePixels = 0;
+        int totalPixels = 0;
+
+        double sumXRed = 0, sumYRed = 0;
+        double sumXWhite = 0, sumYWhite = 0;
+
+        int innerMinX = (int) (width * 0.25);
+        int innerMaxX = (int) (width * 0.75);
+        int innerMinY = (int) (height * 0.25);
+        int innerMaxY = (int) (height * 0.75);
+
+        int redPixelsInCenter = 0;
+
+        for (int x = 0; x < width; x++){
+            for (int y = 0; y < height; y++){
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+                totalPixels++;
+
+                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
+                double h = hsv[0];
+                double s = hsv[1];
+                double v = hsv[2];
+
+                // red
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isSaturated = (s >= 0.3);
+                boolean isBright = (v >= 0.4);
+
+                // white
+                boolean isWhite = (s <= 0.30);
+                boolean isBrightWhite = (v >= 0.7);
+
+                if (isHueRed && isSaturated && isBright){
+                    countRedPixels++;
+                    sumXRed += x;
+                    sumYRed += y;
+
+                    if (x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY){
+                        redPixelsInCenter++;
+                    }
+                } else if (isWhite && isBrightWhite){
+                    countWhitePixels++;
+                    sumXWhite += x;
+                    sumYWhite += y;
+                }
+            }
+        }
+
+        // evaluate
+        if (countWhitePixels == 0 || countRedPixels == 0) return false;
+
+        // ratio red white
+        double ratioRedWhite = (double) countRedPixels / countWhitePixels;
+        boolean ratioValid = (ratioRedWhite >= 0.75 && ratioRedWhite <= 1.25);
+
+        // sign coverage
+        double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
+        boolean coverageValid = (signCoverage > 0.75);
+
+        // red and white center points
+        double centerXRed = sumXRed / countRedPixels;
+        double centerYRed = sumYRed / countRedPixels;
+        double centerXWhite = sumXWhite / countWhitePixels;
+        double centerYWhite = sumYWhite / countWhitePixels;
+
+        double centerTolerance = Math.max(width, height) * 0.10;
+        double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
+        boolean centersMatch = (centerDistance <= centerTolerance);
+
+        // red pixels in center
+        int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY) / 2;
+        boolean centerIsRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+
+        return entropyValid &&
+              //medianValid &&
+                ratioValid &&
+                coverageValid &&
+                !centerIsRed &&
+                centersMatch;
     }
 
     /**
@@ -786,6 +1189,14 @@ public class PipelinePrototype {
         return allFoundTriangles;
     }
 
+    /**
+     * Helper to check if pAB is inside the image with tolerance.
+     * @param pAB Point
+     * @param width int
+     * @param height int
+     * @param t int
+     * @return boolean if pAB is inside the image
+     */
     private static boolean isInsideImage(Point pAB, int width, int height, int t) {
         return (pAB.x < (width+t) && pAB.x > (-t)) && (pAB.y < (height+t) && pAB.y > -t);
     }
@@ -817,6 +1228,14 @@ public class PipelinePrototype {
         return new Point(x, y);
     }
 
+    /**
+     * Checks if four HoughLines form a rectangle.
+     * @param a HoughLine
+     * @param b HoughLine
+     * @param c HoughLine
+     * @param d HoughLine
+     * @return boolean if lines form a rectangle
+     */
     private static boolean isRectangleAngles(HoughLine a, HoughLine b, HoughLine c, HoughLine d) {
         int[] phi = {a.phi, b.phi, c.phi, d.phi};
         Arrays.sort(phi);
@@ -1387,6 +1806,10 @@ public class PipelinePrototype {
             }
         }
 
+        if (values[0] == image.getWidth() - 1 && values[1] == 0 && values[2] == image.getHeight() - 1 && values[3] == 0) {
+            return null;
+        }
+
         return values;
     }
 
@@ -1399,6 +1822,7 @@ public class PipelinePrototype {
      */
     public static BufferedImage cropAndMaskSign(BufferedImage image, BufferedImage mask) {
         int[] coordsOfSign = PipelinePrototype.findCoordsOfSign(mask);
+        if (coordsOfSign == null) return null;
         int xMin = coordsOfSign[0];
         int xMax = coordsOfSign[1];
         int yMin = coordsOfSign[2];
