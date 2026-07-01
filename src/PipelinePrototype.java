@@ -4,10 +4,10 @@ import java.util.*;
 
 public class PipelinePrototype {
 
-    public static void vorfahrt(){
+    public static void findSign(String filename){
         // 1. read image
         String filenamePPMImage = "sign.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM("pics/sample/P.jpg", filenamePPMImage);
+        BufferedImage input = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
         ImageIO.displayImage(input);
 
