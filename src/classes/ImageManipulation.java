@@ -1,5 +1,8 @@
+package classes;
+
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class ImageManipulation {
 
@@ -18,9 +21,7 @@ public class ImageManipulation {
 
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
         int[] lookUpTable = new int[grayScaleImage.getWidth() * grayScaleImage.getHeight()];
-        for (int i = 0; i < lookUpTable.length; i++) {
-            lookUpTable[i] = -1;
-        }
+        Arrays.fill(lookUpTable, -1);
 
         double c = c1*c2;
 

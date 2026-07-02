@@ -1,3 +1,5 @@
+package classes;
+
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 
@@ -22,7 +24,7 @@ public class DescriptiveStatistics {
      * Values calculated later get set to -1 to allow for checks
      * @param image the image to perform the statistical calculations on
      */
-    DescriptiveStatistics(BufferedImage image) {
+    public DescriptiveStatistics(BufferedImage image) {
         this.image = image;
         this.width = image.getWidth();
         this.height = image.getHeight();
@@ -52,7 +54,7 @@ public class DescriptiveStatistics {
      * {@link #calculateRelativeFrequencyArray()}
      * {@link #calculateRelativeCumulativeFrequencyArray()}
      */
-    void calculateAllStatistics() {
+    public void calculateAllStatistics() {
         this.calculateGrayValueMatrix();
         this.calculateCoOccurrenceMatrix();
         this.calculateMean();
@@ -68,7 +70,7 @@ public class DescriptiveStatistics {
      * {@code @Link} #timestep(String, Runnable)
      */
     void timeCalculationOfAllStatistics() {
-        System.out.println("\n--- Starting Statistics Pipeline ---\n");
+        System.out.println("\n--- Starting Statistics classes.Pipeline ---\n");
 
         timeStep("Gray Value Matrix",     this::calculateGrayValueMatrix);
         timeStep("Co-occurrence Matrix",  this::calculateCoOccurrenceMatrix);
@@ -325,9 +327,7 @@ public class DescriptiveStatistics {
         Integer[] grayValueArray = matrixToArray(this.grayValueMatrix);
         Integer[] amounts = new Integer[256];
 
-        for (int i = 0; i < amounts.length; i++) {
-            amounts[i] = 0;
-        }
+        Arrays.fill(amounts, 0);
 
         for (Integer integer : grayValueArray) {
             amounts[integer]++;

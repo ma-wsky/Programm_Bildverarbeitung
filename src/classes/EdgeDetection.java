@@ -1,7 +1,9 @@
+package classes;
+
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 
-public class Convolution {
+public class EdgeDetection {
 
     /**
      * Performs moving mean algorithm with custom mask.
@@ -58,7 +60,7 @@ public class Convolution {
 
     /**
      * Calculates the mask for a gaussianLowPass using the two-dimensional gaussian distribution.
-     * Calls {@link Convolution#movingMean(BufferedImage, double[][])} to perform algorithm on image.
+     * Calls {@link EdgeDetection#movingMean(BufferedImage, double[][])} to perform algorithm on image.
      * Checks for invalid maskSize.
      * @param image BufferedImage to receive low pass
      * @param maskSize size of the mask in x or y direction
@@ -85,7 +87,7 @@ public class Convolution {
             }
         }
 
-        return Convolution.movingMean(image, mask);
+        return EdgeDetection.movingMean(image, mask);
     }
 
     /**
@@ -214,14 +216,39 @@ public class Convolution {
 
     /**
      * Find edges in image using laplace operator.
-     * Calls {@link Convolution#differenceOperator(BufferedImage, double[][])} with the laplace operator.
+     * Calls {@link EdgeDetection#differenceOperator(BufferedImage, double[][])} with the laplace operator.
      * @param image BufferedImage to find edges in
      * @return BufferedImage with found edges
      */
     public static BufferedImage laplaceFilter(BufferedImage image){
         double[][] mask = {{1, 1, 1}, {1, -8, 1}, {1, 1, 1}};
 
-        return Convolution.differenceOperator(image, mask);
+        return EdgeDetection.differenceOperator(image, mask);
+    }
+
+    /**
+     * Performs the Hough transformation on an image.
+     * Calls {@link GlobalHelperFunctions#calculateGrayValueFromRGB(int)}
+     * @param image BufferedImage to perform on
+     * @return int[][] Hough room matrix
+     */
+    public static int[][] houghTransformation(BufferedImage image){
+        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(image.getHeight(), 2) + Math.pow(image.getWidth(), 2)));
+        int[][] accumulator = new int[180][2*diagonal];
+
+        for (int x = 0; x < image.getWidth(); x++){
+            for (int y = 0; y < image.getHeight(); y++){
+                int grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y));
+                if (grayValue == 255){
+                    for (int phi = 0; phi < 180; phi++){
+                        int r = (int) (x * Math.cos(Math.toRadians(phi)) + y * Math.sin(Math.toRadians(phi)));
+                        r += diagonal;
+                        accumulator[phi][r] += 1;
+                    }
+                }
+            }
+        }
+        return accumulator;
     }
 
 

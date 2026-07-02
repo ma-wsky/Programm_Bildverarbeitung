@@ -1,3 +1,5 @@
+package classes;
+
 public class GlobalHelperFunctions {
 
     public static int calculateGrayValueFromRGB(int rgb){

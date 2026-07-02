@@ -1,3 +1,5 @@
+package classes.Pipeline;
+
 public class HoughLine implements Comparable<HoughLine>{
 
     public final int phi;

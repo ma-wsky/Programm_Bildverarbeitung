@@ -1,3 +1,5 @@
+package classes.Pipeline;
+
 public class HoughLinePair {
 
     public final HoughLine line1;
