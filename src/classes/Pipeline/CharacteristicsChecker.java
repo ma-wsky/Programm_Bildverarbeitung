@@ -17,8 +17,8 @@ public class CharacteristicsChecker {
         // stats
         DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
         stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.0);
-        boolean medianValid = (stats.getMedian() > 200);
+        boolean entropyValid = (stats.getEntropy() < 3.0); // TODO: entropy is high (6.5) for pixelated low quality images
+        boolean medianValid = (stats.getMedian() > 200); // TODO: median too low for underexposed images
 
         // accumulate colour pixels
         int width = maskedSign.getWidth();
@@ -56,7 +56,7 @@ public class CharacteristicsChecker {
 
                 // white
                 boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.7);
+                boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7
 
                 if (isHueYellow && isSaturated && isBright){
                     countYellowPixels++;
@@ -79,7 +79,7 @@ public class CharacteristicsChecker {
 
         // ratio yellow white
         double ratioYellowWhite = (double) countYellowPixels / countWhitePixels;
-        boolean ratioValid = (ratioYellowWhite >= 0.5 && ratioYellowWhite <= 1);
+        boolean ratioValid = (ratioYellowWhite >= 0.4 && ratioYellowWhite <= 1);
 
         // sign coverage
         double signCoverage = (double) (countYellowPixels + countWhitePixels) / totalPixels;
@@ -99,8 +99,8 @@ public class CharacteristicsChecker {
         int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY);
         boolean centerIsYellow = ((double) whitePixelsInCenter / totalCenterPixels < 0.05);
 
-        return entropyValid &&
-                medianValid &&
+        return //entropyValid &&
+               //medianValid &&
                 ratioValid &&
                 coverageValid &&
                 centerIsYellow &&
@@ -119,7 +119,7 @@ public class CharacteristicsChecker {
         DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
         stats.calculateAllStatistics();
         boolean entropyValid = (stats.getEntropy() < 3.3);
-        //boolean medianValid = (stats.getMedian() > 200);
+        boolean medianValid = (stats.getMedian() > 200); //TODO: median in photos is too low due to lighting
 
         // accumulate colour pixels
         int width = maskedSign.getWidth();
@@ -168,7 +168,7 @@ public class CharacteristicsChecker {
 
         // ratio red white
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
-        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 2.3);
+        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 4.5);
 
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
@@ -238,14 +238,14 @@ public class CharacteristicsChecker {
                 // red
                 boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
                 boolean isSaturated = (s >= 0.3);
-                boolean isBright = (v >= 0.4);
+                boolean isBright = (v >= 0.3); //TODO: prev: 0.4
 
                 // white
                 boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.7);
+                boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7
 
                 // black
-                boolean isBlack = (s <= 0.30);
+                boolean isBlack = (s <= 0.50); //TODO: prev: 0.3, in real photos black is never not saturated due to lighting
                 boolean isPitchBlack = (v <= 0.2);
 
                 boolean innerPixel = x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY;
@@ -297,7 +297,7 @@ public class CharacteristicsChecker {
         // black pixels in center
         boolean centerHasBlack = ((double) blackPixelsInCenter / totalCenterPixels > 0.2);
 
-        return entropyValid &&
+        return //entropyValid &&
                 //medianValid &&
                 ratioValid &&
                 coverageValid &&
@@ -317,8 +317,8 @@ public class CharacteristicsChecker {
         // stats
         DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
         stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.3);
-        //boolean medianValid = (stats.getMedian() > 200);
+        boolean entropyValid = (stats.getEntropy() < 3.3); //TODO: entropy is high (>4) for real life photographs
+        boolean medianValid = (stats.getMedian() > 200);
 
         // accumulate colour pixels
         int width = maskedSign.getWidth();
@@ -356,7 +356,7 @@ public class CharacteristicsChecker {
 
                 // white
                 boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.7);
+                boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7 -> real life photos can be dark
 
                 if (isHueRed && isSaturated && isBright){
                     countRedPixels++;
@@ -379,7 +379,7 @@ public class CharacteristicsChecker {
 
         // ratio red white
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
-        boolean ratioValid = (ratioRedWhite >= 0.75 && ratioRedWhite <= 1.25);
+        boolean ratioValid = (ratioRedWhite >= 0.75 && ratioRedWhite <= 1.5);
 
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
@@ -399,7 +399,7 @@ public class CharacteristicsChecker {
         int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY) / 2;
         boolean centerIsRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
 
-        return entropyValid &&
+        return //entropyValid &&
                 //medianValid &&
                 ratioValid &&
                 coverageValid &&

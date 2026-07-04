@@ -55,7 +55,7 @@ public class FormChecker {
 
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(rotatedOriginal, rotatedMask);
                 if (maskedSign == null) continue;
-                //classes.ImageIO.displayImage(maskedSign);
+                classes.ImageIO.displayImage(maskedSign);
 
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
                     // valid sign
@@ -129,6 +129,7 @@ public class FormChecker {
                 BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(triangleMask, centerPoint, 60);
 
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                if (maskedSign == null) continue;
                 ImageIO.displayImage(maskedSign);
 
                 if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign) || CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign)){
@@ -447,51 +448,30 @@ public class FormChecker {
                         }
 
                         // sort into parallel groups
-
                         ArrayList<HoughLine> group1 = new ArrayList<>();
-
                         ArrayList<HoughLine> group2 = new ArrayList<>();
-
                         group1.add(a);
 
-
                         HoughLine[] remaining = {b, c, d};
-
                         int toleranz = 10;
 
-
                         for (HoughLine line : remaining) {
-
                             int diff = Math.abs(line.phi - a.phi);
-
                             if (diff > 90) diff = 180 - diff;
 
-
                             if (diff <= toleranz) {
-
                                 group1.add(line);
-
                             } else {
-
                                 group2.add(line);
-
                             }
-
                         }
-
 
                         if (group1.size() != 2 || group2.size() != 2) {
-
                             continue;
-
                         }
-
                         HoughLine h1 = group1.get(0);
-
                         HoughLine h2 = group1.get(1);
-
                         HoughLine v1 = group2.get(0);
-
                         HoughLine v2 = group2.get(1);
 
                         // check intersections
@@ -516,7 +496,7 @@ public class FormChecker {
                             double s4 = p4.distance(p1);
 
                             if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength) {
-                                double t = 0.1;
+                                double t = 0.2;
                                 double maxSide = Math.max(Math.max(s1, s2), Math.max(s3, s4));
                                 double minSide = Math.min(Math.min(s1, s2), Math.min(s3, s4));
                                 double ratio = minSide/maxSide;
@@ -584,7 +564,7 @@ public class FormChecker {
                         double side3 = pAC.distance(pAB);
 
                         if (side1 >= minSideLength && side2 >= minSideLength && side3 >= minSideLength) {
-                            double t = 0.1;
+                            double t = 0.3;
                             double maxSide = Math.max(Math.max(side1, side2), side3);
                             double minSide = Math.min(Math.min(side1, side2), side3);
                             double ratio = minSide/maxSide;
@@ -641,7 +621,7 @@ public class FormChecker {
         int[] phi = {a.phi, b.phi, c.phi};
         Arrays.sort(phi);
 
-        int tolerance = 5;
+        int tolerance = 30;
 
         int diff1 = phi[1] - phi[0];
         int diff2 = phi[2] - phi[1];

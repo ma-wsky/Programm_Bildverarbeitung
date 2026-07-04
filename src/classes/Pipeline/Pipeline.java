@@ -4,6 +4,7 @@ import classes.*;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.*;
 
 public class Pipeline {
@@ -11,15 +12,28 @@ public class Pipeline {
     public static void findSign(String filename){
         // 1. read image
         String filenamePPMImage = "sign.ppm";
-        BufferedImage input = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
+        BufferedImage originalPPM = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
+        BufferedImage scaledImage = null;
+
+        // check size and scale image
+        if (originalPPM.getHeight() >= 2000 || originalPPM.getWidth() >= 2000){
+            System.out.println("scaling");
+            scaledImage = PipelineHelper.scaleImage(originalPPM, 0.25);
+            if (scaledImage == null) return;
+
+        }
+
+        //BufferedImage originalPPM = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
         System.out.println("Successfully loaded image " + filenamePPMImage);
-        ImageIO.displayImage(input);
+        ImageIO.displayImage(scaledImage == null ? originalPPM : scaledImage);
 
         // 2. preprocess image
-        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(input);
+        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalPPM : scaledImage);
 
         // 3. perform checks
-        Pipeline.checkForSign(preProcessedImage, input);
+        //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
+        // TODO: minimum size of form before checking for colors to get rid of false positives
+        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalPPM : scaledImage);
 
         System.out.println("Calculations ended.");
     }
@@ -127,6 +141,10 @@ public class Pipeline {
         BufferedImage lowpass = EdgeDetection.gaussianLowPass(image, 5);
         ImageIO.displayImage(lowpass);
 
+        // hist equal
+        //BufferedImage histogramEqualization = ImageManipulation.histogramEqualization(lowpass);
+        //ImageIO.displayImage(histogramEqualization);
+
         // 2. sobel
         BufferedImage sobel = EdgeDetection.sobelFilter(lowpass, 3);
         ImageIO.displayImage(sobel);
@@ -136,10 +154,7 @@ public class Pipeline {
         ImageIO.displayImage(equidensity);
 
         // 4. closing with dilation and erosion
-        boolean[][] mask = new boolean[3][3];
-        for (boolean[] bool : mask){
-            Arrays.fill(bool, true);
-        }
+        boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};
         BufferedImage erosion = MorphologicalOperations.erosion(equidensity, mask, 1);
         ImageIO.displayImage(erosion);
 
@@ -147,7 +162,7 @@ public class Pipeline {
         ImageIO.displayImage(dilation);
 
         // 5. negative
-        BufferedImage negative = ColorManipulation.negative(dilation);
+        BufferedImage negative = ColorManipulation.negative(equidensity);
         ImageIO.displayImage(negative);
 
         return negative;

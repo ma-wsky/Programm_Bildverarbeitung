@@ -1,5 +1,6 @@
 package classes.Pipeline;
 
+import classes.EdgeDetection;
 import classes.GlobalHelperFunctions;
 
 import java.awt.*;
@@ -267,6 +268,35 @@ public class PipelineHelper {
             }
         }
         return true;
+    }
+
+    public static BufferedImage scaleImage(BufferedImage image, double factor){
+        if (factor > 2 || factor < 0.1) return null;
+
+        double reach = 1.0 / factor;
+        int maskSize = (int) (2 * reach + 1);
+        if (maskSize % 2 == 0){
+            maskSize += 1;
+        }
+
+        //BufferedImage lowpass = EdgeDetection.gaussianLowPass(image, maskSize);
+        //if (lowpass == null) return image;
+
+        int newWidth = (int) (image.getWidth() * factor);
+        int newHeight = (int) (image.getHeight() * factor);
+
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, image.getType());
+
+        for (int x = 0; x < newWidth; x++){
+            for (int y = 0; y < newHeight; y++){
+                int oldPixelX = Math.round((float) (x / factor)); // nearest neighbour
+                int oldPixelY = Math.round((float) (y / factor));
+
+                scaledImage.setRGB(x, y, image.getRGB(oldPixelX, oldPixelY));
+            }
+        }
+
+        return scaledImage;
     }
 
 }
