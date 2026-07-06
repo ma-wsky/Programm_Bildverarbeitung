@@ -13,6 +13,14 @@ public class HoughLine implements Comparable<HoughLine>{
     }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        HoughLine houghLine = (HoughLine) o;
+        return phi == houghLine.phi && r == houghLine.r;
+    }
+
+    @Override
     public int compareTo(HoughLine other) {
         return Integer.compare(other.votes, this.votes);
     }

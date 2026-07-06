@@ -11,10 +11,10 @@ public class DrawingAndFillingPipeline {
      * @param validLines ArrayList<classes.Pipeline.HoughLine>
      * @param width int width of image
      * @param height int height of image
-     * @param diagonal diagonal of image for r correction
      */
-    public static void drawLines(Graphics2D g, ArrayList<HoughLine> validLines, int width, int height, int diagonal) {
-        g.setColor(Color.RED);
+    public static void drawLines(Graphics2D g, ArrayList<HoughLine> validLines, int width, int height) {
+        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
+        //g.setColor(Color.RED);
         g.setStroke(new java.awt.BasicStroke(1));
         for (HoughLine line : validLines){
             int r = line.r;

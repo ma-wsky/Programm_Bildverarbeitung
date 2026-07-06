@@ -17,21 +17,12 @@ public class FormChecker {
      * Calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
-     * @param pairs ArrayList<classes.Pipeline.HoughLinePair> pairs of lines
-     * @param tolerance int tolerance for intersection angle
+     * @param validLines ArrayList<classes.Pipeline.HoughLinePair> pairs of lines
      */
-    public static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
+    public static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
         // rectangle check
-        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
-        for (HoughLinePair pair : pairs){
-            if (pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) {
-                if (!validRectangleLines.contains(pair.line1)) validRectangleLines.add(pair.line1);
-                if (!validRectangleLines.contains(pair.line2)) validRectangleLines.add(pair.line2);
-            }
-        }
-
         System.out.println("checking rectangle form...");
-        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validLines, originalImage.getWidth(), originalImage.getHeight());
         if (!allFoundRectangles.isEmpty()){
             System.out.println(allFoundRectangles.size() + " rectangles found...");
             for (int i = 0; i < allFoundRectangles.size(); i++){
