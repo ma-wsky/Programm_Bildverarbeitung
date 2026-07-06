@@ -58,9 +58,9 @@ public class Pipeline {
      * Calls {@link EdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
      * Calls {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line.
      * Sorts found lines and checks for intersection angles.
-     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, int)} ,
+     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList)} ,
      * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList)} ,
-     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList, int)}
+     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList)}
      * @param preProcessedImage BufferedImage preprocessed
      * @param originalImage BufferedImage original input
      */
@@ -78,21 +78,8 @@ public class Pipeline {
             }
         }
 
-        // copy for displaying lines
-        BufferedImage lineImage = new BufferedImage(preProcessedImage.getWidth(), preProcessedImage.getHeight(), preProcessedImage.getType());
-        Graphics2D g = lineImage.createGraphics();
-        g.setColor(Color.RED);
-        g.setStroke(new java.awt.BasicStroke(1));
-
-        BufferedImage reducedLineImage = new BufferedImage(preProcessedImage.getWidth(), preProcessedImage.getHeight(), preProcessedImage.getType());
-        Graphics2D g2 = reducedLineImage.createGraphics();
-        g2.setColor(Color.WHITE);
-        g2.setStroke(new java.awt.BasicStroke(1));
-
-
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
-        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(preProcessedImage.getHeight(), 2) + Math.pow(preProcessedImage.getWidth(), 2)));
         int threshold = 50; //TODO: abhängig von bild größe
 
         // accumulate lines
@@ -110,37 +97,13 @@ public class Pipeline {
             }
         }
 
-        // sort lines
+        // sort
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int lineCount = Math.min(30, lines.size()); //TODO: abhängigkeitskriterium für mindestanzahl
-
-        // check intersection angle for pairs of lines
-//        ArrayList<HoughLinePair> pairs = new ArrayList<>();
-//        ArrayList<HoughLine> validLines = new ArrayList<>();
-//        int tolerance = 15;
-//        for (int i = 0; i < lineCount; i++){
-//            for (int j = i + 1; j < lineCount; j++){
-//
-//                HoughLine line1 = lines.get(i);
-//                HoughLine line2 = lines.get(j);
-//                int angleOfIntersection = PipelineHelper.getAngleOfIntersection(line1, line2, tolerance);
-//
-//                if (angleOfIntersection != 0) {
-//                    pairs.add(new HoughLinePair(line1, line2, angleOfIntersection));
-//                    validLines.add(line1);
-//                    validLines.add(line2);
-//                }
-//
-//            }
-//        }
-
-        DrawingAndFillingPipeline.drawLines(g2, lines, width, height);
-        ImageIO.displayImage(reducedLineImage);
 
         // remove similar lines
         ArrayList<HoughLine> noSimilarLines = new ArrayList<>();
-        int angleTolerance = 10;
-        int radiusTolerance = 20;
+        int angleTolerance = 5; // TODO: abhängig von bildgröße
+        int radiusTolerance = 10; // TODO: abhängig von bildgröße
 
         for (HoughLine newLine : lines){
             boolean isSimilar = false;
@@ -163,16 +126,20 @@ public class Pipeline {
             }
         }
 
-        DrawingAndFillingPipeline.drawLines(g, noSimilarLines, width, height);
-        ImageIO.displayImage(lineImage);
+        // sort lines and keep best
+        noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
+        int amountToKeep = 30; //TODO: abhängigkeitskriterium für mindestanzahl
+        ArrayList<HoughLine> bestLines = new ArrayList<>();
+        int limit = Math.min(amountToKeep, noSimilarLines.size());
+        for (int i = 0; i < limit; i++) {
+            bestLines.add(noSimilarLines.get(i));
+        }
 
-        //FormChecker.checkTriangleForm(originalImage, pairs, tolerance);
+        FormChecker.checkTriangleForm(originalImage, bestLines);
 
-        //FormChecker.checkOctagonForm(originalImage, pairs, tolerance);
+        FormChecker.checkOctagonForm(originalImage, bestLines);
 
-        FormChecker.checkRectangleForm(originalImage, noSimilarLines);
-
-        g.dispose();
+        FormChecker.checkRectangleForm(originalImage, bestLines);
     }
 
     /**

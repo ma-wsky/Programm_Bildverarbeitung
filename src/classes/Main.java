@@ -5,7 +5,7 @@ void main() {
 //    //samples
     //Pipeline.findSign("pics/sample/V.jpg");
     //Pipeline.findSign("pics/sample/A.jpg");
-    //Pipeline.findSign("pics/sample/P.jpg");
+    Pipeline.findSign("pics/sample/P.jpg");
     //Pipeline.findSign("pics/sample/S.jpg");
 
     //TODO: a lot of false positive triangle and rectangle shapes are found -> size constraint for when shapes are valid
@@ -13,7 +13,7 @@ void main() {
     // vorfahrtsstrasse
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest1.jpg"); // success
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest2.jpg"); // no rect found -> side ratio tolerance increased to .2 -> success
-    Pipeline.findSign("pics/vorfahrt/vorfahrtTest3.jpg"); // success
+//    Pipeline.findSign("pics/vorfahrt/vorfahrtTest3.jpg"); // success
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest4.jpg"); // tree consumes edges -> less closing -> success
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest5.jpg"); // too many garbage lines get found -> need better checking for validity
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest6.jpg"); // needed to lower ratioYellowWhite lower bound because center is obstructed -> success

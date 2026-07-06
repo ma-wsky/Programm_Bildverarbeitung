@@ -17,12 +17,22 @@ public class FormChecker {
      * Calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
-     * @param validLines ArrayList<classes.Pipeline.HoughLinePair> pairs of lines
+     * @param validLines ArrayList<HoughLine> valid lines
      */
     public static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
         // rectangle check
+        ArrayList<HoughLine> validRectangleLines = getLines(validLines, 90);
+
+        // copy for displaying lines
+        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.BLUE);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+        ImageIO.displayImage(lineImage);
+
         System.out.println("checking rectangle form...");
-        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validLines, originalImage.getWidth(), originalImage.getHeight());
+        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
         if (!allFoundRectangles.isEmpty()){
             System.out.println(allFoundRectangles.size() + " rectangles found...");
             for (int i = 0; i < allFoundRectangles.size(); i++){
@@ -75,6 +85,35 @@ public class FormChecker {
         } else {
             System.out.println("no rectangle detected!");
         }
+        g2.dispose();
+    }
+
+    /**
+     * Accumulates all lines in validLines that have an intersection angle of angle.
+     * Uses {@link PipelineHelper#getAngleOfIntersection(HoughLine, HoughLine)}.
+     * @param validLines ArrayList<HoughLine> valid lines
+     * @param angle int angle
+     * @return ArrayList<HoughLine> valid lines of angle
+     */
+    private static ArrayList<HoughLine> getLines(ArrayList<HoughLine> validLines, int angle) {
+        int tolerance = 15;
+        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
+
+        for (int i = 0; i < validLines.size(); i++){
+            for (int j = 0; j < validLines.size(); j++){
+                if (i == j) continue;
+                HoughLine line1 = validLines.get(i);
+                HoughLine line2 = validLines.get(j);
+
+                int angleOfIntersection = PipelineHelper.getAngleOfIntersection(line1, line2);
+
+                if (angleOfIntersection >= (angle - tolerance) && angleOfIntersection <= (angle + tolerance)) {
+                    if (!validRectangleLines.contains(line1)) validRectangleLines.add(line1);
+                    if (!validRectangleLines.contains(line2)) validRectangleLines.add(line2);
+                }
+            }
+        }
+        return validRectangleLines;
     }
 
     /**
@@ -83,43 +122,35 @@ public class FormChecker {
      * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
-     * @param pairs ArrayList<classes.Pipeline.HoughLinePair> pairs of lines
-     * @param tolerance int tolerance for intersection angle
+     * @param validLines ArrayList<HoughLine> valid lines
      */
-    public static void checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
+    public static void checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
         // triangle check
-        ArrayList<HoughLine> validTriangleLines = new ArrayList<>();
-        for (HoughLinePair pair : pairs){
-            if (pair.angleOfIntersection > 60 - tolerance && pair.angleOfIntersection < 60 + tolerance) {
-                if (!validTriangleLines.contains(pair.line1)) validTriangleLines.add(pair.line1);
-                if (!validTriangleLines.contains(pair.line2)) validTriangleLines.add(pair.line2);
-            }
-        }
+        ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
+
+        // copy for displaying lines
+        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.RED);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
+        ImageIO.displayImage(lineImage);
 
         System.out.println("checking triangle form...");
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
         if (!allFoundTriangles.isEmpty()){
             System.out.println(allFoundTriangles.size() + " triangles found...");
             for (int i = 0; i < allFoundTriangles.size(); i++){
+                ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
                 System.out.println("checking triangle " + (i+1) + "...");
+
+                if (!PipelineHelper.isValidTriangleCenterColor(originalImage, currentTriangle)) continue;
 
                 BufferedImage triangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = triangleMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundTriangles.get(i));
+                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentTriangle);
 
-                // rotate original
-                int[] coords = PipelineHelper.findCoordsOfSign(triangleMask);
-                if (coords == null) {
-                    System.err.println("Couldn't determine coords of sign!");
-                    return;
-                }
-                int centerX = (coords[1] - coords[0]) / 2;
-                int centerY = (coords[3] - coords[2]) / 2;
-                Point centerPoint = new Point(centerX, centerY);
-                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 60);
-                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(triangleMask, centerPoint, 60);
-
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, triangleMask);
                 if (maskedSign == null) continue;
                 ImageIO.displayImage(maskedSign);
 
@@ -130,8 +161,6 @@ public class FormChecker {
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
                     gOriginal.setStroke(new java.awt.BasicStroke(4));
-
-                    ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
 
                     for (int j = 0; j < 3; j++) {
                         Point pStart = currentTriangle.get(j);
@@ -151,6 +180,7 @@ public class FormChecker {
         } else {
             System.out.println("no triangle detected!");
         }
+        g2.dispose();
     }
 
 
@@ -160,19 +190,27 @@ public class FormChecker {
      * Calls {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
-     * @param pairs ArrayList<classes.Pipeline.HoughLinePair> pairs of lines
-     * @param tolerance int tolerance for intersection angle
+     * @param validLines ArrayList<HoughLine> valid lines
      */
-    public static void checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLinePair> pairs, int tolerance) {
+    public static void checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
         // octagon check
-        ArrayList<HoughLine> validOctagonLines = new ArrayList<>();
-        for (HoughLinePair pair : pairs){
-            if ((pair.angleOfIntersection > 90 - tolerance && pair.angleOfIntersection < 90 + tolerance) ||
-                    (pair.angleOfIntersection > 45 - tolerance && pair.angleOfIntersection < 45 + tolerance)) {
-                if (!validOctagonLines.contains(pair.line1)) validOctagonLines .add(pair.line1);
-                if (!validOctagonLines.contains(pair.line2)) validOctagonLines .add(pair.line2);
+        ArrayList<HoughLine> validOctagonLines = FormChecker.getLines(validLines, 45);
+        ArrayList<HoughLine> lines90 = FormChecker.getLines(validLines, 90);
+
+        // link with no duplicates
+        for (HoughLine line : lines90) {
+            if (!validOctagonLines.contains(line)) {
+                validOctagonLines.add(line);
             }
         }
+
+        // copy for displaying lines
+        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.GREEN);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
+        ImageIO.displayImage(lineImage);
 
         System.out.println("checking octagon form...");
         ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
@@ -227,6 +265,7 @@ public class FormChecker {
         } else {
             System.out.println("no octagon detected!");
         }
+        g2.dispose();
     }
 
     /**
@@ -447,8 +486,7 @@ public class FormChecker {
                         int toleranz = 10;
 
                         for (HoughLine line : remaining) {
-                            int diff = Math.abs(line.phi - a.phi);
-                            if (diff > 90) diff = 180 - diff;
+                            int diff = PipelineHelper.getAngleOfIntersection(line, a);
 
                             if (diff <= toleranz) {
                                 group1.add(line);

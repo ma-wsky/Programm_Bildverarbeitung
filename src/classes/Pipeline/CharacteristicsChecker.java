@@ -198,17 +198,44 @@ public class CharacteristicsChecker {
      * @return boolean if vorfahrt-sign
      */
     public static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign) {
-
-        // stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
-        stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.3);
-        //boolean medianValid = (stats.getMedian() > 200);
-
-        // accumulate colour pixels
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
+        // check average color
+        long sumR = 0, sumG = 0, sumB = 0;
+        int sampledPixels = 0;
+
+        for (int x = 0; x < width; x += 5) {
+            for (int y = 0; y < height; y += 5) {
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+
+                sumR += (rgb >> 16) & 0xFF;
+                sumG += (rgb >> 8) & 0xFF;
+                sumB += rgb & 0xFF;
+                sampledPixels++;
+            }
+        }
+
+        if (sampledPixels > 0) {
+            double avgR = (double) sumR / sampledPixels;
+            double avgG = (double) sumG / sampledPixels;
+            double avgB = (double) sumB / sampledPixels;
+
+            if (avgB > avgR || avgR < 80 || avgG > avgR) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+//        // stats
+//        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+//        stats.calculateAllStatistics();
+//        boolean entropyValid = (stats.getEntropy() < 3.3);
+//        //boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
         int countRedPixels = 0;
         int countWhitePixels = 0;
         int totalPixels = 0;
@@ -230,10 +257,38 @@ public class CharacteristicsChecker {
                 if ((rgb & 0x00FFFFFF) == 0) continue;
                 totalPixels++;
 
-                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
-                double h = hsv[0];
-                double s = hsv[1];
-                double v = hsv[2];
+                double r = ((rgb >> 16) & 0xff) / 255.0;
+                double g = ((rgb >> 8) & 0xff) / 255.0;
+                double b = (rgb & 0xff) / 255.0;
+
+                double max = Math.max(Math.max(r, g), b);
+                double min = Math.min(Math.min(r, g), b);
+                double delta = max-min;
+
+                double h, s, v;
+
+                // calc hue
+                if (delta == 0) {
+                    h = 0;
+                } else if (max == r) {
+                    h = 60 * (((g - b) / delta) % 6);
+                } else if (max == g) {
+                    h = 60 * (((b - r) / delta) + 2);
+                } else { // max == b
+                    h = 60 * (((r - g) / delta) + 4);
+                }
+
+                if (h < 0) h += 360;
+
+                // calc saturation
+                if (max == 0) {
+                    s = 0;
+                } else{
+                    s = delta / max;
+                }
+
+                // calc value
+                v = max;
 
                 // red
                 boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
@@ -313,17 +368,44 @@ public class CharacteristicsChecker {
      * @return boolean if vorfahrt-achten-sign
      */
     public static boolean isVorfahrtAchtenColorsAndStats(BufferedImage maskedSign) {
-
-        // stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
-        stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.3); //TODO: entropy is high (>4) for real life photographs
-        boolean medianValid = (stats.getMedian() > 200);
-
-        // accumulate colour pixels
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
+        // check average color
+        long sumR = 0, sumG = 0, sumB = 0;
+        int sampledPixels = 0;
+
+        for (int x = 0; x < width; x += 5) {
+            for (int y = 0; y < height; y += 5) {
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+
+                sumR += (rgb >> 16) & 0xFF;
+                sumG += (rgb >> 8) & 0xFF;
+                sumB += rgb & 0xFF;
+                sampledPixels++;
+            }
+        }
+
+        if (sampledPixels > 0) {
+            double avgR = (double) sumR / sampledPixels;
+            double avgG = (double) sumG / sampledPixels;
+            double avgB = (double) sumB / sampledPixels;
+
+            if (avgB > avgR || avgR < 80 || avgG > avgR) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+
+        // stats
+//        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+//        stats.calculateAllStatistics();
+//        boolean entropyValid = (stats.getEntropy() < 3.3); //TODO: entropy is high (>4) for real life photographs
+//        boolean medianValid = (stats.getMedian() > 200);
+
+        // accumulate colour pixels
         int countRedPixels = 0;
         int countWhitePixels = 0;
         int totalPixels = 0;
@@ -344,10 +426,38 @@ public class CharacteristicsChecker {
                 if ((rgb & 0x00FFFFFF) == 0) continue;
                 totalPixels++;
 
-                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
-                double h = hsv[0];
-                double s = hsv[1];
-                double v = hsv[2];
+                double r = ((rgb >> 16) & 0xff) / 255.0;
+                double g = ((rgb >> 8) & 0xff) / 255.0;
+                double b = (rgb & 0xff) / 255.0;
+
+                double max = Math.max(Math.max(r, g), b);
+                double min = Math.min(Math.min(r, g), b);
+                double delta = max-min;
+
+                double h, s, v;
+
+                // calc hue
+                if (delta == 0) {
+                    h = 0;
+                } else if (max == r) {
+                    h = 60 * (((g - b) / delta) % 6);
+                } else if (max == g) {
+                    h = 60 * (((b - r) / delta) + 2);
+                } else { // max == b
+                    h = 60 * (((r - g) / delta) + 4);
+                }
+
+                if (h < 0) h += 360;
+
+                // calc saturation
+                if (max == 0) {
+                    s = 0;
+                } else{
+                    s = delta / max;
+                }
+
+                // calc value
+                v = max;
 
                 // red
                 boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);

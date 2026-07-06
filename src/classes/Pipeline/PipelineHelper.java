@@ -5,6 +5,7 @@ import classes.GlobalHelperFunctions;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 
 public class PipelineHelper {
 
@@ -212,25 +213,13 @@ public class PipelineHelper {
      * Calculates the angle of intersection between two HoughLines.
      * @param line1 classes.Pipeline.HoughLine
      * @param line2 classes.Pipeline.HoughLine
-     * @param tolerance tolerance
      * @return int angle of intersection
      */
-    public static int getAngleOfIntersection(HoughLine line1, HoughLine line2, int tolerance) {
-        int angleOfIntersection = 0;
-
+    public static int getAngleOfIntersection(HoughLine line1, HoughLine line2) {
         int deltaPhi = Math.abs(line1.phi - line2.phi);
         if (deltaPhi > 90) deltaPhi = 180 - deltaPhi;
 
-        if (deltaPhi >= 90 - tolerance){
-            angleOfIntersection = 90;
-        }
-        else if (deltaPhi >= 60 - tolerance) {
-            angleOfIntersection = 60;
-        }
-        else if (deltaPhi >= 45 - tolerance) {
-            angleOfIntersection = 45;
-        }
-        return angleOfIntersection;
+        return deltaPhi;
     }
 
     /**
@@ -270,6 +259,13 @@ public class PipelineHelper {
         return true;
     }
 
+
+    /**
+     * Scales a given BufferedImage by a given factor.
+     * @param image BufferedImage
+     * @param factor double
+     * @return BufferedImage scaled image
+     */
     public static BufferedImage scaleImage(BufferedImage image, double factor){
         if (factor > 2 || factor < 0.1) return null;
 
@@ -297,6 +293,35 @@ public class PipelineHelper {
         }
 
         return scaledImage;
+    }
+
+    /**
+     * Determines valid center color of triangle.
+     * More red than blue and green.
+     * @param originalImage BufferedImage
+     * @param currentTriangle ArrayList<Point>
+     * @return boolean if color is valid
+     */
+    public static boolean isValidTriangleCenterColor(BufferedImage originalImage, ArrayList<Point> currentTriangle) {
+        int centerX = (currentTriangle.get(0).x + currentTriangle.get(1).x + currentTriangle.get(2).x) / 3;
+        int centerY = (currentTriangle.get(0).y + currentTriangle.get(1).y + currentTriangle.get(2).y) / 3;
+
+        if (centerX < 0 || centerX >= originalImage.getWidth() || centerY < 0 || centerY >= originalImage.getHeight()) return true;
+
+        int centerRGB = originalImage.getRGB(centerX, centerY);
+        int cR = (centerRGB >> 16) & 0xFF;
+        int cG = (centerRGB >> 8) & 0xFF;
+        int cB = centerRGB & 0xFF;
+
+        if (cB > cR && cB > cG && cB > 80) {
+            return false;
+        }
+
+        if (cG > cR && cG > cB && cG > 80) {
+            return false;
+        }
+
+        return true;
     }
 
 }
