@@ -10,32 +10,49 @@ import java.util.*;
 public class Pipeline {
 
     public static void findSign(String filename){
+        long progStart = System.nanoTime();
+        long start = progStart;
         // 1. read image
-        String filenamePPMImage = "sign.ppm";
-        BufferedImage originalPPM = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
+        BufferedImage originalPPM = ImageIO.readImage(filename);
+        if (originalPPM == null) {
+            System.err.println("Error reading image " + filename);
+            return;
+        }
         BufferedImage scaledImage = null;
+        long end = System.nanoTime();
+        System.out.println("<<< Image read and converted in " + (end - start) / 1000000 + " milliseconds.");
 
+        start = System.nanoTime();
         // check size and scale image
         if (originalPPM.getHeight() >= 2000 || originalPPM.getWidth() >= 2000){
-            System.out.println("scaling");
+            System.out.println("scaling image...");
             scaledImage = PipelineHelper.scaleImage(originalPPM, 0.25);
             if (scaledImage == null) return;
 
         }
+        end = System.nanoTime();
+        System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
 
-        //BufferedImage originalPPM = ImageIO.readImageAndConvertToPPM(filename, filenamePPMImage);
-        System.out.println("Successfully loaded image " + filenamePPMImage);
+        System.out.println("Successfully loaded image " + filename);
         ImageIO.displayImage(scaledImage == null ? originalPPM : scaledImage);
 
+        start = System.nanoTime();
         // 2. preprocess image
         BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalPPM : scaledImage);
+        end = System.nanoTime();
+        System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " milliseconds.");
 
+        start = System.nanoTime();
         // 3. perform checks
         //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
         // TODO: minimum size of form before checking for colors to get rid of false positives
         Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalPPM : scaledImage);
+        end = System.nanoTime();
+        System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
 
         System.out.println("Calculations ended.");
+        long progEnd = System.nanoTime();
+        System.out.println("Total time: " + (progEnd - progStart) / 1000000000 + " seconds");
     }
 
     /**
@@ -138,7 +155,7 @@ public class Pipeline {
     private static BufferedImage imagePreprocessing(BufferedImage image){
 
         // 1. lowpass
-        BufferedImage lowpass = EdgeDetection.gaussianLowPass(image, 5);
+        BufferedImage lowpass = EdgeDetection.gaussianLowPassSeperated(image, 5);
         ImageIO.displayImage(lowpass);
 
         // hist equal

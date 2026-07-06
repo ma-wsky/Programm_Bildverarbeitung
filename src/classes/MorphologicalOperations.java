@@ -45,35 +45,61 @@ public class MorphologicalOperations {
         }
 
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
-        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
+        BufferedImage newImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
 
         int distance = mask.length / 2;
 
-        // edge case: cutting
-        for (int x = distance; x < image.getWidth()-distance; x++){
-            for (int y = distance; y < image.getHeight()-distance; y++){
+        if (dilationFlag){
+            // edge case: cutting
+            for (int x = distance; x < image.getWidth()-distance; x++){
+                for (int y = distance; y < image.getHeight()-distance; y++){
 
-                double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
+                    double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
 
-                // iterate mask and determine value
-                for (int c = -distance; c <= distance; c++){
-                    for (int r = -distance; r <= distance; r++){
-                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+                    // iterate mask and determine value
+                    for (int c = -distance; c <= distance; c++){
+                        for (int r = -distance; r <= distance; r++){
+                            if (!mask[c+distance][r+distance]) continue;
 
-                        // dilation
-                        if (dilationFlag && mask[c+distance][r+distance] && grayValue > value){
-                            value = grayValue;
-                        }
-                        // erosion
-                        if (!dilationFlag && mask[c+distance][r+distance] && grayValue < value){
-                            value = grayValue;
+                            double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+
+                            // dilation
+                            if (grayValue > value){
+                                value = grayValue;
+                            }
                         }
                     }
-                }
 
-                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
-                int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
-                newImage.setRGB(x, y, newRgb);
+                    int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                    int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
+                    newImage.setRGB(x, y, newRgb);
+                }
+            }
+        } else {
+            // erosion
+            for (int x = distance; x < image.getWidth()-distance; x++){
+                for (int y = distance; y < image.getHeight()-distance; y++){
+
+                    double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
+
+                    // iterate mask and determine value
+                    for (int c = -distance; c <= distance; c++){
+                        for (int r = -distance; r <= distance; r++){
+                            if (!mask[c+distance][r+distance]) continue;
+
+                            double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+
+                            // erosion
+                            if (grayValue < value){
+                                value = grayValue;
+                            }
+                        }
+                    }
+
+                    int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                    int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
+                    newImage.setRGB(x, y, newRgb);
+                }
             }
         }
 

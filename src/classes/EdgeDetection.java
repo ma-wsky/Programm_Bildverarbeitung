@@ -90,6 +90,72 @@ public class EdgeDetection {
         return EdgeDetection.movingMean(image, mask);
     }
 
+    public static BufferedImage gaussianLowPassSeperated(BufferedImage image, int maskSize){
+        if(maskSize % 2 == 0){
+            // matrix has no middle
+            System.err.println("The mask must have uneven number of elements.");
+            return null;
+        }
+        if (maskSize < 3){
+            maskSize = 3;
+        }
+        double[]mask = new double[maskSize];
+        int distance = maskSize / 2;
+        double sigma = maskSize / 6.0;
+
+        double sum = 0;
+
+        for(int x = -distance; x <= distance; x++){
+            // one-dimensional gaussian distribution
+            mask[x + distance] = Math.exp(-(Math.pow(x, 2) / (2 * Math.pow(sigma, 2))));
+            sum += mask[x + distance];
+        }
+
+        for(int i = 0; i < maskSize; i++){
+            mask[i] /= sum;
+        }
+
+        BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
+        BufferedImage horizontalImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        BufferedImage finalImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+        // x
+        for (int y = 0; y < image.getHeight(); y++){
+            for (int x = 0; x < image.getWidth(); x++){
+                double mean = 0;
+                for (int m = -distance; m <= distance; m++){
+                    int clampedX = Math.clamp(x + m, 0, image.getWidth() - 1);
+                    double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(clampedX, y));
+                    double grayXmask = grayValue * mask[m + distance];
+                    mean += grayXmask;
+                }
+
+                int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)mean << 16) | ((int)mean << 8) | (int)mean;
+                horizontalImage.setRGB(x, y, newRgb);
+            }
+        }
+
+        // y
+        for (int y = 0; y < image.getHeight(); y++){
+            for (int x = 0; x < image.getWidth(); x++){
+                double mean = 0;
+                for (int m = -distance; m <= distance; m++){
+                    int clampedY = Math.clamp(y + m, 0, image.getHeight() - 1);
+                    double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(horizontalImage.getRGB(x, clampedY));
+                    double grayXmask = grayValue * mask[m + distance];
+                    mean += grayXmask;
+                }
+
+                int a =  (horizontalImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)mean << 16) | ((int)mean << 8) | (int)mean;
+                finalImage.setRGB(x, y, newRgb);
+            }
+        }
+
+        return finalImage;
+    }
+
     /**
      * Operates on the given image with a difference operator mask.
      * Sum of mask elements must be zero.
@@ -206,11 +272,7 @@ public class EdgeDetection {
                 newImage.setRGB(x, y, newRgb);
             }
         }
-        try {
-            ImageIO.saveBufferedImageAsPPM(newImage, "generated/differenceOperator.ppm");
-        } catch (IOException e) {
-            System.err.println("Error while saving the difference operator ppm file.");
-        }
+
         return newImage;
     }
 

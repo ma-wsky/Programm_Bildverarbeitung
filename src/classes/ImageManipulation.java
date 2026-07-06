@@ -149,12 +149,6 @@ public class ImageManipulation {
                 grayScaleImage.setRGB(x, y, newRgb);
             }
         }
-        String filename = "generated/firstOrderEquidensityGrayImage.ppm";
-        try {
-            ImageIO.saveBufferedImageAsPPM(grayScaleImage, filename);
-        } catch (IOException e) {
-            System.err.println("Error saving " + filename + " as ppm.\n" + e.getMessage());
-        }
 
         return grayScaleImage;
     }
