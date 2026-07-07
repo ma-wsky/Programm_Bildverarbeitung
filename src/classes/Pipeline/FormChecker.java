@@ -32,7 +32,7 @@ public class FormChecker {
         ImageIO.displayImage(lineImage);
 
         // check all found rectangles
-        System.out.println("checking rectangle form...");
+        System.out.println("\nchecking rectangle form...");
 
         ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
 
@@ -42,7 +42,7 @@ public class FormChecker {
             for (int i = 0; i < allFoundRectangles.size(); i++){
 
                 ArrayList<Point> currentRectangle = allFoundRectangles.get(i);
-                System.out.println("checking rectangle " + (i+1) + "...");
+                //System.out.println("checking rectangle " + (i+1) + "...");
 
                 // check center for early exit
                 if (!PipelineHelper.isValidRectangleCenterColor(originalImage, currentRectangle)) continue;
@@ -61,7 +61,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
 
                     // valid sign found
-                    System.err.println("valid vorfahrtstraße-sign found!");
+                    System.out.println("\n>>> valid vorfahrtstraße-sign found!\n");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -137,7 +137,7 @@ public class FormChecker {
         ImageIO.displayImage(lineImage);
 
         // check all found triangles
-        System.out.println("checking triangle form...");
+        System.out.println("\nchecking triangle form...");
 
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
 
@@ -147,7 +147,7 @@ public class FormChecker {
             for (int i = 0; i < allFoundTriangles.size(); i++){
 
                 ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
-                System.out.println("checking triangle " + (i+1) + "...");
+                //System.out.println("checking triangle " + (i+1) + "...");
 
                 // check center for early exit
                 if (!PipelineHelper.isValidTriangleCenterColor(originalImage, currentTriangle)) continue;
@@ -173,7 +173,7 @@ public class FormChecker {
                 if (!foundSign.isEmpty()){
 
                     // valid sign found
-                    System.err.println("valid " + foundSign + "-sign found!");
+                    System.out.println("\n>>> valid " + foundSign + "-sign found!\n");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -230,7 +230,7 @@ public class FormChecker {
         ImageIO.displayImage(lineImage);
 
         // check all found octagons
-        System.out.println("checking octagon form...");
+        System.out.println("\nchecking octagon form...");
 
         ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
 
@@ -240,7 +240,7 @@ public class FormChecker {
             for (int i = 0; i < allFoundOctagons.size(); i++){
 
                 ArrayList<Point> currentOctagon = allFoundOctagons.get(i);
-                System.out.println("checking octagon " + (i+1) + "...");
+                //System.out.println("checking octagon " + (i+1) + "...");
 
                 //check center for early exit
                 if (!PipelineHelper.isValidOctagonCenterColor(originalImage, currentOctagon)) continue;
@@ -258,7 +258,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)){
 
                     // valid sign
-                    System.out.println("valid stopp-sign found!");
+                    System.out.println("\n>>> valid stopp-sign found!\n");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();

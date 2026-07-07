@@ -32,7 +32,6 @@ public class Pipeline {
         end = System.nanoTime();
         System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
 
-        System.out.println("Successfully loaded image " + filename);
         ImageIO.displayImage(scaledImage == null ? originalPPM : scaledImage);
 
         start = System.nanoTime();
@@ -49,9 +48,10 @@ public class Pipeline {
         end = System.nanoTime();
         System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
 
-        System.out.println("Calculations ended.");
+        System.out.println("\nCalculations ended.");
         long progEnd = System.nanoTime();
         System.out.println("Total time: " + (progEnd - progStart) / 1000000000 + " seconds");
+        System.out.println("----------------------------------------------\n\n");
     }
 
     /**
