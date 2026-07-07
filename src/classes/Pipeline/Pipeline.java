@@ -157,7 +157,7 @@ public class Pipeline {
 
         // 1. lowpass
         BufferedImage lowpass = EdgeDetection.gaussianLowPassSeperated(image, 5);
-        ImageIO.displayImage(lowpass);
+        //ImageIO.displayImage(lowpass);
 
         // hist equal
         //BufferedImage histogramEqualization = ImageManipulation.histogramEqualization(lowpass);
@@ -165,22 +165,22 @@ public class Pipeline {
 
         // 2. sobel
         BufferedImage sobel = EdgeDetection.sobelFilter(lowpass, 3);
-        ImageIO.displayImage(sobel);
+        //ImageIO.displayImage(sobel);
 
         // 3. equidensity
         BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
-        ImageIO.displayImage(equidensity);
+        //ImageIO.displayImage(equidensity);
 
         // 4. closing with dilation and erosion
         boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};
         BufferedImage erosion = MorphologicalOperations.erosion(equidensity, mask, 1);
-        ImageIO.displayImage(erosion);
+        //ImageIO.displayImage(erosion);
 
         BufferedImage dilation = MorphologicalOperations.dilation(erosion, mask, 1);
-        ImageIO.displayImage(dilation);
+        //ImageIO.displayImage(dilation);
 
         // 5. negative
-        BufferedImage negative = ColorManipulation.negative(equidensity);
+        BufferedImage negative = ColorManipulation.negative(dilation);
         ImageIO.displayImage(negative);
 
         return negative;

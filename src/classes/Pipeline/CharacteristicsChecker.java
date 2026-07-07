@@ -15,10 +15,10 @@ public class CharacteristicsChecker {
     public static boolean isVorfahrtsstrasseColorsAndStats(BufferedImage maskedSign) {
 
         // stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
-        stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.0); // TODO: entropy is high (6.5) for pixelated low quality images
-        boolean medianValid = (stats.getMedian() > 200); // TODO: median too low for underexposed images
+//        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+//        stats.calculateAllStatistics();
+//        boolean entropyValid = (stats.getEntropy() < 3.0); // TODO: entropy is high (6.5) for pixelated low quality images
+//        boolean medianValid = (stats.getMedian() > 200); // TODO: median too low for underexposed images
 
         // accumulate colour pixels
         int width = maskedSign.getWidth();
@@ -116,10 +116,10 @@ public class CharacteristicsChecker {
     public static boolean isStoppColorAndStats(BufferedImage maskedSign) {
 
         // stats
-        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
-        stats.calculateAllStatistics();
-        boolean entropyValid = (stats.getEntropy() < 3.3);
-        boolean medianValid = (stats.getMedian() > 200); //TODO: median in photos is too low due to lighting
+//        DescriptiveStatistics stats = new DescriptiveStatistics(maskedSign);
+//        stats.calculateAllStatistics();
+//        boolean entropyValid = (stats.getEntropy() < 3.3);
+//        boolean medianValid = (stats.getMedian() > 200); //TODO: median in photos is too low due to lighting
 
         // accumulate colour pixels
         int width = maskedSign.getWidth();
@@ -184,7 +184,7 @@ public class CharacteristicsChecker {
         double distance = Math.sqrt(Math.pow(centerXRed - expectedCenterX, 2) + Math.pow(centerYRed - expectedCenterY, 2));
         boolean redIsCentered = (distance <= tolerance);
 
-        return entropyValid &&
+        return //entropyValid &&
                 //medianValid &&
                 ratioValid &&
                 coverageValid &&
