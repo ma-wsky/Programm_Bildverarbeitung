@@ -31,42 +31,42 @@ public class FormChecker {
         DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
         ImageIO.displayImage(lineImage);
 
+        // check all found rectangles
         System.out.println("checking rectangle form...");
+
         ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+
         if (!allFoundRectangles.isEmpty()){
             System.out.println(allFoundRectangles.size() + " rectangles found...");
+
             for (int i = 0; i < allFoundRectangles.size(); i++){
+
+                ArrayList<Point> currentRectangle = allFoundRectangles.get(i);
                 System.out.println("checking rectangle " + (i+1) + "...");
 
+                // check center for early exit
+                if (!PipelineHelper.isValidRectangleCenterColor(originalImage, currentRectangle)) continue;
+
+                // create mask of rectangle
                 BufferedImage rectangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = rectangleMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundRectangles.get(i));
 
-                // rotate original
-                int[] coords = PipelineHelper.findCoordsOfSign(rectangleMask);
-                if (coords == null) {
-                    System.err.println("Couldn't determine coords of sign!");
-                    return;
-                }
-                int centerX = (coords[1] - coords[0]) / 2;
-                int centerY = (coords[3] - coords[2]) / 2;
-                Point centerPoint = new Point(centerX, centerY);
-                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 45);
-                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(rectangleMask, centerPoint, 45);
-
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                // crop and mask sign from original image
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, rectangleMask);
                 if (maskedSign == null) continue;
                 classes.ImageIO.displayImage(maskedSign);
 
+                // check the mask for the right colors
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
-                    // valid sign
-                    System.out.println("valid vorfahrtstraße-sign found!");
 
+                    // valid sign found
+                    System.err.println("valid vorfahrtstraße-sign found!");
+
+                    // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
                     gOriginal.setStroke(new java.awt.BasicStroke(4));
-
-                    ArrayList<Point> currentRectangle = allFoundRectangles.get(i);
 
                     for (int j = 0; j < 4; j++) {
                         Point pStart = currentRectangle.get(j);
@@ -136,28 +136,46 @@ public class FormChecker {
         DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
         ImageIO.displayImage(lineImage);
 
+        // check all found triangles
         System.out.println("checking triangle form...");
+
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
+
         if (!allFoundTriangles.isEmpty()){
             System.out.println(allFoundTriangles.size() + " triangles found...");
+
             for (int i = 0; i < allFoundTriangles.size(); i++){
+
                 ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
                 System.out.println("checking triangle " + (i+1) + "...");
 
+                // check center for early exit
                 if (!PipelineHelper.isValidTriangleCenterColor(originalImage, currentTriangle)) continue;
 
+                // create mask of triangle
                 BufferedImage triangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = triangleMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, currentTriangle);
 
+                // crop and mask sign from original image
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, triangleMask);
                 if (maskedSign == null) continue;
                 ImageIO.displayImage(maskedSign);
 
-                if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign) || CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign)){
-                    // valid sign
-                    System.out.println("valid vorfahrt-achten-sign found!");
+                // check the mask for the right colors
+                String foundSign = "";
+                if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign)){
+                    foundSign = "vorfahrt-achten";
+                } else if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign)){
+                    foundSign = "vorfahrt";
+                }
 
+                if (!foundSign.isEmpty()){
+
+                    // valid sign found
+                    System.err.println("valid " + foundSign + "-sign found!");
+
+                    // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
                     gOriginal.setStroke(new java.awt.BasicStroke(4));
@@ -175,7 +193,6 @@ public class FormChecker {
                 }
 
                 g.dispose();
-
             }
         } else {
             System.out.println("no triangle detected!");
@@ -212,45 +229,45 @@ public class FormChecker {
         DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
         ImageIO.displayImage(lineImage);
 
+        // check all found octagons
         System.out.println("checking octagon form...");
+
         ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
+
         if (!allFoundOctagons.isEmpty()){
             System.out.println(allFoundOctagons.size() + " octagons found...");
+
             for (int i = 0; i < allFoundOctagons.size(); i++){
+
+                ArrayList<Point> currentOctagon = allFoundOctagons.get(i);
                 System.out.println("checking octagon " + (i+1) + "...");
 
+                //check center for early exit
+                if (!PipelineHelper.isValidOctagonCenterColor(originalImage, currentOctagon)) continue;
+
+                // create mask of octagon
                 BufferedImage octagonMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = octagonMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundOctagons.get(i));
 
-                // rotate original
-                int[] coords = PipelineHelper.findCoordsOfSign(octagonMask);
-                if (coords == null) {
-                    System.err.println("Couldn't determine coords of sign!");
-                    return;
-                }
-                int centerX = (coords[1] - coords[0]) / 2;
-                int centerY = (coords[3] - coords[2]) / 2;
-                Point centerPoint = new Point(centerX, centerY);
-                BufferedImage rotatedOriginal = RotatedImage.rotateImageBackwardMapping(originalImage, centerPoint, 90);
-                BufferedImage rotatedMask = RotatedImage.rotateImageBackwardMapping(octagonMask, centerPoint, 90);
-
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(rotatedOriginal, rotatedMask);
+                // crop and mask sign from original image
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, octagonMask);
                 ImageIO.displayImage(maskedSign);
 
+                // check the mask for the right colors
                 if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)){
+
                     // valid sign
                     System.out.println("valid stopp-sign found!");
 
+                    // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
                     gOriginal.setStroke(new java.awt.BasicStroke(4));
 
-                    ArrayList<Point> currentTriangle = allFoundOctagons.get(i);
-
                     for (int j = 0; j < 8; j++) {
-                        Point pStart = currentTriangle.get(j);
-                        Point pEnd = currentTriangle.get((j + 1) % 8);
+                        Point pStart = currentOctagon.get(j);
+                        Point pEnd = currentOctagon.get((j + 1) % 8);
                         gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
                     }
 

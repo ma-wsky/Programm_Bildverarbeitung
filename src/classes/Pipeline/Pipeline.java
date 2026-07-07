@@ -137,9 +137,9 @@ public class Pipeline {
 
         FormChecker.checkTriangleForm(originalImage, bestLines);
 
-        FormChecker.checkOctagonForm(originalImage, bestLines);
-
         FormChecker.checkRectangleForm(originalImage, bestLines);
+
+        FormChecker.checkOctagonForm(originalImage, bestLines);
     }
 
     /**

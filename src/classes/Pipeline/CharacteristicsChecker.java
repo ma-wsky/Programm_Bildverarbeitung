@@ -97,7 +97,7 @@ public class CharacteristicsChecker {
 
         // white pixels in center
         int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY);
-        boolean centerIsYellow = ((double) whitePixelsInCenter / totalCenterPixels < 0.05);
+        boolean centerIsYellow = ((double) whitePixelsInCenter / totalCenterPixels < 0.5);
 
         return //entropyValid &&
                //medianValid &&

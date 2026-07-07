@@ -313,10 +313,12 @@ public class PipelineHelper {
         int cG = (centerRGB >> 8) & 0xFF;
         int cB = centerRGB & 0xFF;
 
+        // no blue
         if (cB > cR && cB > cG && cB > 80) {
             return false;
         }
 
+        // no green
         if (cG > cR && cG > cB && cG > 80) {
             return false;
         }
@@ -324,4 +326,58 @@ public class PipelineHelper {
         return true;
     }
 
+    /**
+     * Checks central pixels color against blue
+     * @param originalImage BufferedImage
+     * @param currentRectangle ArrayList<Point>
+     * @return boolean if center color is valid
+     */
+    public static boolean isValidRectangleCenterColor(BufferedImage originalImage, ArrayList<Point> currentRectangle) {
+        int centerX = (currentRectangle.get(0).x + currentRectangle.get(1).x + currentRectangle.get(2).x + currentRectangle.get(3).x) / 4;
+        int centerY = (currentRectangle.get(0).y + currentRectangle.get(1).y + currentRectangle.get(2).y + currentRectangle.get(3).y) / 4;
+
+        if (centerX < 0 || centerX >= originalImage.getWidth() || centerY < 0 || centerY >= originalImage.getHeight()) return true;
+
+        int centerRGB = originalImage.getRGB(centerX, centerY);
+        int cR = (centerRGB >> 16) & 0xFF;
+        int cG = (centerRGB >> 8) & 0xFF;
+        int cB = centerRGB & 0xFF;
+
+        // no blue
+        if (cB > cR && cB > cG && cB > 80) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Checks central pixels color against blue and green
+     * @param originalImage BufferedImage
+     * @param currentOctagon ArrayList<Point>
+     * @return boolean if center color is valid
+     */
+    public static boolean isValidOctagonCenterColor(BufferedImage originalImage, ArrayList<Point> currentOctagon){
+        int centerX = (currentOctagon.get(0).x + currentOctagon.get(1).x + currentOctagon.get(2).x + currentOctagon.get(3).x + currentOctagon.get(4).x + currentOctagon.get(5).x + currentOctagon.get(6).x + currentOctagon.get(7).x) / 8;
+        int centerY = (currentOctagon.get(0).y + currentOctagon.get(1).y + currentOctagon.get(2).y + currentOctagon.get(3).y + currentOctagon.get(4).y + currentOctagon.get(5).y + currentOctagon.get(6).y + currentOctagon.get(7).y) / 8;
+
+        if (centerX < 0 || centerX >= originalImage.getWidth() || centerY < 0 || centerY >= originalImage.getHeight()) return true;
+
+        int centerRGB = originalImage.getRGB(centerX, centerY);
+        int cR = (centerRGB >> 16) & 0xFF;
+        int cG = (centerRGB >> 8) & 0xFF;
+        int cB = centerRGB & 0xFF;
+
+        // no blue
+        if (cB > cR && cB > cG && cB > 80) {
+            return false;
+        }
+
+        // no green
+        if (cG > cR && cG > cB && cG > 80) {
+            return false;
+        }
+
+        return true;
+    }
 }
