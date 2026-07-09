@@ -156,6 +156,91 @@ public class EdgeDetection {
         return finalImage;
     }
 
+    public static BufferedImage gaussianLowPassColor(BufferedImage image, int maskSize){
+        if(maskSize % 2 == 0){
+            // matrix has no middle
+            System.err.println("The mask must have uneven number of elements.");
+            return null;
+        }
+        if (maskSize < 3){
+            maskSize = 3;
+        }
+        double[]mask = new double[maskSize];
+        int distance = maskSize / 2;
+        double sigma = maskSize / 6.0;
+
+        double sum = 0;
+
+        for(int x = -distance; x <= distance; x++){
+            // one-dimensional gaussian distribution
+            mask[x + distance] = Math.exp(-(Math.pow(x, 2) / (2 * Math.pow(sigma, 2))));
+            sum += mask[x + distance];
+        }
+
+        for(int i = 0; i < maskSize; i++){
+            mask[i] /= sum;
+        }
+
+        BufferedImage horizontalImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+        BufferedImage finalImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+        // x
+        for (int y = 0; y < image.getHeight(); y++){
+            for (int x = 0; x < image.getWidth(); x++){
+                double meanR = 0;
+                double meanG = 0;
+                double meanB = 0;
+
+                for (int m = -distance; m <= distance; m++){
+                    int clampedX = Math.clamp(x + m, 0, image.getWidth() - 1);
+
+                    int rgb = image.getRGB(clampedX, y);
+                    int r = (rgb >> 16) & 0xff;
+                    int g = (rgb >> 8) & 0xff;
+                    int b = (rgb) & 0xff;
+
+                    double maskValue = mask[m + distance];
+                    meanR += r * maskValue;
+                    meanG += g * maskValue;
+                    meanB += b * maskValue;
+                }
+
+                int a =  (image.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)meanR << 16) | ((int)meanG << 8) | (int)meanB;
+                horizontalImage.setRGB(x, y, newRgb);
+            }
+        }
+
+        // y
+        for (int y = 0; y < image.getHeight(); y++){
+            for (int x = 0; x < image.getWidth(); x++){
+                double meanR = 0;
+                double meanG = 0;
+                double meanB = 0;
+
+                for (int m = -distance; m <= distance; m++){
+                    int clampedY = Math.clamp(y + m, 0, image.getHeight() - 1);
+
+                    int rgb = horizontalImage.getRGB(x, clampedY);
+                    int r = (rgb >> 16) & 0xff;
+                    int g = (rgb >> 8) & 0xff;
+                    int b = (rgb) & 0xff;
+
+                    double maskValue = mask[m + distance];
+                    meanR += r * maskValue;
+                    meanG += g * maskValue;
+                    meanB += b * maskValue;
+                }
+
+                int a =  (horizontalImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int)meanR << 16) | ((int)meanG << 8) | (int)meanB;
+                finalImage.setRGB(x, y, newRgb);
+            }
+        }
+
+        return finalImage;
+    }
+
     /**
      * Operates on the given image with a difference operator mask.
      * Sum of mask elements must be zero.

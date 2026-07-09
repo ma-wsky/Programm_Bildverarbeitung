@@ -1,5 +1,7 @@
 package classes.Pipeline;
 
+import classes.DescriptiveStatistics;
+import classes.EdgeDetection;
 import classes.GlobalHelperFunctions;
 
 import java.awt.*;
@@ -265,7 +267,7 @@ public class PipelineHelper {
      * @param factor double
      * @return BufferedImage scaled image
      */
-    public static BufferedImage scaleImage(BufferedImage image, double factor){
+    public static BufferedImage scaleColorImageGauss(BufferedImage image, double factor){
         if (factor > 2 || factor < 0.1) return null;
 
         double reach = 1.0 / factor;
@@ -274,20 +276,68 @@ public class PipelineHelper {
             maskSize += 1;
         }
 
-        //BufferedImage lowpass = EdgeDetection.gaussianLowPass(image, maskSize);
-        //if (lowpass == null) return image;
+        BufferedImage lowpass = EdgeDetection.gaussianLowPassColor(image, maskSize);
+        if (lowpass == null) return null;
 
-        int newWidth = (int) (image.getWidth() * factor);
-        int newHeight = (int) (image.getHeight() * factor);
+        int newWidth = (int) (lowpass.getWidth() * factor);
+        int newHeight = (int) (lowpass.getHeight() * factor);
 
-        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, image.getType());
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, lowpass.getType());
 
         for (int x = 0; x < newWidth; x++){
             for (int y = 0; y < newHeight; y++){
                 int oldPixelX = Math.round((float) (x / factor)); // nearest neighbour
                 int oldPixelY = Math.round((float) (y / factor));
 
-                scaledImage.setRGB(x, y, image.getRGB(oldPixelX, oldPixelY));
+                scaledImage.setRGB(x, y, lowpass.getRGB(oldPixelX, oldPixelY));
+            }
+        }
+
+        return scaledImage;
+    }
+
+    public static BufferedImage scaleColorImageBoxDownsampling(BufferedImage image, double factor){
+        if (factor > 2 || factor < 0.1) return null;
+
+        int newWidth = (int) (image.getWidth() * factor);
+        int newHeight = (int) (image.getHeight() * factor);
+
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, image.getType());
+
+        double stepX = 1.0 / factor;
+        double stepY = 1.0 / factor;
+
+        for (int x = 0; x < newWidth; x++){
+            for (int y = 0; y < newHeight; y++){
+
+                // calc box
+                int startX = (int) (x * stepX);
+                int endX = Math.min((int) ((x + 1) * stepX), image.getWidth());
+                int startY = (int) (y * stepY);
+                int endY = Math.min((int) ((y + 1) * stepY), image.getHeight());
+
+                long sumR = 0, sumG = 0, sumB = 0;
+                int pixelCount = 0;
+
+                // calc average of all pixels in box
+                for (int oldX = startX; oldX < endX; oldX++) {
+                    for (int oldY = startY; oldY < endY; oldY++) {
+                        int rgb = image.getRGB(oldX, oldY);
+                        sumR += (rgb >> 16) & 0xff;
+                        sumG += (rgb >> 8) & 0xff;
+                        sumB += rgb & 0xff;
+                        pixelCount++;
+                    }
+                }
+
+                if (pixelCount > 0) {
+                    int avgR = (int) (sumR / pixelCount);
+                    int avgG = (int) (sumG / pixelCount);
+                    int avgB = (int) (sumB / pixelCount);
+
+                    int newRgb = (avgR << 16) | (avgG << 8) | avgB;
+                    scaledImage.setRGB(x, y, newRgb);
+                }
             }
         }
 
@@ -466,5 +516,16 @@ public class PipelineHelper {
         double d8 = Math.sqrt(Math.pow(p1.x - p8.x, 2) + Math.pow(p1.y - p8.y, 2));
 
         return d1 < minLength || d2 < minLength || d3 < minLength || d4 < minLength || d5 < minLength || d6 < minLength || d7 < minLength || d8 < minLength;
+    }
+
+    public static boolean isShapeEntropyTooHigh(BufferedImage mask) {
+        DescriptiveStatistics stats = new DescriptiveStatistics(mask);
+        stats.calculateEntropy();
+        double e = stats.getEntropy();
+
+        // TODO: fine tune threshold
+        double threshold = 4.4;
+
+        return (e > threshold);
     }
 }

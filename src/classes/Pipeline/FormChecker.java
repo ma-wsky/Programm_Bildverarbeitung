@@ -15,28 +15,31 @@ public class FormChecker {
      * Validates form of rectangle by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)}.
      * Calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
-     * @param originalImage BufferedImage original
+     * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
+     * @return boolean if sign found
      */
-    public static void checkRectangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+    public static boolean checkRectangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
+        long start = System.nanoTime();
+
         // rectangle check
         ArrayList<HoughLine> validRectangleLines = getLines(validLines, 90);
 
         // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
 //        Graphics2D g2 = lineImage.createGraphics();
 //        g2.setColor(Color.BLUE);
 //        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+//        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 //        ImageIO.displayImage(lineImage);
 
         // check all found rectangles
         System.out.println("\nchecking rectangle form...");
 
-        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, originalImage.getWidth(), originalImage.getHeight());
+        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         if (!allFoundRectangles.isEmpty()){
-            System.out.println(allFoundRectangles.size() + " rectangles found...");
+            //System.out.println(allFoundRectangles.size() + " rectangles found...");
             int rectanglesChecked = 0;
 
             for (int i = 0; i < allFoundRectangles.size(); i++){
@@ -45,18 +48,18 @@ public class FormChecker {
                 //System.out.println("checking rectangle " + (i+1) + "...");
 
                 // check center for early exit
-                if (!PipelineHelper.isValidRectangleCenterColor(originalImage, currentRectangle)) continue;
+                if (!PipelineHelper.isValidRectangleCenterColor(maskedWindow, currentRectangle)) continue;
                 // check size for early exit
-                if (PipelineHelper.isRectangleTooSmall(originalImage, currentRectangle)) continue;
+                if (PipelineHelper.isRectangleTooSmall(maskedWindow, currentRectangle)) continue;
                 rectanglesChecked++;
 
                 // create mask of rectangle
-                BufferedImage rectangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                BufferedImage rectangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = rectangleMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundRectangles.get(i));
 
                 // crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, rectangleMask);
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, rectangleMask);
                 if (maskedSign == null) continue;
                 //classes.ImageIO.displayImage(maskedSign);
 
@@ -64,7 +67,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
 
                     // valid sign found
-                    System.out.println("\n>>> valid vorfahrtstraße-sign found!\n");
+                    System.out.println("\n>>>>>>>>> valid vorfahrtstraße-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -74,21 +77,25 @@ public class FormChecker {
                     for (int j = 0; j < 4; j++) {
                         Point pStart = currentRectangle.get(j);
                         Point pEnd = currentRectangle.get((j + 1) % 4);
-                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
                     }
 
                     gOriginal.dispose();
 
                     ImageIO.displayImage(originalImage);
-                    break;
+                    return true;
                 }
 
                 g.dispose();
             }
-            System.out.println(rectanglesChecked + " rectangles checked.");
+            //System.out.println(rectanglesChecked + " rectangles checked.");
         } else {
-            System.out.println("no rectangle detected!");
+            //System.out.println("no rectangle detected!");
         }
+
+        long end = System.nanoTime();
+        //System.out.println("<<< Rectangle check finished in " + (end - start) / 1000000+ "ms");
+        return false;
         //g2.dispose();
     }
 
@@ -127,8 +134,11 @@ public class FormChecker {
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
+     * @return boolean if sign found
      */
-    public static void checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+    public static boolean checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+        long start = System.nanoTime();
+
         // triangle check
         ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
 
@@ -145,8 +155,12 @@ public class FormChecker {
 
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
 
+        long end = System.nanoTime();
+        //System.out.println("<<< Triangle forms found in " + (end - start) / 1000000+ "ms");
+        start = System.nanoTime();
+
         if (!allFoundTriangles.isEmpty()){
-            System.out.println(allFoundTriangles.size() + " triangles found...");
+            //System.out.println(allFoundTriangles.size() + " triangles found...");
             int trianglesChecked = 0;
 
             for (int i = 0; i < allFoundTriangles.size(); i++){
@@ -181,7 +195,7 @@ public class FormChecker {
                 if (!foundSign.isEmpty()){
 
                     // valid sign found
-                    System.out.println("\n>>> valid " + foundSign + "-sign found!\n");
+                    System.out.println("\n>>>>>>>>> valid " + foundSign + "-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -197,15 +211,19 @@ public class FormChecker {
                     gOriginal.dispose();
 
                     ImageIO.displayImage(originalImage);
-                    break;
+                    return true;
                 }
 
                 g.dispose();
             }
-            System.out.println(trianglesChecked + " triangles checked.");
+            //System.out.println(trianglesChecked + " triangles checked.");
         } else {
-            System.out.println("no triangle detected!");
+            //System.out.println("no triangle detected!");
         }
+
+        end = System.nanoTime();
+        //System.out.println("<<< Triangle check finished in " + (end - start) / 1000000+ "ms");
+        return false;
         //g2.dispose();
     }
 
@@ -217,8 +235,11 @@ public class FormChecker {
      * Draws bounds of sign on original if found.
      * @param originalImage BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
+     * @return boolean if sign found
      */
-    public static void checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+    public static boolean checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+        long start = System.nanoTime();
+
         // octagon check
         ArrayList<HoughLine> validOctagonLines = FormChecker.getLines(validLines, 45);
         ArrayList<HoughLine> lines90 = FormChecker.getLines(validLines, 90);
@@ -244,7 +265,7 @@ public class FormChecker {
         ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
 
         if (!allFoundOctagons.isEmpty()){
-            System.out.println(allFoundOctagons.size() + " octagons found...");
+            //System.out.println(allFoundOctagons.size() + " octagons found...");
             int octagonsChecked = 0;
 
             for (int i = 0; i < allFoundOctagons.size(); i++){
@@ -271,7 +292,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)){
 
                     // valid sign
-                    System.out.println("\n>>> valid stopp-sign found!\n");
+                    System.out.println("\n>>>>>>>>> valid stopp-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -287,15 +308,19 @@ public class FormChecker {
                     gOriginal.dispose();
 
                     ImageIO.displayImage(originalImage);
-                    break;
+                    return true;
                 }
 
                 g.dispose();
             }
-            System.out.println(octagonsChecked + " octagons checked.");
+            //System.out.println(octagonsChecked + " octagons checked.");
         } else {
-            System.out.println("no octagon detected!");
+            //System.out.println("no octagon detected!");
         }
+
+        long end = System.nanoTime();
+        //System.out.println("<<< Octagon check finished in " + (end - start) / 1000000+ "ms");
+        return false;
         //g2.dispose();
     }
 

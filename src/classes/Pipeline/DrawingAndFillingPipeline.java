@@ -1,6 +1,9 @@
 package classes.Pipeline;
 
+import classes.ImageIO;
+
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 
 public class DrawingAndFillingPipeline {
@@ -63,4 +66,18 @@ public class DrawingAndFillingPipeline {
         g2d.fillPolygon(xPoints, yPoints, numPoints);
     }
 
+    public static BufferedImage drawWindow(BufferedImage original, int x, int y, int windowSize) {
+        // 1. Eine tiefe Kopie des Bildes erstellen, damit wir das Original nicht verändern
+        BufferedImage image = ImageIO.copyBufferedImage(original);
+        Graphics2D g2d = image.createGraphics();
+
+        g2d.setColor(Color.RED);
+        g2d.setStroke(new BasicStroke(1));
+
+        g2d.drawRect(x, y, windowSize, windowSize);
+
+        g2d.dispose();
+
+        return image;
+    }
 }

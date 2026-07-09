@@ -12,46 +12,131 @@ public class Pipeline {
         long progStart = System.nanoTime();
         long start = progStart;
         // 1. read image
-        BufferedImage originalPPM = ImageIO.readImage(filename);
-        if (originalPPM == null) {
+        BufferedImage originalImage = ImageIO.readImage(filename);
+        if (originalImage == null) {
             System.err.println("Error reading image " + filename);
             return;
         }
         BufferedImage scaledImage = null;
         long end = System.nanoTime();
-        System.out.println("<<< Image read and converted in " + (end - start) / 1000000 + " milliseconds.");
+        System.out.println("<<< Image read and converted in " + (end - start) / 1000000 + " ms.");
 
+        // construct pyramid
         start = System.nanoTime();
-        // check size and scale image
-        if (originalPPM.getHeight() >= 2000 || originalPPM.getWidth() >= 2000){
-            System.out.println("scaling image...");
-            scaledImage = PipelineHelper.scaleImage(originalPPM, 0.25);
-            if (scaledImage == null) return;
+        BufferedImage level1 = originalImage;
+        BufferedImage level2 = PipelineHelper.scaleColorImageBoxDownsampling(level1, 0.5);
+        BufferedImage level3 = PipelineHelper.scaleColorImageBoxDownsampling(level2, 0.5);
+        BufferedImage level4 = PipelineHelper.scaleColorImageBoxDownsampling(level3, 0.5);
+        BufferedImage level5 = PipelineHelper.scaleColorImageBoxDownsampling(level4, 0.5);
+        ArrayList<BufferedImage> pyramid = new ArrayList<>();
+        pyramid.add(level5);
+        pyramid.add(level4);
+        pyramid.add(level3);
+        pyramid.add(level2);
+        pyramid.add(level1);
+        end = System.nanoTime();
+        System.out.println("<<< Pyramid constructed in " + (end - start) / 1000000 + " ms");
 
+        // traverse pyramid
+        int pyramidNum = pyramid.size();
+        for (BufferedImage image : pyramid){
+            long levelStart = System.nanoTime();
+            System.out.println("--------------------------------------");
+            System.out.println("\n\nChecking pyramid level " + pyramidNum + "...");
+            ImageIO.displayImage(image);
+
+            // moving window
+            int windowNum = 0;
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int windowSize = 200;
+            int stepSize = 50;
+            boolean signFound = false;
+
+            for (int y = 0; y <= height - windowSize; y += stepSize){
+                for (int x = 0; x <= width - windowSize; x += stepSize) {
+
+                    // paint window
+                    BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
+                    ImageIO.displayImage(windowImage);
+
+                    // create mask of triangle
+                    BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
+                    Graphics2D g = windowMask.createGraphics();
+                    ArrayList<Point> windowPoints = new ArrayList<>();
+                    windowPoints.add(new Point(x, y));
+                    windowPoints.add(new Point(x + windowSize, y));
+                    windowPoints.add(new Point(x + windowSize, y + windowSize));
+                    windowPoints.add(new Point(x, y +windowSize));
+                    DrawingAndFillingPipeline.drawEdgesAndFill(g, windowPoints);
+
+                    // crop and mask sign from original image
+                    BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
+                    if (maskedWindow == null) continue;
+
+                    // 2. preprocess image
+                    start = System.nanoTime();
+                    BufferedImage preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
+                    end = System.nanoTime();
+                    //System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
+
+                    // 3. perform checks
+                    start = System.nanoTime();
+                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, image, x, y);
+                    end = System.nanoTime();
+                    System.out.println("\n<<< Window checked in " + (end - start) / 1000000 + " ms.");
+
+                    if (signFound) {
+                        System.out.println("Sign found, breaking...");
+                        break;
+                    }
+                    windowNum++;
+                }
+                if (signFound) break;
+            }
+            long levelEnd = System.nanoTime();
+            System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
+            if (signFound) break;
+            pyramidNum--;
         }
-        end = System.nanoTime();
-        System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
-
-        ImageIO.displayImage(scaledImage == null ? originalPPM : scaledImage);
-
-        start = System.nanoTime();
-        // 2. preprocess image
-        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalPPM : scaledImage);
-        end = System.nanoTime();
-        System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " milliseconds.");
-
-        start = System.nanoTime();
-        // 3. perform checks
-        //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
-        // TODO: minimum size of form before checking for colors to get rid of false positives
-        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalPPM : scaledImage);
-        end = System.nanoTime();
-        System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
 
         System.out.println("\nCalculations ended.");
         long progEnd = System.nanoTime();
-        System.out.println("Total time: " + (progEnd - progStart) / 1000000000 + " seconds");
+        System.out.println("Total time: " + (progEnd - progStart) / 1000000 + " ms.");
         System.out.println("----------------------------------------------\n\n");
+
+
+//        start = System.nanoTime();
+//        // check size and scale image
+//        if (originalImage.getHeight() >= 2000 || originalImage.getWidth() >= 2000){
+//            System.out.println("scaling image...");
+//            scaledImage = PipelineHelper.scaleColorImageGauss(originalImage, 0.25);
+//            if (scaledImage == null) return;
+//
+//        }
+//        end = System.nanoTime();
+//        System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
+//
+//        ImageIO.displayImage(scaledImage == null ? originalImage : scaledImage);
+
+//        start = System.nanoTime();
+//        // 2. preprocess image
+//        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalImage : scaledImage);
+//        end = System.nanoTime();
+//        System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " milliseconds.");
+//
+//        start = System.nanoTime();
+//        // 3. perform checks
+//        //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
+//        // TODO: minimum size of form before checking for colors to get rid of false positives
+//        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalImage : scaledImage);
+//        end = System.nanoTime();
+//        System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
+//
+//        System.out.println("\nCalculations ended.");
+//        long progEnd = System.nanoTime();
+//        System.out.println("Total time: " + (progEnd - progStart) / 1000000000 + " seconds");
+//        System.out.println("----------------------------------------------\n\n");
     }
 
     /**
@@ -59,12 +144,13 @@ public class Pipeline {
      * Calls {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line.
      * Sorts found lines and checks for intersection angles.
      * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList)} ,
-     * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList)} ,
+     * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
      * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList)}
      * @param preProcessedImage BufferedImage preprocessed
-     * @param originalImage BufferedImage original input
+     * @param maskedWindow BufferedImage original input
+     * @return boolean if sign found
      */
-    private static void checkForSign(BufferedImage preProcessedImage, BufferedImage originalImage){
+    private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage originalImage, int windowX, int windowY){
         //make edge black
         int width = preProcessedImage.getWidth();
         int height = preProcessedImage.getHeight();
@@ -128,18 +214,23 @@ public class Pipeline {
 
         // sort lines and keep best
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int amountToKeep = 30; //TODO: abhängigkeitskriterium für mindestanzahl
+        int amountToKeep = 10; //TODO: abhängigkeitskriterium für mindestanzahl
         ArrayList<HoughLine> bestLines = new ArrayList<>();
         int limit = Math.min(amountToKeep, noSimilarLines.size());
         for (int i = 0; i < limit; i++) {
             bestLines.add(noSimilarLines.get(i));
         }
 
-        FormChecker.checkTriangleForm(originalImage, bestLines);
+        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines);
+        boolean RsignFound = false;
+        boolean OsignFound = false;
 
-        FormChecker.checkRectangleForm(originalImage, bestLines);
+        if (!TsignFound) RsignFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
 
-        FormChecker.checkOctagonForm(originalImage, bestLines);
+        //TODO: octagon check is very slow (40% of total runtime)
+        if (!TsignFound && !RsignFound) OsignFound = FormChecker.checkOctagonForm(maskedWindow, bestLines);
+
+        return TsignFound || RsignFound || OsignFound;
     }
 
     /**

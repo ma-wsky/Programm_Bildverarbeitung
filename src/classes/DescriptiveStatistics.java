@@ -237,7 +237,7 @@ public class DescriptiveStatistics {
      * Uses {@link #countingSort()} to sort the array.
      * Checks if probability is zero before adding.
      */
-    void calculateEntropy() {
+    public void calculateEntropy() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
