@@ -37,6 +37,7 @@ public class FormChecker {
 
         if (!allFoundRectangles.isEmpty()){
             System.out.println(allFoundRectangles.size() + " rectangles found...");
+            int rectanglesChecked = 0;
 
             for (int i = 0; i < allFoundRectangles.size(); i++){
 
@@ -45,6 +46,9 @@ public class FormChecker {
 
                 // check center for early exit
                 if (!PipelineHelper.isValidRectangleCenterColor(originalImage, currentRectangle)) continue;
+                // check size for early exit
+                if (PipelineHelper.isRectangleTooSmall(originalImage, currentRectangle)) continue;
+                rectanglesChecked++;
 
                 // create mask of rectangle
                 BufferedImage rectangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
@@ -81,6 +85,7 @@ public class FormChecker {
 
                 g.dispose();
             }
+            System.out.println(rectanglesChecked + " rectangles checked.");
         } else {
             System.out.println("no rectangle detected!");
         }
@@ -142,6 +147,7 @@ public class FormChecker {
 
         if (!allFoundTriangles.isEmpty()){
             System.out.println(allFoundTriangles.size() + " triangles found...");
+            int trianglesChecked = 0;
 
             for (int i = 0; i < allFoundTriangles.size(); i++){
 
@@ -150,6 +156,9 @@ public class FormChecker {
 
                 // check center for early exit
                 if (!PipelineHelper.isValidTriangleCenterColor(originalImage, currentTriangle)) continue;
+                // check size for early exit
+                if (PipelineHelper.isTriangleTooSmall(originalImage, currentTriangle)) continue;
+                trianglesChecked++;
 
                 // create mask of triangle
                 BufferedImage triangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
@@ -193,6 +202,7 @@ public class FormChecker {
 
                 g.dispose();
             }
+            System.out.println(trianglesChecked + " triangles checked.");
         } else {
             System.out.println("no triangle detected!");
         }
@@ -235,6 +245,7 @@ public class FormChecker {
 
         if (!allFoundOctagons.isEmpty()){
             System.out.println(allFoundOctagons.size() + " octagons found...");
+            int octagonsChecked = 0;
 
             for (int i = 0; i < allFoundOctagons.size(); i++){
 
@@ -243,6 +254,9 @@ public class FormChecker {
 
                 //check center for early exit
                 if (!PipelineHelper.isValidOctagonCenterColor(originalImage, currentOctagon)) continue;
+                // check size for early exit
+                if (PipelineHelper.isOctagonTooSmall(originalImage, currentOctagon)) continue;
+                octagonsChecked++;
 
                 // create mask of octagon
                 BufferedImage octagonMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
@@ -278,6 +292,7 @@ public class FormChecker {
 
                 g.dispose();
             }
+            System.out.println(octagonsChecked + " octagons checked.");
         } else {
             System.out.println("no octagon detected!");
         }

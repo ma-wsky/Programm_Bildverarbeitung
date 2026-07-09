@@ -1,6 +1,5 @@
 package classes.Pipeline;
 
-import classes.EdgeDetection;
 import classes.GlobalHelperFunctions;
 
 import java.awt.*;
@@ -379,5 +378,93 @@ public class PipelineHelper {
         }
 
         return true;
+    }
+
+    /**
+     * Determines too small a size.
+     * Takes Math.min(width, height) / 20 for minimum length
+     * @param originalImage BufferedImage
+     * @param currentTriangle ArrayList<Point>
+     * @return boolean if distance between to points is too small
+     */
+    public static boolean isTriangleTooSmall(BufferedImage originalImage, ArrayList<Point> currentTriangle) {
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+
+
+        // TODO: determine criterion for minimum size of shape
+        double minLength = Math.min(width, height) / 20.0;
+
+        Point p1 = currentTriangle.get(0);
+        Point p2 = currentTriangle.get(1);
+        Point p3 = currentTriangle.get(2);
+
+        double d1 = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        double d2 = Math.sqrt(Math.pow(p3.x - p2.x, 2) + Math.pow(p3.y - p2.y, 2));
+        double d3 = Math.sqrt(Math.pow(p1.x - p3.x, 2) + Math.pow(p1.y - p3.y, 2));
+
+        return d1 < minLength || d2 < minLength || d3 < minLength;
+    }
+
+    /**
+     * Determines too small a size.
+     * Takes Math.min(width, height) / 20 for minimum length
+     * @param originalImage BufferedImage
+     * @param currentRectangle ArrayList<Point>
+     * @return boolean if distance between to points is too small
+     */
+    public static boolean isRectangleTooSmall(BufferedImage originalImage, ArrayList<Point> currentRectangle) {
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+
+        // TODO: determine criterion for minimum size of shape
+        double minLength = 20;
+
+        Point p1 = currentRectangle.get(0);
+        Point p2 = currentRectangle.get(1);
+        Point p3 = currentRectangle.get(2);
+        Point p4 = currentRectangle.get(3);
+
+        double d1 = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        double d2 = Math.sqrt(Math.pow(p3.x - p2.x, 2) + Math.pow(p3.y - p2.y, 2));
+        double d3 = Math.sqrt(Math.pow(p4.x - p3.x, 2) + Math.pow(p4.y - p3.y, 2));
+        double d4 = Math.sqrt(Math.pow(p4.x - p1.x, 2) + Math.pow(p4.y - p1.y, 2));
+
+        return d1 < minLength || d2 < minLength || d3 < minLength || d4 < minLength;
+    }
+
+    /**
+     * Determines too small a size.
+     * Takes Math.min(width, height) / 20 for minimum length
+     * @param originalImage BufferedImage
+     * @param currentOctagon ArrayList<Point>
+     * @return boolean if distance between to points is too small
+     */
+    public static boolean isOctagonTooSmall(BufferedImage originalImage, ArrayList<Point> currentOctagon) {
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+
+        // TODO: determine criterion for minimum size of shape
+        double minLength = 20;
+
+        Point p1 = currentOctagon.get(0);
+        Point p2 = currentOctagon.get(1);
+        Point p3 = currentOctagon.get(2);
+        Point p4 = currentOctagon.get(3);
+        Point p5 = currentOctagon.get(4);
+        Point p6 = currentOctagon.get(5);
+        Point p7 = currentOctagon.get(6);
+        Point p8 = currentOctagon.get(7);
+
+        double d1 = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+        double d2 = Math.sqrt(Math.pow(p3.x - p2.x, 2) + Math.pow(p3.y - p2.y, 2));
+        double d3 = Math.sqrt(Math.pow(p4.x - p3.x, 2) + Math.pow(p4.y - p3.y, 2));
+        double d4 = Math.sqrt(Math.pow(p5.x - p4.x, 2) + Math.pow(p5.y - p4.y, 2));
+        double d5 = Math.sqrt(Math.pow(p6.x - p5.x, 2) + Math.pow(p6.y - p5.y, 2));
+        double d6 = Math.sqrt(Math.pow(p7.x - p6.x, 2) + Math.pow(p7.y - p6.y, 2));
+        double d7 = Math.sqrt(Math.pow(p8.x - p7.x, 2) + Math.pow(p8.y - p7.y, 2));
+        double d8 = Math.sqrt(Math.pow(p1.x - p8.x, 2) + Math.pow(p1.y - p8.y, 2));
+
+        return d1 < minLength || d2 < minLength || d3 < minLength || d4 < minLength || d5 < minLength || d6 < minLength || d7 < minLength || d8 < minLength;
     }
 }
