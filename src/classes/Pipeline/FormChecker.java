@@ -132,28 +132,28 @@ public class FormChecker {
      * Validates form of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
      * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
-     * @param originalImage BufferedImage original
+     * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
-    public static boolean checkTriangleForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+    public static boolean checkTriangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines,BufferedImage originalImage, int windowX, int windowY) {
         long start = System.nanoTime();
 
         // triangle check
         ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
 
         // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
 //        Graphics2D g2 = lineImage.createGraphics();
 //        g2.setColor(Color.RED);
 //        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
+//        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 //        ImageIO.displayImage(lineImage);
 
         // check all found triangles
         System.out.println("\nchecking triangle form...");
 
-        ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, originalImage.getWidth(), originalImage.getHeight());
+        ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         long end = System.nanoTime();
         //System.out.println("<<< Triangle forms found in " + (end - start) / 1000000+ "ms");
@@ -169,18 +169,18 @@ public class FormChecker {
                 //System.out.println("checking triangle " + (i+1) + "...");
 
                 // check center for early exit
-                if (!PipelineHelper.isValidTriangleCenterColor(originalImage, currentTriangle)) continue;
+                if (!PipelineHelper.isValidTriangleCenterColor(maskedWindow, currentTriangle)) continue;
                 // check size for early exit
-                if (PipelineHelper.isTriangleTooSmall(originalImage, currentTriangle)) continue;
+                if (PipelineHelper.isTriangleTooSmall(maskedWindow, currentTriangle)) continue;
                 trianglesChecked++;
 
                 // create mask of triangle
-                BufferedImage triangleMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                BufferedImage triangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = triangleMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, currentTriangle);
 
                 // crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, triangleMask);
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, triangleMask);
                 if (maskedSign == null) continue;
                 //ImageIO.displayImage(maskedSign);
 

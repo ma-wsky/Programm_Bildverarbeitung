@@ -344,6 +344,30 @@ public class PipelineHelper {
         return scaledImage;
     }
 
+    public static BufferedImage upscaleColorImageNearestNeighbour(BufferedImage original, double factor) {
+        if (factor <= 1.0) return original;
+
+        int oldWidth = original.getWidth();
+        int oldHeight = original.getHeight();
+
+        int newWidth = (int) (oldWidth * factor);
+        int newHeight = (int) (oldHeight * factor);
+
+        BufferedImage upscaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+
+        for (int x = 0; x < newWidth; x++) {
+            for (int y = 0; y < newHeight; y++) {
+
+                int oldX = Math.clamp((int) (x / factor), 0, oldWidth - 1);
+                int oldY = Math.clamp((int) (y / factor), 0, oldHeight - 1);
+
+                upscaledImage.setRGB(x, y, original.getRGB(oldX, oldY));
+            }
+        }
+
+        return upscaledImage;
+    }
+
     /**
      * Determines valid center color of triangle.
      * More red than blue and green.

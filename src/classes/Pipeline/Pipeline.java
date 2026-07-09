@@ -28,7 +28,9 @@ public class Pipeline {
         BufferedImage level3 = PipelineHelper.scaleColorImageBoxDownsampling(level2, 0.5);
         BufferedImage level4 = PipelineHelper.scaleColorImageBoxDownsampling(level3, 0.5);
         BufferedImage level5 = PipelineHelper.scaleColorImageBoxDownsampling(level4, 0.5);
+        BufferedImage level6 = PipelineHelper.scaleColorImageBoxDownsampling(level5, 0.5);
         ArrayList<BufferedImage> pyramid = new ArrayList<>();
+        pyramid.add(level6);
         pyramid.add(level5);
         pyramid.add(level4);
         pyramid.add(level3);
@@ -39,28 +41,32 @@ public class Pipeline {
 
         // traverse pyramid
         int pyramidNum = pyramid.size();
-        for (BufferedImage image : pyramid){
+        for (int i = 0; i < pyramid.size(); i++){
+            BufferedImage image = pyramid.get(i);
             long levelStart = System.nanoTime();
+
+            // moving window
+            // TODO: some triangle signs get painted at different location. check 1. vorfahrt vs 2. vorfahrt
+            int width = image.getWidth();
+            int height = image.getHeight();
+            int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
+            int stepSize = 50;
+            boolean signFound = false;
+
+            if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
+
             System.out.println("--------------------------------------");
             System.out.println("\n\nChecking pyramid level " + pyramidNum + "...");
             ImageIO.displayImage(image);
-
-            // moving window
-            int windowNum = 0;
-            int width = image.getWidth();
-            int height = image.getHeight();
-            int windowSize = 200;
-            int stepSize = 50;
-            boolean signFound = false;
 
             for (int y = 0; y <= height - windowSize; y += stepSize){
                 for (int x = 0; x <= width - windowSize; x += stepSize) {
 
                     // paint window
                     BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
-                    ImageIO.displayImage(windowImage);
+                    //ImageIO.displayImage(windowImage);
 
-                    // create mask of triangle
+                    // create mask of window
                     BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
                     Graphics2D g = windowMask.createGraphics();
                     ArrayList<Point> windowPoints = new ArrayList<>();
@@ -77,6 +83,7 @@ public class Pipeline {
                     // 2. preprocess image
                     start = System.nanoTime();
                     BufferedImage preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
+                    //ImageIO.displayImage(preProcessedImage);
                     end = System.nanoTime();
                     //System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
 
@@ -90,14 +97,27 @@ public class Pipeline {
                         System.out.println("Sign found, breaking...");
                         break;
                     }
-                    windowNum++;
                 }
                 if (signFound) break;
             }
+            if (signFound) break;
+
+            // check image as a whole
+            // 2. preprocess image
+            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
+
+            // 3. perform checks
+            signFound = Pipeline.checkForSign(preProcessedImage, image, image, 0, 0);
+
             long levelEnd = System.nanoTime();
             System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
             if (signFound) break;
             pyramidNum--;
+            if (i == pyramid.size() - 1){
+                System.err.println("level 0");
+                BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
+                pyramid.add(level0);
+            }
         }
 
         System.out.println("\nCalculations ended.");
@@ -118,7 +138,7 @@ public class Pipeline {
 //        System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
 //
 //        ImageIO.displayImage(scaledImage == null ? originalImage : scaledImage);
-
+//
 //        start = System.nanoTime();
 //        // 2. preprocess image
 //        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalImage : scaledImage);
@@ -129,7 +149,7 @@ public class Pipeline {
 //        // 3. perform checks
 //        //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
 //        // TODO: minimum size of form before checking for colors to get rid of false positives
-//        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalImage : scaledImage);
+//        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalImage : scaledImage, scaledImage == null ? originalImage : scaledImage, 0, 0);
 //        end = System.nanoTime();
 //        System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
 //
@@ -143,7 +163,7 @@ public class Pipeline {
      * Calls {@link EdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
      * Calls {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line.
      * Sorts found lines and checks for intersection angles.
-     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList)} ,
+     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
      * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
      * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList)}
      * @param preProcessedImage BufferedImage preprocessed
@@ -166,7 +186,7 @@ public class Pipeline {
 
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
-        int threshold = 50; //TODO: abhängig von bild größe
+        int threshold = 30; //TODO: abhängig von bild größe
 
         // accumulate lines
         for (int phi = 0; phi < accumulator.length; phi++){
@@ -182,6 +202,13 @@ public class Pipeline {
                 }
             }
         }
+
+        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.BLUE);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, lines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        //ImageIO.displayImage(lineImage);
 
         // sort
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
@@ -214,14 +241,14 @@ public class Pipeline {
 
         // sort lines and keep best
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int amountToKeep = 10; //TODO: abhängigkeitskriterium für mindestanzahl
+        int amountToKeep = 30; //TODO: abhängigkeitskriterium für mindestanzahl
         ArrayList<HoughLine> bestLines = new ArrayList<>();
         int limit = Math.min(amountToKeep, noSimilarLines.size());
         for (int i = 0; i < limit; i++) {
             bestLines.add(noSimilarLines.get(i));
         }
 
-        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines);
+        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
         boolean RsignFound = false;
         boolean OsignFound = false;
 
@@ -272,7 +299,7 @@ public class Pipeline {
 
         // 5. negative
         BufferedImage negative = ColorManipulation.negative(dilation);
-        ImageIO.displayImage(negative);
+        //ImageIO.displayImage(negative);
 
         return negative;
     }
