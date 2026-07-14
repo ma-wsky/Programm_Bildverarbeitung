@@ -245,26 +245,38 @@ public class CharacteristicsChecker {
         double sumXRed = 0, sumYRed = 0;
         double sumXWhite = 0, sumYWhite = 0;
 
-        double centerX = ((triangle.get(0).x) +
-                (triangle.get(1).x) +
-                (triangle.get(2).x)) / 3.0;
+        // calc inner triangle
+        int cropX = Math.min(Math.min(triangle.get(0).x, triangle.get(1).x), triangle.get(2).x);
+        int cropY = Math.min(Math.min(triangle.get(0).y, triangle.get(1).y), triangle.get(2).y);
 
-        double centerY = ((triangle.get(0).y) +
-                (triangle.get(1).y) +
-                (triangle.get(2).y)) / 3.0;
-        double scale = 0.40;
+        double centerX = ((triangle.get(0).x - cropX) +
+                (triangle.get(1).x - cropX) +
+                (triangle.get(2).x - cropX)) / 3.0;
+
+        double centerY = ((triangle.get(0).y - cropY) +
+                (triangle.get(1).y - cropY) +
+                (triangle.get(2).y - cropY)) / 3.0;
+        double scale = 0.50;
 
         Polygon innerTriangle = new Polygon();
         for (Point p : triangle){
-            int newX = (int) Math.round(centerX + scale * (p.x - centerX));
-            int newY = (int) Math.round(centerY + scale * (p.y - centerY));
+            int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
+            int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
             innerTriangle.addPoint(newX, newY);
         }
 
-        int totalCenterPixels = 0;
+        // draw outline of found sign on original image
+        Graphics2D gOriginal = maskedSign.createGraphics();
+        gOriginal.setColor(Color.BLUE);
+        gOriginal.setStroke(new java.awt.BasicStroke(1));
+        //gOriginal.drawPolygon(innerTriangle);
+        gOriginal.dispose();
 
-        int redPixelsInCenter = 0;
+        int totalCenterPixels = 0;
+        int whitePixelsInCenter = 0;
         int blackPixelsInCenter = 0;
+        int totalEdgePixels = 0;
+        int redPixelsAtEdge = 0;
 
         for (int x = 0; x < width; x++){
             for (int y = 0; y < height; y++){
@@ -321,6 +333,8 @@ public class CharacteristicsChecker {
                 boolean innerPixel = innerTriangle.contains(x, y);
                 if (innerPixel){
                     totalCenterPixels++;
+                } else {
+                    totalEdgePixels++;
                 }
 
                 if (isHueRed && isSaturated && isBright){
@@ -328,13 +342,17 @@ public class CharacteristicsChecker {
                     sumXRed += x;
                     sumYRed += y;
 
-                    if (innerPixel){
-                        redPixelsInCenter++;
+                    if (!innerPixel){
+                        redPixelsAtEdge++;
                     }
                 } else if (isWhite && isBrightWhite){
                     countWhitePixels++;
                     sumXWhite += x;
                     sumYWhite += y;
+
+                    if (innerPixel){
+                        whitePixelsInCenter++;
+                    }
                 } else if (isBlack && isPitchBlack) {
                     if (innerPixel){
                         blackPixelsInCenter++;
@@ -350,6 +368,10 @@ public class CharacteristicsChecker {
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
         boolean ratioValid = (ratioRedWhite >= 0.8 && ratioRedWhite <= 1.5);
 
+        // ratio black white
+        double ratioBlackWhite = (double) blackPixelsInCenter / whitePixelsInCenter;
+        boolean ratioBlackValid = (ratioBlackWhite >= 0.2 && ratioBlackWhite <= 0.6);
+
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels + blackPixelsInCenter) / totalPixels;
         boolean coverageValid = (signCoverage > 0.75);
@@ -364,19 +386,25 @@ public class CharacteristicsChecker {
         double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
         boolean centersMatch = (centerDistance <= centerTolerance);
 
-        // red pixels in center
-        boolean centerHasNoRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+        // white pixels in center
+        boolean centerIsWhite = ((double) whitePixelsInCenter / totalCenterPixels > 0.30);
 
         // black pixels in center
-        boolean centerHasBlack = ((double) blackPixelsInCenter / totalCenterPixels > 0.2);
+        boolean centerHasBlack = ((double) blackPixelsInCenter / totalCenterPixels > 0.1);
 
-        return //entropyValid &&
-                //medianValid &&
-                ratioValid &&
+        // red pixels at edge
+        boolean edgeIsRed = ((double) redPixelsAtEdge / totalEdgePixels > 0.50);
+
+        if (ratioValid &&
+                ratioBlackValid &&
                 coverageValid &&
                 centersMatch &&
-                centerHasNoRed &&
-                centerHasBlack;
+                centerIsWhite &&
+                centerHasBlack &&
+                edgeIsRed){
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -431,25 +459,35 @@ public class CharacteristicsChecker {
         double sumXRed = 0, sumYRed = 0;
         double sumXWhite = 0, sumYWhite = 0;
 
-        // TODO: use scaling of the triangle, not hardcoded values for rectangle
-        double centerX = ((triangle.get(0).x) +
-                (triangle.get(1).x) +
-                (triangle.get(2).x)) / 3.0;
+        // calc inner triangle
+        int cropX = Math.min(Math.min(triangle.get(0).x, triangle.get(1).x), triangle.get(2).x);
+        int cropY = Math.min(Math.min(triangle.get(0).y, triangle.get(1).y), triangle.get(2).y);
 
-        double centerY = ((triangle.get(0).y) +
-                (triangle.get(1).y) +
-                (triangle.get(2).y )) / 3.0;
-        double scale = 0.40;
+        double centerX = ((triangle.get(0).x - cropX) +
+                (triangle.get(1).x - cropX) +
+                (triangle.get(2).x - cropX)) / 3.0;
+
+        double centerY = ((triangle.get(0).y - cropY) +
+                (triangle.get(1).y - cropY) +
+                (triangle.get(2).y - cropY)) / 3.0;
+        double scale = 0.50;
 
         Polygon innerTriangle = new Polygon();
         for (Point p : triangle){
-            int newX = (int) Math.round(centerX + scale * (p.x - centerX));
-            int newY = (int) Math.round(centerY + scale * (p.y - centerY));
+            int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
+            int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
             innerTriangle.addPoint(newX, newY);
         }
 
+        // draw outline of found sign on original image
+        Graphics2D gOriginal = maskedSign.createGraphics();
+        gOriginal.setColor(Color.BLUE);
+        gOriginal.setStroke(new java.awt.BasicStroke(1));
+        //gOriginal.drawPolygon(innerTriangle);
+        gOriginal.dispose();
+
         int totalCenterPixels = 0;
-        int redPixelsInCenter = 0;
+        int whitePixelsInCenter = 0;
         int totalEdgePixels = 0;
         int redPixelsAtEdge = 0;
 
@@ -512,18 +550,22 @@ public class CharacteristicsChecker {
                     sumXRed += x;
                     sumYRed += y;
 
-                    if (innerTriangle.contains(x, y)){
-                        redPixelsInCenter++;
-                    } else {
+                    if (!innerTriangle.contains(x, y)){
                         redPixelsAtEdge++;
                     }
                 } else if (isWhite && isBrightWhite){
                     countWhitePixels++;
                     sumXWhite += x;
                     sumYWhite += y;
+                    if (innerTriangle.contains(x, y)){
+                        whitePixelsInCenter++;
+                    }
                 }
             }
         }
+
+        // TODO: check if it has three red edges by selecting a number of edge pixels and checking for red (do same in vorfahrt)
+        // TODO: pics that dont see sign must miss it due to edge detection or form detection as color detection is solid now
 
         // evaluate
         if (countWhitePixels == 0 || countRedPixels == 0) return false;
@@ -546,8 +588,8 @@ public class CharacteristicsChecker {
         double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
         boolean centersMatch = (centerDistance <= centerTolerance);
 
-        // red pixels in center
-        boolean centerIsWhite = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+        // white pixels in center
+        boolean centerIsWhite = ((double) whitePixelsInCenter / totalCenterPixels > 0.50);
 
         // red pixels at edge
         boolean edgeIsRed = ((double) redPixelsAtEdge / totalEdgePixels > 0.50);

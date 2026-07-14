@@ -26,15 +26,15 @@ public class FormChecker {
         ArrayList<HoughLine> validRectangleLines = getLines(validLines, 90);
 
         // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.BLUE);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        ImageIO.displayImage(lineImage);
+        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.BLUE);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        //ImageIO.displayImage(lineImage);
 
         // check all found rectangles
-        System.out.println("\nchecking rectangle form...");
+        //System.out.println("\nchecking rectangle form...");
 
         ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
@@ -61,7 +61,7 @@ public class FormChecker {
                 // crop and mask sign from original image
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, rectangleMask);
                 if (maskedSign == null) continue;
-                //classes.ImageIO.displayImage(maskedSign);
+                //ImageIO.displayImage(maskedSign);
 
                 // check the mask for the right colors
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
@@ -130,7 +130,7 @@ public class FormChecker {
     /**
      * Validates lines of triangle based on intersection angles of pairs.
      * Validates form of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList, int, int)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList, int, int)}.
+     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
@@ -143,15 +143,15 @@ public class FormChecker {
         ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
 
         // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.RED);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        ImageIO.displayImage(lineImage);
+        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.RED);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        //ImageIO.displayImage(lineImage);
 
         // check all found triangles
-        System.out.println("\nchecking triangle form...");
+        //System.out.println("\nchecking triangle form...");
 
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
@@ -252,15 +252,15 @@ public class FormChecker {
         }
 
         // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.GREEN);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
-//        ImageIO.displayImage(lineImage);
+        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+        Graphics2D g2 = lineImage.createGraphics();
+        g2.setColor(Color.GREEN);
+        g2.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
+        //ImageIO.displayImage(lineImage);
 
         // check all found octagons
-        System.out.println("\nchecking octagon form...");
+        //System.out.println("\nchecking octagon form...");
 
         ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
 

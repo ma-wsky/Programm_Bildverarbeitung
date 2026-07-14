@@ -47,11 +47,11 @@ public class Pipeline {
             long levelStart = System.nanoTime();
 
             // moving window
-            // TODO: some triangle signs get painted at different location. check 1. vorfahrt vs 2. vorfahrt
+            // TODO: check edges (run once from different edge)
             int width = image.getWidth();
             int height = image.getHeight();
             int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
-            int stepSize = 50;
+            int stepSize = 25;
 
             if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
 
@@ -67,7 +67,7 @@ public class Pipeline {
 
                     // paint window
                     BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
-                    //ImageIO.displayImage(windowImage);
+                    ImageIO.displayImage(windowImage);
 
                     // create mask of window
                     BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
@@ -108,6 +108,7 @@ public class Pipeline {
             }
 
             // check image as a whole
+            System.out.println("check whole image...");
             // 2. preprocess image
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
 
@@ -122,7 +123,6 @@ public class Pipeline {
             }
             pyramidNum--;
             if (i == 5){
-                System.err.println("level 0");
                 BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
                 pyramid.add(level0);
             }
@@ -133,38 +133,6 @@ public class Pipeline {
         System.out.println("Total time: " + (progEnd - progStart) / 1000000 + " ms.");
         System.out.println("----------------------------------------------\n\n");
 
-
-//        start = System.nanoTime();
-//        // check size and scale image
-//        if (originalImage.getHeight() >= 2000 || originalImage.getWidth() >= 2000){
-//            System.out.println("scaling image...");
-//            scaledImage = PipelineHelper.scaleColorImageGauss(originalImage, 0.25);
-//            if (scaledImage == null) return;
-//
-//        }
-//        end = System.nanoTime();
-//        System.out.println("<<< Image scaled in " + (end - start) / 1000000 + " milliseconds.");
-//
-//        ImageIO.displayImage(scaledImage == null ? originalImage : scaledImage);
-//
-//        start = System.nanoTime();
-//        // 2. preprocess image
-//        BufferedImage preProcessedImage = Pipeline.imagePreprocessing(scaledImage == null ? originalImage : scaledImage);
-//        end = System.nanoTime();
-//        System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " milliseconds.");
-//
-//        start = System.nanoTime();
-//        // 3. perform checks
-//        //TODO: similar lines in angle HAVE to be grouped. too many possible forms result otherwise
-//        // TODO: minimum size of form before checking for colors to get rid of false positives
-//        Pipeline.checkForSign(preProcessedImage, scaledImage == null ? originalImage : scaledImage, scaledImage == null ? originalImage : scaledImage, 0, 0);
-//        end = System.nanoTime();
-//        System.out.println("<<< Image checked in " + (end - start) / 1000000 + " milliseconds.");
-//
-//        System.out.println("\nCalculations ended.");
-//        long progEnd = System.nanoTime();
-//        System.out.println("Total time: " + (progEnd - progStart) / 1000000000 + " seconds");
-//        System.out.println("----------------------------------------------\n\n");
     }
 
     /**
@@ -246,6 +214,13 @@ public class Pipeline {
                 noSimilarLines.add(newLine);
             }
         }
+
+        BufferedImage noSomilarImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+        Graphics2D gs = noSomilarImage.createGraphics();
+        gs.setColor(Color.BLUE);
+        gs.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(gs, noSimilarLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        //ImageIO.displayImage(noSomilarImage);
 
         // sort lines and keep best
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));

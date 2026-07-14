@@ -28,7 +28,7 @@ void main() {
 //    Pipeline.findSign("pics/achten/achtenTest4.jpg"); // noise produces too much lines -> try sectioned checks (moving window), moving window -> lines not found
 //    Pipeline.findSign("pics/achten/achtenTest5.jpg"); // didn't find crooked top line
 //    Pipeline.findSign("pics/achten/achtenTest6.jpg"); // lots of noise from roof. couldn't find left edge
-    Pipeline.findSign("pics/achten/bild.jpg");
+//    Pipeline.findSign("pics/achten/bild.jpg");
 
     //TODO: too much noise -> better remedy needed (sectioned search / moving window)
 
