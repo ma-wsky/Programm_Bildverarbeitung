@@ -43,6 +43,7 @@ public class Pipeline {
         int pyramidNum = pyramid.size();
         for (int i = 0; i < pyramid.size(); i++){
             BufferedImage image = pyramid.get(i);
+            BufferedImage copy = ImageIO.copyBufferedImage(image);
             long levelStart = System.nanoTime();
 
             // moving window
@@ -51,13 +52,15 @@ public class Pipeline {
             int height = image.getHeight();
             int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
             int stepSize = 50;
-            boolean signFound = false;
 
             if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
 
             System.out.println("--------------------------------------");
             System.out.println("\n\nChecking pyramid level " + pyramidNum + "...");
             ImageIO.displayImage(image);
+
+            boolean endOfLevel = false;
+            boolean signFound = false;
 
             for (int y = 0; y <= height - windowSize; y += stepSize){
                 for (int x = 0; x <= width - windowSize; x += stepSize) {
@@ -89,29 +92,35 @@ public class Pipeline {
 
                     // 3. perform checks
                     start = System.nanoTime();
-                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, image, x, y);
+                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y) || signFound;
                     end = System.nanoTime();
                     System.out.println("\n<<< Window checked in " + (end - start) / 1000000 + " ms.");
 
-                    if (signFound) {
+                    endOfLevel = (y+1 + stepSize > height - windowSize) && (x+1 + stepSize > width - windowSize);
+
+                    // TODO: determine best sign of all found signs in level
+                    if (signFound && endOfLevel) {
                         System.out.println("Sign found, breaking...");
                         break;
                     }
                 }
-                if (signFound) break;
+                if (signFound && endOfLevel) break;
             }
-            if (signFound) break;
+            if (signFound && endOfLevel) break;
 
             // check image as a whole
             // 2. preprocess image
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
 
             // 3. perform checks
-            signFound = Pipeline.checkForSign(preProcessedImage, image, image, 0, 0);
+            signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0) || signFound;
 
             long levelEnd = System.nanoTime();
             System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
-            if (signFound) break;
+            if (signFound) {
+                ImageIO.displayImage(copy);
+                break;
+            }
             pyramidNum--;
             if (i == pyramid.size() - 1){
                 System.err.println("level 0");
@@ -241,12 +250,19 @@ public class Pipeline {
 
         // sort lines and keep best
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int amountToKeep = 30; //TODO: abhängigkeitskriterium für mindestanzahl
+        int amountToKeep = 20; //TODO: abhängigkeitskriterium für mindestanzahl
         ArrayList<HoughLine> bestLines = new ArrayList<>();
         int limit = Math.min(amountToKeep, noSimilarLines.size());
         for (int i = 0; i < limit; i++) {
             bestLines.add(noSimilarLines.get(i));
         }
+
+        BufferedImage bestLinesImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+        Graphics2D g3 = bestLinesImage.createGraphics();
+        g3.setColor(Color.BLUE);
+        g3.setStroke(new java.awt.BasicStroke(1));
+        DrawingAndFillingPipeline.drawLines(g3, bestLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        //ImageIO.displayImage(bestLinesImage);
 
         boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
         boolean RsignFound = false;

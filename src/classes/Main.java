@@ -24,17 +24,17 @@ void main() {
     // achten
 //    Pipeline.findSign("pics/achten/achtenTest1.jpg"); // entropy dismissed, white value lowered -> success, false positives with moving window -> windowSize 300, step 50 -> success
 //    Pipeline.findSign("pics/achten/achtenTest2.jpg"); // edges get lost from Sobel to equidensity
-//    Pipeline.findSign("pics/achten/achtenTest3.jpg"); // no triangle found -> higher angle tolerance and side ratio tolerance, higher ratioRedWhite upper bound -> success
-//    Pipeline.findSign("pics/achten/achtenTest4.jpg"); // noise produces too much lines -> try sectioned checks (moving window), moving window -> kinda success
+    Pipeline.findSign("pics/achten/achtenTest3.jpg"); // no triangle found -> higher angle tolerance and side ratio tolerance, higher ratioRedWhite upper bound, moving window angles to steep
+//    Pipeline.findSign("pics/achten/achtenTest4.jpg"); // noise produces too much lines -> try sectioned checks (moving window), moving window -> lines not found
 //    Pipeline.findSign("pics/achten/achtenTest5.jpg"); // didn't find crooked top line
 //    Pipeline.findSign("pics/achten/achtenTest6.jpg"); // lots of noise from roof. couldn't find left edge
 
     //TODO: too much noise -> better remedy needed (sectioned search / moving window)
 
     // vorfahrt
-    Pipeline.findSign("pics/pfeil/vorfahrtTest1.jpg"); // hab to tweak color detection again -> success
-    Pipeline.findSign("pics/pfeil/vorfahrtTest2.jpg"); // success
-    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success
+//    Pipeline.findSign("pics/pfeil/vorfahrtTest1.jpg"); // hab to tweak color detection again -> success
+//    Pipeline.findSign("pics/pfeil/vorfahrtTest2.jpg"); // success
+//    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest4.jpg"); // couldn't find triangle due to tree noise
 
     //TODO: noise
