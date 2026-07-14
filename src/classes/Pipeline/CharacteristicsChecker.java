@@ -1,7 +1,9 @@
 package classes.Pipeline;
 
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import classes.DescriptiveStatistics;
+import java.util.ArrayList;
+
 import classes.GlobalHelperFunctions;
 
 public class CharacteristicsChecker {
@@ -197,7 +199,7 @@ public class CharacteristicsChecker {
      * @param maskedSign BufferedImage octagon to check
      * @return boolean if vorfahrt-sign
      */
-    public static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign) {
+    public static boolean isVorfahrtColorsAndStats(BufferedImage maskedSign, ArrayList<Point> triangle) {
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
@@ -243,10 +245,19 @@ public class CharacteristicsChecker {
         double sumXRed = 0, sumYRed = 0;
         double sumXWhite = 0, sumYWhite = 0;
 
-        int innerMinX = (int) (width * 0.25);
-        int innerMaxX = (int) (width * 0.75);
-        int innerMinY = (int) (height * 0.25);
-        int innerMaxY = (int) (height * 0.75);
+        // TODO: use scaling of the triangle, not hardcoded values for rectangle
+        double centerX = (triangle.get(0).x + triangle.get(1).x + triangle.get(2).x);
+        double centerY = (triangle.get(0).y + triangle.get(1).y + triangle.get(2).y);
+        double scale = 0.75;
+
+        Polygon innerTriangle = new Polygon();
+        for (Point p : triangle){
+            int newX = (int) Math.round(centerX + scale * (p.x - centerX));
+            int newY = (int) Math.round(centerY + scale * (p.y - centerY));
+            innerTriangle.addPoint(newX, newY);
+        }
+
+        int totalCenterPixels = 0;
 
         int redPixelsInCenter = 0;
         int blackPixelsInCenter = 0;
@@ -303,7 +314,11 @@ public class CharacteristicsChecker {
                 boolean isBlack = (s <= 0.50); //TODO: prev: 0.3, in real photos black is never not saturated due to lighting
                 boolean isPitchBlack = (v <= 0.2);
 
-                boolean innerPixel = x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY;
+                boolean innerPixel = innerTriangle.contains(x, y);
+                if (innerPixel){
+                    totalCenterPixels++;
+                }
+
                 if (isHueRed && isSaturated && isBright){
                     countRedPixels++;
                     sumXRed += x;
@@ -329,7 +344,7 @@ public class CharacteristicsChecker {
 
         // ratio red white
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
-        boolean ratioValid = (ratioRedWhite >= 1.0 && ratioRedWhite <= 1.5);
+        boolean ratioValid = (ratioRedWhite >= 0.8 && ratioRedWhite <= 1.5);
 
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels + blackPixelsInCenter) / totalPixels;
@@ -341,13 +356,12 @@ public class CharacteristicsChecker {
         double centerXWhite = sumXWhite / countWhitePixels;
         double centerYWhite = sumYWhite / countWhitePixels;
 
-        double centerTolerance = Math.max(width, height) * 0.10;
+        double centerTolerance = Math.max(width, height) * 0.15;
         double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
         boolean centersMatch = (centerDistance <= centerTolerance);
 
         // red pixels in center
-        int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY) / 2;
-        boolean centerIsRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+        boolean centerHasNoRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
 
         // black pixels in center
         boolean centerHasBlack = ((double) blackPixelsInCenter / totalCenterPixels > 0.2);
@@ -357,7 +371,7 @@ public class CharacteristicsChecker {
                 ratioValid &&
                 coverageValid &&
                 centersMatch &&
-                !centerIsRed &&
+                centerHasNoRed &&
                 centerHasBlack;
     }
 
@@ -367,7 +381,7 @@ public class CharacteristicsChecker {
      * @param maskedSign BufferedImage octagon to check
      * @return boolean if vorfahrt-achten-sign
      */
-    public static boolean isVorfahrtAchtenColorsAndStats(BufferedImage maskedSign) {
+    public static boolean isVorfahrtAchtenColorsAndStats(BufferedImage maskedSign, ArrayList<Point> triangle) {
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
@@ -413,11 +427,19 @@ public class CharacteristicsChecker {
         double sumXRed = 0, sumYRed = 0;
         double sumXWhite = 0, sumYWhite = 0;
 
-        int innerMinX = (int) (width * 0.25);
-        int innerMaxX = (int) (width * 0.75);
-        int innerMinY = (int) (height * 0.25);
-        int innerMaxY = (int) (height * 0.75);
+        // TODO: use scaling of the triangle, not hardcoded values for rectangle
+        double centerX = (triangle.get(0).x + triangle.get(1).x + triangle.get(2).x);
+        double centerY = (triangle.get(0).y + triangle.get(1).y + triangle.get(2).y);
+        double scale = 0.75;
 
+        Polygon innerTriangle = new Polygon();
+        for (Point p : triangle){
+            int newX = (int) Math.round(centerX + scale * (p.x - centerX));
+            int newY = (int) Math.round(centerY + scale * (p.y - centerY));
+            innerTriangle.addPoint(newX, newY);
+        }
+
+        int totalCenterPixels = 0;
         int redPixelsInCenter = 0;
 
         for (int x = 0; x < width; x++){
@@ -468,12 +490,16 @@ public class CharacteristicsChecker {
                 boolean isWhite = (s <= 0.30);
                 boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7 -> real life photos can be dark
 
+                if (innerTriangle.contains(x, y)){
+                    totalCenterPixels++;
+                }
+
                 if (isHueRed && isSaturated && isBright){
                     countRedPixels++;
                     sumXRed += x;
                     sumYRed += y;
 
-                    if (x >= innerMinX && x <= innerMaxX && y >= innerMinY && y <= innerMaxY){
+                    if (innerTriangle.contains(x, y)){
                         redPixelsInCenter++;
                     }
                 } else if (isWhite && isBrightWhite){
@@ -506,14 +532,13 @@ public class CharacteristicsChecker {
         boolean centersMatch = (centerDistance <= centerTolerance);
 
         // red pixels in center
-        int totalCenterPixels = (innerMaxX - innerMinX) * (innerMaxY - innerMinY) / 2;
-        boolean centerIsRed = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
+        boolean centerIsWhite = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
 
         return //entropyValid &&
                 //medianValid &&
                 ratioValid &&
                 coverageValid &&
-                !centerIsRed &&
+                centerIsWhite &&
                 centersMatch;
     }
 

@@ -130,7 +130,7 @@ public class FormChecker {
     /**
      * Validates lines of triangle based on intersection angles of pairs.
      * Validates form of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage)}.
+     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
@@ -186,10 +186,10 @@ public class FormChecker {
 
                 // check the mask for the right colors
                 String foundSign = "";
-                if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign)){
-                    foundSign = "vorfahrt-achten";
-                } else if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign)){
+                if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign, currentTriangle)){
                     foundSign = "vorfahrt";
+                } else if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign, currentTriangle)){
+                    foundSign = "vorfahrt-achten";
                 }
 
                 if (!foundSign.isEmpty()){
@@ -205,7 +205,7 @@ public class FormChecker {
                     for (int j = 0; j < 3; j++) {
                         Point pStart = currentTriangle.get(j);
                         Point pEnd = currentTriangle.get((j + 1) % 3);
-                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
                     }
 
                     gOriginal.dispose();
