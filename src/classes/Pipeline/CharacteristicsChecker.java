@@ -170,7 +170,7 @@ public class CharacteristicsChecker {
 
         // ratio red white
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
-        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 4.5);
+        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 5.5);
 
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
@@ -245,10 +245,14 @@ public class CharacteristicsChecker {
         double sumXRed = 0, sumYRed = 0;
         double sumXWhite = 0, sumYWhite = 0;
 
-        // TODO: use scaling of the triangle, not hardcoded values for rectangle
-        double centerX = (triangle.get(0).x + triangle.get(1).x + triangle.get(2).x);
-        double centerY = (triangle.get(0).y + triangle.get(1).y + triangle.get(2).y);
-        double scale = 0.75;
+        double centerX = ((triangle.get(0).x) +
+                (triangle.get(1).x) +
+                (triangle.get(2).x)) / 3.0;
+
+        double centerY = ((triangle.get(0).y) +
+                (triangle.get(1).y) +
+                (triangle.get(2).y)) / 3.0;
+        double scale = 0.40;
 
         Polygon innerTriangle = new Polygon();
         for (Point p : triangle){
@@ -428,9 +432,14 @@ public class CharacteristicsChecker {
         double sumXWhite = 0, sumYWhite = 0;
 
         // TODO: use scaling of the triangle, not hardcoded values for rectangle
-        double centerX = (triangle.get(0).x + triangle.get(1).x + triangle.get(2).x);
-        double centerY = (triangle.get(0).y + triangle.get(1).y + triangle.get(2).y);
-        double scale = 0.75;
+        double centerX = ((triangle.get(0).x) +
+                (triangle.get(1).x) +
+                (triangle.get(2).x)) / 3.0;
+
+        double centerY = ((triangle.get(0).y) +
+                (triangle.get(1).y) +
+                (triangle.get(2).y )) / 3.0;
+        double scale = 0.40;
 
         Polygon innerTriangle = new Polygon();
         for (Point p : triangle){
@@ -441,6 +450,8 @@ public class CharacteristicsChecker {
 
         int totalCenterPixels = 0;
         int redPixelsInCenter = 0;
+        int totalEdgePixels = 0;
+        int redPixelsAtEdge = 0;
 
         for (int x = 0; x < width; x++){
             for (int y = 0; y < height; y++){
@@ -492,6 +503,8 @@ public class CharacteristicsChecker {
 
                 if (innerTriangle.contains(x, y)){
                     totalCenterPixels++;
+                }else {
+                    totalEdgePixels++;
                 }
 
                 if (isHueRed && isSaturated && isBright){
@@ -501,6 +514,8 @@ public class CharacteristicsChecker {
 
                     if (innerTriangle.contains(x, y)){
                         redPixelsInCenter++;
+                    } else {
+                        redPixelsAtEdge++;
                     }
                 } else if (isWhite && isBrightWhite){
                     countWhitePixels++;
@@ -534,12 +549,17 @@ public class CharacteristicsChecker {
         // red pixels in center
         boolean centerIsWhite = ((double) redPixelsInCenter / totalCenterPixels < 0.05);
 
-        return //entropyValid &&
-                //medianValid &&
-                ratioValid &&
+        // red pixels at edge
+        boolean edgeIsRed = ((double) redPixelsAtEdge / totalEdgePixels > 0.50);
+
+        if (ratioValid &&
                 coverageValid &&
                 centerIsWhite &&
-                centersMatch;
+                centersMatch &&
+                edgeIsRed){
+            return true;
+        }
+        return false;
     }
 
 }

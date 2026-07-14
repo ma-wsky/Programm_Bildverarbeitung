@@ -106,7 +106,6 @@ public class Pipeline {
                 }
                 if (signFound && endOfLevel) break;
             }
-            if (signFound && endOfLevel) break;
 
             // check image as a whole
             // 2. preprocess image
@@ -122,7 +121,7 @@ public class Pipeline {
                 break;
             }
             pyramidNum--;
-            if (i == pyramid.size() - 1){
+            if (i == 5){
                 System.err.println("level 0");
                 BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
                 pyramid.add(level0);

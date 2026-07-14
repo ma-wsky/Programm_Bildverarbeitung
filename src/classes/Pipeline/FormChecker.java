@@ -130,7 +130,7 @@ public class FormChecker {
     /**
      * Validates lines of triangle based on intersection angles of pairs.
      * Validates form of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)}.
+     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList, int, int)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList, int, int)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines

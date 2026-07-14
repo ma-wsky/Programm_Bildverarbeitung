@@ -467,7 +467,7 @@ public class PipelineHelper {
 
 
         // TODO: determine criterion for minimum size of shape
-        double minLength = Math.min(width, height) / 20.0;
+        double minLength = Math.min(width, height) / 10.0;
 
         Point p1 = currentTriangle.get(0);
         Point p2 = currentTriangle.get(1);
