@@ -3,6 +3,7 @@ package classes.Pipeline;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Random;
 
 import classes.GlobalHelperFunctions;
 
@@ -224,7 +225,7 @@ public class CharacteristicsChecker {
             double avgG = (double) sumG / sampledPixels;
             double avgB = (double) sumB / sampledPixels;
 
-            if (avgB > avgR || avgR < 80 || avgG > avgR) {
+            if (avgB > avgR || avgR < 65 || avgG > avgR) {
                 return false;
             }
         } else {
@@ -263,6 +264,63 @@ public class CharacteristicsChecker {
             int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
             int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
             innerTriangle.addPoint(newX, newY);
+        }
+
+        // check for three red edges
+        Polygon outerTriangle = new Polygon();
+        Point[] outerTrianglePoints = new Point[3];
+        for (int i = 0; i < 3; i++){
+            Point p = triangle.get(i);
+            int newX = p.x - cropX;
+            int newY = p.y - cropY;
+
+            outerTrianglePoints[i] = new Point(newX, newY);
+            outerTriangle.addPoint(newX, newY);
+        }
+
+        Point[][] edges = {
+                {outerTrianglePoints[0], outerTrianglePoints[1]},
+                {outerTrianglePoints[1], outerTrianglePoints[2]},
+                {outerTrianglePoints[2], outerTrianglePoints[0]}
+        };
+
+        int edgeThreshold = 20;
+        double minRedRatio = 0.50;
+        Random rand = new Random();
+
+        for (int i = 0; i < 3; i++){
+            Point start = edges[i][0];
+            Point end = edges[i][1];
+            int redPixelAmount = 0;
+
+            for (int j = 0; j < edgeThreshold; j++){
+                double t = rand.nextDouble();
+                double edgeX = start.x + t * (end.x - start.x);
+                double edgeY = start.y + t * (end.y - start.y);
+                double stepToCenter = 0.15;
+                int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
+                int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));
+
+                boolean inOuterTriangle = outerTriangle.contains(sampleX, sampleY);
+                boolean inInnerTriangle = innerTriangle.contains(sampleX, sampleY);
+
+                if (inOuterTriangle && !inInnerTriangle){
+                    if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height){
+                        int rgb = maskedSign.getRGB(sampleX, sampleY);
+                        if (isPixelRedHSV(rgb)){
+                            redPixelAmount++;
+                        }
+                    }
+
+                }
+            }
+
+
+            double redRatio = (double) redPixelAmount / edgeThreshold;
+            if (redRatio < minRedRatio){
+                return false;
+            }
+
         }
 
         // draw outline of found sign on original image
@@ -317,18 +375,6 @@ public class CharacteristicsChecker {
                 // calc value
                 v = max;
 
-                // red
-                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
-                boolean isSaturated = (s >= 0.3);
-                boolean isBright = (v >= 0.3); //TODO: prev: 0.4
-
-                // white
-                boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7
-
-                // black
-                boolean isBlack = (s <= 0.50); //TODO: prev: 0.3, in real photos black is never not saturated due to lighting
-                boolean isPitchBlack = (v <= 0.2);
 
                 boolean innerPixel = innerTriangle.contains(x, y);
                 if (innerPixel){
@@ -337,27 +383,36 @@ public class CharacteristicsChecker {
                     totalEdgePixels++;
                 }
 
-                if (isHueRed && isSaturated && isBright){
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isRed = isHueRed && (s >= 0.25) && (v >= 0.20);
+
+                boolean isWhite = (s <= 0.20) && (v >= 0.30);
+                boolean isBlack = (s < 0.25) && (v < 0.20);
+
+                if (isRed){
                     countRedPixels++;
                     sumXRed += x;
                     sumYRed += y;
-
                     if (!innerPixel){
                         redPixelsAtEdge++;
                     }
-                } else if (isWhite && isBrightWhite){
+                }
+
+                if (isWhite){
                     countWhitePixels++;
                     sumXWhite += x;
                     sumYWhite += y;
-
-                    if (innerPixel){
+                    if (innerPixel) {
                         whitePixelsInCenter++;
                     }
-                } else if (isBlack && isPitchBlack) {
+                }
+
+                if (isBlack){
                     if (innerPixel){
                         blackPixelsInCenter++;
                     }
                 }
+
             }
         }
 
@@ -438,7 +493,7 @@ public class CharacteristicsChecker {
             double avgG = (double) sumG / sampledPixels;
             double avgB = (double) sumB / sampledPixels;
 
-            if (avgB > avgR || avgR < 80 || avgG > avgR) {
+            if (avgB > avgR || avgR < 65 || avgG > avgR) {
                 return false;
             }
         } else {
@@ -477,6 +532,65 @@ public class CharacteristicsChecker {
             int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
             int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
             innerTriangle.addPoint(newX, newY);
+        }
+
+        // TODO: debug remaining false positives, tweak threshold if necessary
+
+        // check for three red edges
+        Polygon outerTriangle = new Polygon();
+        Point[] outerTrianglePoints = new Point[3];
+        for (int i = 0; i < 3; i++){
+            Point p = triangle.get(i);
+            int newX = p.x - cropX;
+            int newY = p.y - cropY;
+
+            outerTrianglePoints[i] = new Point(newX, newY);
+            outerTriangle.addPoint(newX, newY);
+        }
+
+        Point[][] edges = {
+                {outerTrianglePoints[0], outerTrianglePoints[1]},
+                {outerTrianglePoints[1], outerTrianglePoints[2]},
+                {outerTrianglePoints[2], outerTrianglePoints[0]}
+        };
+
+        int edgeThreshold = 20;
+        double minRedRatio = 0.50;
+        Random rand = new Random();
+
+        for (int i = 0; i < 3; i++){
+            Point start = edges[i][0];
+            Point end = edges[i][1];
+            int redPixelAmount = 0;
+
+            for (int j = 0; j < edgeThreshold; j++){
+                double t = rand.nextDouble();
+                double edgeX = start.x + t * (end.x - start.x);
+                double edgeY = start.y + t * (end.y - start.y);
+                double stepToCenter = 0.15;
+                int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
+                int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));
+
+                boolean inOuterTriangle = outerTriangle.contains(sampleX, sampleY);
+                boolean inInnerTriangle = innerTriangle.contains(sampleX, sampleY);
+
+                if (inOuterTriangle && !inInnerTriangle){
+                    if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height){
+                        int rgb = maskedSign.getRGB(sampleX, sampleY);
+                        if (isPixelRedHSV(rgb)){
+                            redPixelAmount++;
+                        }
+                    }
+
+                }
+            }
+
+
+            double redRatio = (double) redPixelAmount / edgeThreshold;
+            if (redRatio < minRedRatio){
+                return false;
+            }
+
         }
 
         // draw outline of found sign on original image
@@ -530,42 +644,39 @@ public class CharacteristicsChecker {
                 // calc value
                 v = max;
 
-                // red
-                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
-                boolean isSaturated = (s >= 0.3);
-                boolean isBright = (v >= 0.4);
-
-                // white
-                boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.4); //TODO: prev: 0.7 -> real life photos can be dark
-
-                if (innerTriangle.contains(x, y)){
+                boolean innerPixel = innerTriangle.contains(x, y);
+                if (innerPixel){
                     totalCenterPixels++;
-                }else {
+                } else {
                     totalEdgePixels++;
                 }
 
-                if (isHueRed && isSaturated && isBright){
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isRed = isHueRed && (s >= 0.25) && (v >= 0.20);
+
+                boolean isWhite = (s <= 0.20) && (v >= 0.30);
+
+                if (isRed){
                     countRedPixels++;
                     sumXRed += x;
                     sumYRed += y;
 
-                    if (!innerTriangle.contains(x, y)){
+                    if (!innerPixel){
                         redPixelsAtEdge++;
                     }
-                } else if (isWhite && isBrightWhite){
+                }
+
+                if (isWhite){
                     countWhitePixels++;
                     sumXWhite += x;
                     sumYWhite += y;
-                    if (innerTriangle.contains(x, y)){
+
+                    if (innerPixel){
                         whitePixelsInCenter++;
                     }
                 }
             }
         }
-
-        // TODO: check if it has three red edges by selecting a number of edge pixels and checking for red (do same in vorfahrt)
-        // TODO: pics that dont see sign must miss it due to edge detection or form detection as color detection is solid now
 
         // evaluate
         if (countWhitePixels == 0 || countRedPixels == 0) return false;
@@ -602,6 +713,44 @@ public class CharacteristicsChecker {
             return true;
         }
         return false;
+    }
+
+    private static boolean isPixelRedHSV(int rgb) {
+        double r = ((rgb >> 16) & 0xff) / 255.0;
+        double g = ((rgb >> 8) & 0xff) / 255.0;
+        double b = (rgb & 0xff) / 255.0;
+
+        double max = Math.max(Math.max(r, g), b);
+        double min = Math.min(Math.min(r, g), b);
+        double delta = max-min;
+
+        double h, s, v;
+
+        // calc hue
+        if (delta == 0) {
+            h = 0;
+        } else if (max == r) {
+            h = 60 * (((g - b) / delta) % 6);
+        } else if (max == g) {
+            h = 60 * (((b - r) / delta) + 2);
+        } else { // max == b
+            h = 60 * (((r - g) / delta) + 4);
+        }
+
+        if (h < 0) h += 360;
+
+        // calc saturation
+        if (max == 0) {
+            s = 0;
+        } else{
+            s = delta / max;
+        }
+
+        // calc value
+        v = max;
+
+        boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+        return isHueRed && (s >= 0.25) && (v >= 0.20);
     }
 
 }

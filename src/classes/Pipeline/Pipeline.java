@@ -60,7 +60,20 @@ public class Pipeline {
             ImageIO.displayImage(image);
 
             boolean endOfLevel = false;
-            boolean signFound = false;
+
+            // check image as a whole
+            System.out.println("check whole image...");
+            // 2. preprocess image
+            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
+
+            // 3. perform checks
+            boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
+
+            if (signFound) {
+                System.out.println("breaking...");
+                ImageIO.displayImage(copy);
+                break;
+            }
 
             for (int y = 0; y <= height - windowSize; y += stepSize){
                 for (int x = 0; x <= width - windowSize; x += stepSize) {
@@ -85,7 +98,7 @@ public class Pipeline {
 
                     // 2. preprocess image
                     start = System.nanoTime();
-                    BufferedImage preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
+                    preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
                     //ImageIO.displayImage(preProcessedImage);
                     end = System.nanoTime();
                     //System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
@@ -106,14 +119,6 @@ public class Pipeline {
                 }
                 if (signFound && endOfLevel) break;
             }
-
-            // check image as a whole
-            System.out.println("check whole image...");
-            // 2. preprocess image
-            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
-
-            // 3. perform checks
-            signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0) || signFound;
 
             long levelEnd = System.nanoTime();
             System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
@@ -268,11 +273,11 @@ public class Pipeline {
         //ImageIO.displayImage(lowpass);
 
         // hist equal
-        //BufferedImage histogramEqualization = ImageManipulation.histogramEqualization(lowpass);
+        BufferedImage histogramEqualization = ImageManipulation.histogramEqualization(lowpass);
         //ImageIO.displayImage(histogramEqualization);
 
         // 2. sobel
-        BufferedImage sobel = EdgeDetection.sobelFilter(lowpass, 3);
+        BufferedImage sobel = EdgeDetection.sobelFilter(histogramEqualization, 3);
         //ImageIO.displayImage(sobel);
 
         // 3. equidensity

@@ -154,6 +154,22 @@ public class FormChecker {
         //System.out.println("\nchecking triangle form...");
 
         ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+//        for(ArrayList<Point> triangle : allFoundTriangles){
+//            BufferedImage triangleCopy = ImageIO.copyBufferedImage(originalImage);
+//            Graphics2D gTri = triangleCopy.createGraphics();
+//            gTri.setColor(Color.CYAN);
+//            gTri.setStroke(new java.awt.BasicStroke(1));
+//
+//            for (int j = 0; j < 3; j++) {
+//                Point pStart = triangle.get(j);
+//                Point pEnd = triangle.get((j + 1) % 3);
+//                gTri.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
+//            }
+//
+//            gTri.dispose();
+//
+//            ImageIO.displayImage(triangleCopy);
+//        }
 
         long end = System.nanoTime();
         //System.out.println("<<< Triangle forms found in " + (end - start) / 1000000+ "ms");
@@ -169,7 +185,7 @@ public class FormChecker {
                 //System.out.println("checking triangle " + (i+1) + "...");
 
                 // check center for early exit
-                if (!PipelineHelper.isValidTriangleCenterColor(maskedWindow, currentTriangle)) continue;
+                //if (!PipelineHelper.isValidTriangleCenterColor(maskedWindow, currentTriangle)) continue;
                 // check size for early exit
                 if (PipelineHelper.isTriangleTooSmall(maskedWindow, currentTriangle)) continue;
                 trianglesChecked++;
