@@ -285,7 +285,7 @@ public class CharacteristicsChecker {
         };
 
         int edgeThreshold = 20;
-        double minRedRatio = 0.50;
+        double minRedRatio = 0.70;
         Random rand = new Random();
 
         for (int i = 0; i < 3; i++){
@@ -555,7 +555,7 @@ public class CharacteristicsChecker {
         };
 
         int edgeThreshold = 20;
-        double minRedRatio = 0.50;
+        double minRedRatio = 0.70;
         Random rand = new Random();
 
         for (int i = 0; i < 3; i++){
