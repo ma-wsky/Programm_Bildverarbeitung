@@ -32,7 +32,7 @@ void main() {
     // vorfahrt
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest1.jpg"); // hab to tweak color detection again -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest2.jpg"); // moving window no success -> histogram equal -> success
-//    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success -> false positive red wall -> tri edge check -> interesting false positives
+//    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success -> false positive red wall -> tri edge check -> interesting false positives -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest4.jpg"); // couldn't find triangle due to tree noise and colour -> noise costs a lot of performance
 //    Pipeline.findSign("pics/pfeil/vf_03.jpg"); // false triangle -> need tri-edge colour check -> success -> DIFFERENT RESULT WHEN RUNNING MULTIPLE TIMES
 //    Pipeline.findSign("pics/pfeil/vf_04.jpg"); // success -> false positive is interesting -> still false positives with tri edge check ????
@@ -46,7 +46,7 @@ void main() {
 //    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle
 //    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason
 //    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
-//    Pipeline.findSign("pics/stopp/stop_6.jpg");
+//    Pipeline.findSign("pics/stopp/stop_6.jpg"); // noise due to letters and bird
 
 
     //TODO: too many garbage lines and noise, focus on other signs

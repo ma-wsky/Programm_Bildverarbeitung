@@ -112,6 +112,7 @@ public class Pipeline {
                     endOfLevel = (y+1 + stepSize > height - windowSize) && (x+1 + stepSize > width - windowSize);
 
                     // TODO: determine best sign of all found signs in level
+                    // TODO: if multiple signs of same type get detected at the same global location -> sign found with enough certainty -> break
                     if (signFound && endOfLevel) {
                         System.out.println("Sign found, breaking...");
                         break;
@@ -146,7 +147,7 @@ public class Pipeline {
      * Sorts found lines and checks for intersection angles.
      * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
      * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
-     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList)}
+     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList, BufferedImage, int, int)}
      * @param preProcessedImage BufferedImage preprocessed
      * @param maskedWindow BufferedImage original input
      * @return boolean if sign found
@@ -229,7 +230,7 @@ public class Pipeline {
 
         // sort lines and keep best
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int amountToKeep = 20; //TODO: abhängigkeitskriterium für mindestanzahl
+        int amountToKeep = 25; //TODO: abhängigkeitskriterium für mindestanzahl
         ArrayList<HoughLine> bestLines = new ArrayList<>();
         int limit = Math.min(amountToKeep, noSimilarLines.size());
         for (int i = 0; i < limit; i++) {
@@ -243,16 +244,23 @@ public class Pipeline {
         DrawingAndFillingPipeline.drawLines(g3, bestLines, maskedWindow.getWidth(), maskedWindow.getHeight());
         //ImageIO.displayImage(bestLinesImage);
 
-        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-        boolean RsignFound = false;
-        boolean OsignFound = false;
+//        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+//        boolean RsignFound = false;
+//        boolean OsignFound = false;
+//
+//        if (!TsignFound) RsignFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+//
+//        //TODO: octagon check is very slow (40% of total runtime)
+//        if (!TsignFound && !RsignFound) OsignFound = FormChecker.checkOctagonForm(maskedWindow, bestLines);
+//
+//        return TsignFound || RsignFound || OsignFound;
 
-        if (!TsignFound) RsignFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+        boolean signFound = false;
+        signFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
+        signFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
+        signFound = FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
 
-        //TODO: octagon check is very slow (40% of total runtime)
-        if (!TsignFound && !RsignFound) OsignFound = FormChecker.checkOctagonForm(maskedWindow, bestLines);
-
-        return TsignFound || RsignFound || OsignFound;
+        return signFound;
     }
 
     /**
@@ -273,11 +281,16 @@ public class Pipeline {
         //ImageIO.displayImage(lowpass);
 
         // hist equal
-        BufferedImage histogramEqualization = ImageManipulation.histogramEqualization(lowpass);
-        //ImageIO.displayImage(histogramEqualization);
+        BufferedImage histOrNot = lowpass;
+        DescriptiveStatistics stats = new DescriptiveStatistics(lowpass);
+        stats.calculateEntropy();
+        if (stats.getEntropy() > 5.5) {
+            histOrNot = ImageManipulation.histogramEqualization(lowpass);
+        }
+        //ImageIO.displayImage(histOrNot);
 
         // 2. sobel
-        BufferedImage sobel = EdgeDetection.sobelFilter(histogramEqualization, 3);
+        BufferedImage sobel = EdgeDetection.sobelFilter(histOrNot, 3);
         //ImageIO.displayImage(sobel);
 
         // 3. equidensity

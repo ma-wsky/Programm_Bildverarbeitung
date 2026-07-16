@@ -136,7 +136,7 @@ public class FormChecker {
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
-    public static boolean checkTriangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines,BufferedImage originalImage, int windowX, int windowY) {
+    public static boolean checkTriangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
         long start = System.nanoTime();
 
         // triangle check
@@ -249,11 +249,11 @@ public class FormChecker {
      * Validates form of octagon by calling {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
      * Calls {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
-     * @param originalImage BufferedImage original
+     * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
-    public static boolean checkOctagonForm(BufferedImage originalImage, ArrayList<HoughLine> validLines) {
+    public static boolean checkOctagonForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
         long start = System.nanoTime();
 
         // octagon check
@@ -268,17 +268,19 @@ public class FormChecker {
         }
 
         // copy for displaying lines
-        BufferedImage lineImage = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), originalImage.getType());
+        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
         Graphics2D g2 = lineImage.createGraphics();
         g2.setColor(Color.GREEN);
         g2.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
+        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
         //ImageIO.displayImage(lineImage);
 
         // check all found octagons
         //System.out.println("\nchecking octagon form...");
 
-        ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, originalImage.getWidth(), originalImage.getHeight());
+        // TODO: infer octagon from partial shapes (6 or 7 lines)    pics/stopp/stoppTest2.jpg finds 7 lines, stoppTest3.jpg finds 5 lines
+        // TODO: make detectOctagonForm faster
+        ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         if (!allFoundOctagons.isEmpty()){
             //System.out.println(allFoundOctagons.size() + " octagons found...");
@@ -290,18 +292,19 @@ public class FormChecker {
                 //System.out.println("checking octagon " + (i+1) + "...");
 
                 //check center for early exit
-                if (!PipelineHelper.isValidOctagonCenterColor(originalImage, currentOctagon)) continue;
+                //if (!PipelineHelper.isValidOctagonCenterColor(maskedWindow, currentOctagon)) continue;
                 // check size for early exit
-                if (PipelineHelper.isOctagonTooSmall(originalImage, currentOctagon)) continue;
+                if (PipelineHelper.isOctagonTooSmall(maskedWindow, currentOctagon)) continue;
                 octagonsChecked++;
 
                 // create mask of octagon
-                BufferedImage octagonMask = new BufferedImage(originalImage.getWidth(), originalImage.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+                BufferedImage octagonMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = octagonMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundOctagons.get(i));
 
                 // crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(originalImage, octagonMask);
+                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, octagonMask);
+                if (maskedSign == null) continue;
                 //ImageIO.displayImage(maskedSign);
 
                 // check the mask for the right colors
@@ -318,7 +321,7 @@ public class FormChecker {
                     for (int j = 0; j < 8; j++) {
                         Point pStart = currentOctagon.get(j);
                         Point pEnd = currentOctagon.get((j + 1) % 8);
-                        gOriginal.drawLine(pStart.x, pStart.y, pEnd.x, pEnd.y);
+                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
                     }
 
                     gOriginal.dispose();
