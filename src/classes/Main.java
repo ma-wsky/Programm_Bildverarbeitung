@@ -38,18 +38,14 @@ void main() {
 //    Pipeline.findSign("pics/pfeil/vf_04.jpg"); // success -> false positive is interesting -> still false positives with tri edge check ????
 //    Pipeline.findSign("pics/pfeil/vf_05.jpg"); // false positive check -> no false positives (sign not fully included in window)
 
-    //TODO: noise costs a lot of performance
 
     // stopp
 //    Pipeline.findSign("pics/stopp/stoppTest1.jpg"); // not all lines of octagon found -> noise
-//    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined
-//    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle
-//    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason
+//    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
+//    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
+//    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 //    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
-//    Pipeline.findSign("pics/stopp/stop_6.jpg"); // noise due to letters and bird
-
-
-    //TODO: too many garbage lines and noise, focus on other signs
+//    Pipeline.findSign("pics/stopp/stop_6.jpg"); // noise due to letters and bird -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 
     long end = System.nanoTime();
     System.out.println("Calculation time for all images: " + (end - start) / 1000000 + " ms.");

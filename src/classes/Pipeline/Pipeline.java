@@ -210,9 +210,15 @@ public class Pipeline {
                     dPhi = 180 - dPhi;
                 }
 
-                if (dPhi <= angleTolerance && dr <= radiusTolerance){
-                    isSimilar = true;
-                    break;
+                if (dPhi <= angleTolerance){
+                    int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(originalImage.getHeight(), 2) + Math.pow(originalImage.getWidth(), 2)));
+                    double posNew = newLine.r - diagonal;
+                    double posAcc = acceptedLine.r - diagonal;
+
+                    if (Math.abs(posNew - posAcc) <= radiusTolerance){
+                        isSimilar = true;
+                        break;
+                    }
                 }
             }
 

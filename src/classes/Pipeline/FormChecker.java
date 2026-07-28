@@ -4,6 +4,7 @@ import classes.ImageIO;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -364,110 +365,402 @@ public class FormChecker {
         ArrayList<ArrayList<Point>> allFoundOctagons = new ArrayList<>();
 
         // TODO: bei performanz-einbrüchen erst in winkelgruppen sortieren
-        for (int i = 0; i < size; i++) {
-            for (int j = i + 1; j < size; j++) {
-                for (int k = j + 1; k < size; k++) {
-                    for (int l = k + 1; l < size; l++) {
-                        for (int m = l + 1; m < size; m++){
-                            for (int n = m + 1; n < size; n++){
-                                for (int o = n + 1; o < size; o++){
-                                    for (int p = o + 1; p < size; p++){
-                                        HoughLine a = validOctagonLines.get(i);
-                                        HoughLine b = validOctagonLines.get(j);
-                                        HoughLine c = validOctagonLines.get(k);
-                                        HoughLine d = validOctagonLines.get(l);
-                                        HoughLine e = validOctagonLines.get(m);
-                                        HoughLine f = validOctagonLines.get(n);
-                                        HoughLine g = validOctagonLines.get(o);
-                                        HoughLine h = validOctagonLines.get(p);
+        ArrayList<HoughLine> angle0_180 = new ArrayList<>();
+        ArrayList<HoughLine> angle45 = new ArrayList<>();
+        ArrayList<HoughLine> angle90 = new ArrayList<>();
+        ArrayList<HoughLine> angle135 = new ArrayList<>();
+        // debug
+        ArrayList<HoughLine> noAngle = new ArrayList<>();
 
-                                        // sort into parallel groups
-                                        ArrayList<ArrayList<HoughLine>> groups = new ArrayList<>();
-                                        ArrayList<HoughLine> group1 = new ArrayList<>();
-                                        group1.add(a);
-                                        groups.add(group1);
+        for (HoughLine line : validOctagonLines) {
+            int angle = line.phi;
+            int tolerance = 10;
 
-                                        HoughLine[] remaining = {b, c, d, e, f, g, h};
-                                        int toleranz = 10;
+            if (angle <= 45 + tolerance && angle >= 45 - tolerance) {
+                angle45.add(line);
+            } else if (angle <= 135 + tolerance && angle >= 135 - tolerance) {
+                angle135.add(line);
+            } else if (angle <= 90 + tolerance && angle >= 90 - tolerance) {
+                angle90.add(line);
+            } else if (angle <= tolerance || angle >= 180 - tolerance) {
+                angle0_180.add(line);
+            } else {
+                noAngle.add(line);
+            }
+        }
 
-                                        for (HoughLine line : remaining) {
-                                            boolean assigned = false;
+        angle0_180.sort(Comparator.comparingDouble(line -> {
+            double rad = Math.toRadians(line.phi);
+            double cos = Math.cos(rad);
+            if (Math.abs(cos) < 0.0001) cos = 0.0001;
+            double realR = line.r - diagonal;
+            return (realR - (height / 2.0) * Math.sin(rad)) / cos;
+        }));
+        angle45.sort(Comparator.comparingDouble(line -> {
+            double rad = Math.toRadians(line.phi);
+            return line.r / (Math.cos(rad) + Math.sin(rad));
+        }));
+        angle90.sort(Comparator.comparingDouble(line -> {
+            double rad = Math.toRadians(line.phi);
+            double sin = Math.sin(rad);
+            if (Math.abs(sin) < 0.0001) sin = 0.0001;
+            return (line.r - (width / 2.0) * Math.cos(rad)) / sin;
+        }));
+        angle135.sort(Comparator.comparingDouble(line -> {
+            double rad = Math.toRadians(line.phi);
+            return line.r / (Math.cos(rad) - Math.sin(rad));
+        }));
 
-                                            for (ArrayList<HoughLine> group : groups){
-                                                int diff = Math.abs(line.phi - group.getFirst().phi);
-                                                if (diff > 90) diff = 180 - diff;
+        // pull from bucket
+        int minNumberOfLines = 6;
 
-                                                if (diff <= toleranz){
-                                                    group.add(line);
-                                                    assigned = true;
-                                                    break;
+        for (int i = 0; i < angle0_180.size(); i++) {
+            for (int j = angle0_180.size() - 1; j >= i; j--) {
+                ArrayList<HoughLine> A = new ArrayList<>();
+                A.add(angle0_180.get(i));
+
+                if (i != j) {
+                    A.add(angle0_180.get(j));
+                }
+
+                for (int k = 0; k < angle45.size(); k++) {
+                    for (int l = angle45.size() - 1; l >= k; l--) {
+                        ArrayList<HoughLine> B = new ArrayList<>();
+                        B.add(angle45.get(k));
+
+                        if (k != l) {
+                            B.add(angle45.get(l));
+                        }
+
+                        for (int m = 0; m < angle90.size(); m++) {
+                            for (int n = angle90.size() - 1; n >= m; n--) {
+                                ArrayList<HoughLine> C = new ArrayList<>();
+                                C.add(angle90.get(m));
+
+                                if (m != n) {
+                                    C.add(angle90.get(n));
+                                }
+
+                                for (int o = 0; o < angle135.size(); o++) {
+                                    for (int p = angle135.size() - 1; p >= o; p--) {
+                                        ArrayList<HoughLine> D = new ArrayList<>();
+                                        D.add(angle135.get(o));
+
+                                        if (o != p) {
+                                            D.add(angle135.get(p));
+                                        }
+
+                                        // early exits
+                                        if (A.size() + B.size() + C.size() + D.size() < minNumberOfLines) continue;
+                                        if (A.isEmpty() || B.isEmpty() || C.isEmpty() || D.isEmpty()) continue;
+                                        if (!(A.size() == 2 || B.size() == 2 || C.size() == 2 || D.size() == 2)) continue;
+
+                                        // copy for displaying lines
+                                        BufferedImage lineImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+                                        Graphics2D g2 = lineImage.createGraphics();
+                                        g2.setColor(Color.WHITE);
+                                        g2.setStroke(new java.awt.BasicStroke(1));
+                                        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, width, height);
+                                        //ImageIO.displayImage(lineImage);
+
+                                        // copy for displaying lines
+                                        BufferedImage lineImage1 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+                                        Graphics2D g21 = lineImage1.createGraphics();
+                                        g21.setStroke(new java.awt.BasicStroke(1));
+                                        g21.setColor(Color.RED);
+                                        DrawingAndFillingPipeline.drawLines(g21, A, width, height);
+                                        g21.setColor(Color.BLUE);
+                                        DrawingAndFillingPipeline.drawLines(g21, B, width, height);
+                                        g21.setColor(Color.GREEN);
+                                        DrawingAndFillingPipeline.drawLines(g21, C, width, height);
+                                        g21.setColor(Color.YELLOW);
+                                        DrawingAndFillingPipeline.drawLines(g21, D, width, height);
+                                        //System.out.println();
+                                        //ImageIO.displayImage(lineImage1);
+
+                                        // calc sign width
+                                        int d = 0;
+                                        class BucketDist {
+                                            int id;
+                                            int dist;
+                                            BucketDist(int id, int dist) {
+                                                this.id = id;
+                                                this.dist = dist;
+                                            }
+                                        }
+                                        ArrayList<BucketDist> distances = new ArrayList<>();
+
+                                        if (A.size() == 2) {
+                                            HoughLine l1 = A.get(0);
+                                            HoughLine l2 = A.get(1);
+
+                                            int r1 = l1.r;
+                                            int r2 = l2.r;
+
+                                            // Bringt l1 in das Intervall [0, 90)
+                                            if (l1.phi >= 90) {
+                                                r1 = -r1;
+                                            }
+
+                                            // Bringt l2 in das Intervall [0, 90)
+                                            if (l2.phi >= 90) {
+                                                r2 = -r2;
+                                            }
+
+                                            distances.add(new BucketDist(1,Math.abs(r1 - r2)));
+                                        } if (B.size() == 2) {
+                                            distances.add(new BucketDist(2, Math.abs(B.get(0).r - B.get(1).r)));
+                                        } if (C.size() == 2) {
+                                            distances.add(new BucketDist(3, Math.abs(C.get(0).r - C.get(1).r)));
+                                        } if (D.size() == 2) {
+                                            distances.add(new BucketDist(4, Math.abs(D.get(0).r - D.get(1).r)));
+                                        }
+
+                                        int minDiff = Integer.MAX_VALUE;
+                                        int valid1 = 0;
+                                        int valid2 = 0;
+                                        for (int r = 0; r < distances.size(); r++){
+                                            for (int s = r + 1; s < distances.size(); s++){
+                                                int d1 = distances.get(r).dist;
+                                                int d2 = distances.get(s).dist;
+                                                int diff = Math.abs(d1 - d2);
+
+                                                if (diff < minDiff){
+                                                    valid1 = distances.get(r).id;
+                                                    valid2 = distances.get(s).id;
+                                                    minDiff = diff;
+                                                    d = (d1 + d2) / 2;
                                                 }
                                             }
+                                        }
 
-                                            if (!assigned && groups.size() < 4){
-                                                ArrayList<HoughLine> newGroup = new ArrayList<>();
-                                                newGroup.add(line);
-                                                groups.add(newGroup);
+                                        // clean buckets of garbage lines
+
+                                        // approximate center with valid buckets
+                                        ArrayList<Point> approxCenterIntersections = new ArrayList<>();
+                                        if (valid1 == 1 || valid2 == 1){
+                                            for (HoughLine line : A) {
+                                                for (HoughLine line2 : B) {
+                                                    Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                    if (intersection != null) approxCenterIntersections.add(intersection);
+                                                }
                                             }
                                         }
 
-                                        if (groups.size() != 4 ||
-                                                groups.get(0).size() != 2 ||
-                                                groups.get(1).size() != 2 ||
-                                                groups.get(2).size() != 2 ||
-                                                groups.get(3).size() != 2){
-                                            continue;
+                                        if (valid1 == 2 || valid2 == 2){
+                                            for (HoughLine line : B) {
+                                                for (HoughLine line2 : C) {
+                                                    Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                    if (intersection != null) approxCenterIntersections.add(intersection);
+                                                }
+                                            }
                                         }
 
-                                        // sort groups by angle
-                                        groups.sort(Comparator.comparingDouble(group -> group.getFirst().phi));
+                                        if (valid1 == 3 || valid2 == 3){
+                                            for (HoughLine line : C) {
+                                                for (HoughLine line2 : D) {
+                                                    Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                    if (intersection != null) approxCenterIntersections.add(intersection);
+                                                }
+                                            }
+                                        }
 
-                                        // check intersections
-                                        HoughLine[] p1 = { groups.get(0).get(0), groups.get(0).get(1) }; // 0°
-                                        HoughLine[] p2 = { groups.get(1).get(0), groups.get(1).get(1) }; // 45°
-                                        HoughLine[] p3 = { groups.get(2).get(0), groups.get(2).get(1) }; // 90°
-                                        HoughLine[] p4 = { groups.get(3).get(0), groups.get(3).get(1) }; // 135°
+                                        if (valid1 == 4 || valid2 == 4){
+                                            for (HoughLine line : D) {
+                                                for (HoughLine line2 : A) {
+                                                    Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                    if (intersection != null) approxCenterIntersections.add(intersection);
+                                                }
+                                            }
+                                        }
 
+                                        int sumx = 0;
+                                        int sumy = 0;
+                                        for (Point point : approxCenterIntersections) {
+                                            sumx += point.x;
+                                            sumy += point.y;
+                                        }
+                                        Point approxCenter = new Point(sumx / approxCenterIntersections.size(), sumy / approxCenterIntersections.size());
+
+                                        // clean invalid buckets
+                                        if (valid1 != 1 && valid2 != 1){
+                                            //A
+                                            int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(A.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(A.getFirst().phi)) - (A.getFirst().r - diagonal)));
+                                            int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(A.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(A.getLast().phi)) - (A.getLast().r - diagonal)));
+
+                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+
+                                            if (error1 < error2){
+                                                A.removeLast();
+                                            } else {
+                                                A.removeFirst();
+                                            }
+                                        }
+
+                                        if (valid1 != 2 && valid2 != 2){
+                                            //B
+                                            int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(B.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(B.getFirst().phi)) - (B.getFirst().r - diagonal)));
+                                            int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(B.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(B.getLast().phi)) - (B.getLast().r - diagonal)));
+
+                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+
+                                            if (error1 < error2){
+                                                B.removeLast();
+                                            } else {
+                                                B.removeFirst();
+                                            }
+                                        }
+
+                                        if (valid1 != 3 && valid2 != 3){
+                                            //C
+                                            int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(C.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(C.getFirst().phi)) - (C.getFirst().r - diagonal)));
+                                            int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(C.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(C.getLast().phi)) - (C.getLast().r - diagonal)));
+
+                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+
+                                            if (error1 < error2){
+                                                C.removeLast();
+                                            } else {
+                                                C.removeFirst();
+                                            }
+                                        }
+
+                                        if (valid1 != 4 && valid2 != 4){
+                                            //D
+                                            int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(D.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(D.getFirst().phi)) - (D.getFirst().r - diagonal)));
+                                            int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(D.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(D.getLast().phi)) - (D.getLast().r - diagonal)));
+
+                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+
+                                            if (error1 < error2){
+                                                D.removeLast();
+                                            } else {
+                                                D.removeFirst();
+                                            }
+                                        }
+
+
+                                        // add 2nd lines
+                                        if (A.size() == 1) {
+                                            HoughLine line = A.getFirst();
+                                            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
+
+                                            if (rCenter > line.r) {
+                                                A.add(new HoughLine(line.phi, line.r + d, 100));
+                                            } else {
+                                                A.add(new HoughLine(line.phi, line.r - d, 100));
+                                            }
+                                        }
+                                        if (B.size() == 1) {
+                                            HoughLine line = B.getFirst();
+                                            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
+
+                                            if (rCenter > line.r) {
+                                                B.add(new HoughLine(line.phi, line.r + d, 100));
+                                            } else {
+                                                B.add(new HoughLine(line.phi, line.r - d, 100));
+                                            }
+                                        }
+                                        if (C.size() == 1) {
+                                            HoughLine line = C.getFirst();
+                                            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
+
+                                            if (rCenter > line.r) {
+                                                C.add(new HoughLine(line.phi, line.r + d, 100));
+                                            } else {
+                                                C.add(new HoughLine(line.phi, line.r - d, 100));
+                                            }
+                                        }
+                                        if (D.size() == 1) {
+                                            HoughLine line = D.getFirst();
+                                            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
+
+                                            if (rCenter > line.r) {
+                                                D.add(new HoughLine(line.phi, line.r + d, 100));
+                                            } else {
+                                                D.add(new HoughLine(line.phi, line.r - d, 100));
+                                            }
+                                        }
+
+                                        // copy for displaying lines
+                                        BufferedImage lineImage2 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+                                        Graphics2D g1 = lineImage2.createGraphics();
+                                        g1.setStroke(new java.awt.BasicStroke(1));
+                                        g1.setColor(Color.RED);
+                                        DrawingAndFillingPipeline.drawLines(g1, A, width, height);
+                                        g1.setColor(Color.BLUE);
+                                        DrawingAndFillingPipeline.drawLines(g1, B, width, height);
+                                        g1.setColor(Color.GREEN);
+                                        DrawingAndFillingPipeline.drawLines(g1, C, width, height);
+                                        g1.setColor(Color.YELLOW);
+                                        DrawingAndFillingPipeline.drawLines(g1, D, width, height);
+
+                                        // geo checks
+
+                                        // intersections
                                         ArrayList<Point> intersections = new ArrayList<>();
-                                        for (int q = 0; q < 2; q++) {
-                                            for (int r = 0; r < 2; r++) {
-                                                intersections.add(PipelineHelper.getIntersection(p1[q], p2[r], diagonal)); // 0° mit 45°
-                                                intersections.add(PipelineHelper.getIntersection(p2[q], p3[r], diagonal)); // 45° mit 90°
-                                                intersections.add(PipelineHelper.getIntersection(p3[q], p4[r], diagonal)); // 90° mit 135°
-                                                intersections.add(PipelineHelper.getIntersection(p4[q], p1[r], diagonal)); // 135° mit 0°
+                                        for (HoughLine line : A) {
+                                            for (HoughLine line2 : B) {
+                                                Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                if (intersection != null) intersections.add(intersection);
+                                            }
+                                        }
+                                        for (HoughLine line : B) {
+                                            for (HoughLine line2 : C) {
+                                                Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                if (intersection != null) intersections.add(intersection);
                                             }
                                         }
 
-                                        ArrayList<Point> validVertices = new ArrayList<>();
-                                        int randToleranz = 40; //TODO: abhängig von größe des bildes
-                                        for (Point v : intersections) {
-                                            if (v != null && v.x >= -randToleranz && v.x < width + randToleranz
-                                                    && v.y >= -randToleranz && v.y < height + randToleranz) {
-                                                validVertices.add(v);
+                                        for (HoughLine line : C) {
+                                            for (HoughLine line2 : D) {
+                                                Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                if (intersection != null) intersections.add(intersection);
                                             }
                                         }
-
-                                        if (validVertices.size() < 8) {
-                                            continue;
+                                        for (HoughLine line : D) {
+                                            for (HoughLine line2 : A) {
+                                                Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
+                                                if (intersection != null) intersections.add(intersection);
+                                            }
                                         }
 
                                         // calculate center point
                                         double sumX = 0;
                                         double sumY = 0;
-                                        for (Point v : validVertices){
+                                        for (Point v :  intersections){
                                             sumX += v.x;
                                             sumY += v.y;
                                         }
-                                        double centerX = sumX / 8.0;
-                                        double centerY = sumY / 8.0;
+                                        double centerX = sumX / intersections.size();
+                                        double centerY = sumY / intersections.size();
 
                                         // find 8 closest to center
-                                        validVertices.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
-
+                                        if (intersections.size() < 8) continue;
+                                        intersections.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
                                         ArrayList<Point> vertices = new ArrayList<>();
-                                        for (int v = 0; v < 8; v++) {
-                                            vertices.add(validVertices.get(v));
+                                        for (int r = 0; r < 8; r++){
+                                            vertices.add(intersections.get(r));
                                         }
+
+                                        // is inside image
+                                        boolean isInside = true;
+                                        int edgeTolerance = 40; //TODO: abhängig von größe des bildes
+                                        for (int q = 0; q < 8; q++) {
+                                            Point v = vertices.get(q);
+                                            if (v.x < -edgeTolerance ||
+                                                    v.x > width + edgeTolerance ||
+                                                    v.y < -edgeTolerance ||
+                                                    v.y > height + edgeTolerance) {
+                                                isInside = false;
+                                                break;
+                                            }
+                                        }
+                                        if (!isInside) continue;
 
                                         // sort vertices by polar angle
                                         vertices.sort((vert1, vert2) -> {
@@ -499,11 +792,11 @@ public class FormChecker {
 
                                             if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength &&
                                                     s5 > minSideLength && s6 > minSideLength && s7 > minSideLength && s8 > minSideLength) {
-                                                double t = 0.2;
+                                                double t = 0.6; // 0.2
                                                 double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
                                                 double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
-                                                double ratio = minSide/maxSide;
-                                                if (ratio >= 1-t && ratio <= 1+t){
+                                                double ratio = minSide / maxSide;
+                                                if (ratio >= 1 - t && ratio <= 1 + t) {//0.688745
                                                     ArrayList<Point> octagon = new ArrayList<>(vertices);
                                                     allFoundOctagons.add(octagon);
                                                 }
@@ -519,6 +812,162 @@ public class FormChecker {
         }
         return allFoundOctagons;
     }
+
+//        for (int i = 0; i < size; i++) {
+//            for (int j = i + 1; j < size; j++) {
+//                for (int k = j + 1; k < size; k++) {
+//                    for (int l = k + 1; l < size; l++) {
+//                        for (int m = l + 1; m < size; m++){
+//                            for (int n = m + 1; n < size; n++){
+//                                for (int o = n + 1; o < size; o++){
+//                                    for (int p = o + 1; p < size; p++){
+//                                        HoughLine a = validOctagonLines.get(i);
+//                                        HoughLine b = validOctagonLines.get(j);
+//                                        HoughLine c = validOctagonLines.get(k);
+//                                        HoughLine d = validOctagonLines.get(l);
+//                                        HoughLine e = validOctagonLines.get(m);
+//                                        HoughLine f = validOctagonLines.get(n);
+//                                        HoughLine g = validOctagonLines.get(o);
+//                                        HoughLine h = validOctagonLines.get(p);
+//
+//                                        // sort into parallel groups
+//                                        ArrayList<ArrayList<HoughLine>> groups = new ArrayList<>();
+//                                        ArrayList<HoughLine> group1 = new ArrayList<>();
+//                                        group1.add(a);
+//                                        groups.add(group1);
+//
+//                                        HoughLine[] remaining = {b, c, d, e, f, g, h};
+//                                        int toleranz = 10;
+//
+//                                        for (HoughLine line : remaining) {
+//                                            boolean assigned = false;
+//
+//                                            for (ArrayList<HoughLine> group : groups){
+//                                                int diff = Math.abs(line.phi - group.getFirst().phi);
+//                                                if (diff > 90) diff = 180 - diff;
+//
+//                                                if (diff <= toleranz){
+//                                                    group.add(line);
+//                                                    assigned = true;
+//                                                    break;
+//                                                }
+//                                            }
+//
+//                                            if (!assigned && groups.size() < 4){
+//                                                ArrayList<HoughLine> newGroup = new ArrayList<>();
+//                                                newGroup.add(line);
+//                                                groups.add(newGroup);
+//                                            }
+//                                        }
+//
+//                                        if (groups.size() != 4 ||
+//                                                groups.get(0).size() != 2 ||
+//                                                groups.get(1).size() != 2 ||
+//                                                groups.get(2).size() != 2 ||
+//                                                groups.get(3).size() != 2){
+//                                            continue;
+//                                        }
+//
+//                                        // sort groups by angle
+//                                        groups.sort(Comparator.comparingDouble(group -> group.getFirst().phi));
+//
+//                                        // check intersections
+//                                        HoughLine[] p1 = { groups.get(0).get(0), groups.get(0).get(1) }; // 0°
+//                                        HoughLine[] p2 = { groups.get(1).get(0), groups.get(1).get(1) }; // 45°
+//                                        HoughLine[] p3 = { groups.get(2).get(0), groups.get(2).get(1) }; // 90°
+//                                        HoughLine[] p4 = { groups.get(3).get(0), groups.get(3).get(1) }; // 135°
+//
+//                                        ArrayList<Point> intersections = new ArrayList<>();
+//                                        for (int q = 0; q < 2; q++) {
+//                                            for (int r = 0; r < 2; r++) {
+//                                                intersections.add(PipelineHelper.getIntersection(p1[q], p2[r], diagonal)); // 0° mit 45°
+//                                                intersections.add(PipelineHelper.getIntersection(p2[q], p3[r], diagonal)); // 45° mit 90°
+//                                                intersections.add(PipelineHelper.getIntersection(p3[q], p4[r], diagonal)); // 90° mit 135°
+//                                                intersections.add(PipelineHelper.getIntersection(p4[q], p1[r], diagonal)); // 135° mit 0°
+//                                            }
+//                                        }
+//
+//                                        ArrayList<Point> validVertices = new ArrayList<>();
+//                                        int randToleranz = 40; //TODO: abhängig von größe des bildes
+//                                        for (Point v : intersections) {
+//                                            if (v != null && v.x >= -randToleranz && v.x < width + randToleranz
+//                                                    && v.y >= -randToleranz && v.y < height + randToleranz) {
+//                                                validVertices.add(v);
+//                                            }
+//                                        }
+//
+//                                        if (validVertices.size() < 8) {
+//                                            continue;
+//                                        }
+//
+//                                        // calculate center point
+//                                        double sumX = 0;
+//                                        double sumY = 0;
+//                                        for (Point v : validVertices){
+//                                            sumX += v.x;
+//                                            sumY += v.y;
+//                                        }
+//                                        double centerX = sumX / 8.0;
+//                                        double centerY = sumY / 8.0;
+//
+//                                        // find 8 closest to center
+//                                        validVertices.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
+//
+//                                        ArrayList<Point> vertices = new ArrayList<>();
+//                                        for (int v = 0; v < 8; v++) {
+//                                            vertices.add(validVertices.get(v));
+//                                        }
+//
+//                                        // sort vertices by polar angle
+//                                        vertices.sort((vert1, vert2) -> {
+//                                            double angle1 = Math.atan2(vert1.y - centerY, vert1.x - centerX);
+//                                            double angle2 = Math.atan2(vert2.y - centerY, vert2.x - centerX);
+//                                            return Double.compare(angle1, angle2);
+//                                        });
+//
+//                                        // check geometry
+//                                        int tolerance = 25; //TODO: abhängig von bild größe
+//                                        if (PipelineHelper.isInsideImage(vertices.get(0), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(1), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(2), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(3), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(4), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(5), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(6), width, height, tolerance) &&
+//                                                PipelineHelper.isInsideImage(vertices.get(7), width, height, tolerance)) {
+//
+//                                            // check side length
+//                                            double s1 = vertices.get(0).distance(vertices.get(1));
+//                                            double s2 = vertices.get(1).distance(vertices.get(2));
+//                                            double s3 = vertices.get(2).distance(vertices.get(3));
+//                                            double s4 = vertices.get(3).distance(vertices.get(4));
+//                                            double s5 = vertices.get(4).distance(vertices.get(5));
+//                                            double s6 = vertices.get(5).distance(vertices.get(6));
+//                                            double s7 = vertices.get(6).distance(vertices.get(7));
+//                                            double s8 = vertices.get(7).distance(vertices.get(0));
+//
+//                                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength &&
+//                                                    s5 > minSideLength && s6 > minSideLength && s7 > minSideLength && s8 > minSideLength) {
+//                                                double t = 0.2;
+//                                                double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
+//                                                double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
+//                                                double ratio = minSide/maxSide;
+//                                                if (ratio >= 1-t && ratio <= 1+t){
+//                                                    ArrayList<Point> octagon = new ArrayList<>(vertices);
+//                                                    allFoundOctagons.add(octagon);
+//                                                }
+//                                            }
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//        return allFoundOctagons;
+//    }
 
     /**
      * Function for validating that validRectangleLines construct a rectangle.

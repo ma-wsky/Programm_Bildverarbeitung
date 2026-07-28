@@ -140,28 +140,53 @@ public class CharacteristicsChecker {
                 if ((rgb & 0x00FFFFFF) == 0) continue;
                 totalPixels++;
 
-                double[] hsv = GlobalHelperFunctions.convertRGBToHSV(rgb);
-                double h = hsv[0];
-                double s = hsv[1];
-                double v = hsv[2];
+                double r = ((rgb >> 16) & 0xff) / 255.0;
+                double g = ((rgb >> 8) & 0xff) / 255.0;
+                double b = (rgb & 0xff) / 255.0;
 
-                // red
+                double max = Math.max(Math.max(r, g), b);
+                double min = Math.min(Math.min(r, g), b);
+                double delta = max-min;
+
+                double h, s, v;
+
+                // calc hue
+                if (delta == 0) {
+                    h = 0;
+                } else if (max == r) {
+                    h = 60 * (((g - b) / delta) % 6);
+                } else if (max == g) {
+                    h = 60 * (((b - r) / delta) + 2);
+                } else { // max == b
+                    h = 60 * (((r - g) / delta) + 4);
+                }
+
+                if (h < 0) h += 360;
+
+                // calc saturation
+                if (max == 0) {
+                    s = 0;
+                } else{
+                    s = delta / max;
+                }
+
+                // calc value
+                v = max;
+
+
                 boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
-                boolean isSaturated = (s >= 0.3);
-                boolean isBright = (v >= 0.4);
+                boolean isRed = isHueRed && (s >= 0.25) && (v >= 0.20);
 
-                // white
-                boolean isWhite = (s <= 0.30);
-                boolean isBrightWhite = (v >= 0.7);
+                boolean isWhite = (s <= 0.20) && (v >= 0.30);
 
-                if (isHueRed && isSaturated && isBright){
+                if (isRed){
                     countRedPixels++;
                     sumXRed += x;
                     sumYRed += y;
+                }
 
-                } else if (isWhite && isBrightWhite){
+                if (isWhite){
                     countWhitePixels++;
-
                 }
             }
         }
@@ -171,7 +196,7 @@ public class CharacteristicsChecker {
 
         // ratio red white
         double ratioRedWhite = (double) countRedPixels / countWhitePixels;
-        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 5.5);
+        boolean ratioValid = (ratioRedWhite >= 1.8 && ratioRedWhite <= 6.0);
 
         // sign coverage
         double signCoverage = (double) (countRedPixels + countWhitePixels) / totalPixels;
