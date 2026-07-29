@@ -41,7 +41,7 @@ void main() {
 
     // stopp
 //    Pipeline.findSign("pics/stopp/stoppTest1.jpg"); // not all lines of octagon found -> noise
-//    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
+    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
 //    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 //    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 //    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
@@ -50,4 +50,5 @@ void main() {
     long end = System.nanoTime();
     System.out.println("Calculation time for all images: " + (end - start) / 1000000 + " ms.");
 
+    Pipeline.shutdown();
 }

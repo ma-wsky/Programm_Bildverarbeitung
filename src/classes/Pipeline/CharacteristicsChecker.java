@@ -219,6 +219,239 @@ public class CharacteristicsChecker {
                 redIsCentered;
     }
 
+    public static boolean isTriangleSignColorAndStats(BufferedImage maskedSign, ArrayList<Point> triangle){
+        int width = maskedSign.getWidth();
+        int height = maskedSign.getHeight();
+
+        // 1. check average color
+        long sumR = 0, sumG = 0, sumB = 0;
+        int sampledPixels = 0;
+
+        for (int x = 0; x < width; x += 5) {
+            for (int y = 0; y < height; y += 5) {
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+
+                sumR += (rgb >> 16) & 0xFF;
+                sumG += (rgb >> 8) & 0xFF;
+                sumB += rgb & 0xFF;
+                sampledPixels++;
+            }
+        }
+
+        if (sampledPixels == 0) return false;
+
+
+        double avgR = (double) sumR / sampledPixels;
+        double avgG = (double) sumG / sampledPixels;
+        double avgB = (double) sumB / sampledPixels;
+
+        if (avgB > avgR || avgR < 65 || avgG > avgR) {
+            return false;
+        }
+
+        // 2. calc inner and outer triangle
+        int cropX = Math.min(Math.min(triangle.get(0).x, triangle.get(1).x), triangle.get(2).x);
+        int cropY = Math.min(Math.min(triangle.get(0).y, triangle.get(1).y), triangle.get(2).y);
+
+        double centerX = ((triangle.get(0).x - cropX) +
+                (triangle.get(1).x - cropX) +
+                (triangle.get(2).x - cropX)) / 3.0;
+
+        double centerY = ((triangle.get(0).y - cropY) +
+                (triangle.get(1).y - cropY) +
+                (triangle.get(2).y - cropY)) / 3.0;
+
+        Polygon innerTriangle = new Polygon();
+        double scale = 0.50;
+        for (Point p : triangle){
+            int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
+            int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
+            innerTriangle.addPoint(newX, newY);
+        }
+
+        Polygon outerTriangle = new Polygon();
+        Point[] outerTrianglePoints = new Point[3];
+        for (int i = 0; i < 3; i++){
+            Point p = triangle.get(i);
+            int newX = p.x - cropX;
+            int newY = p.y - cropY;
+
+            outerTrianglePoints[i] = new Point(newX, newY);
+            outerTriangle.addPoint(newX, newY);
+        }
+
+        // 3. check for three red edges
+        Point[][] edges = {
+                {outerTrianglePoints[0], outerTrianglePoints[1]},
+                {outerTrianglePoints[1], outerTrianglePoints[2]},
+                {outerTrianglePoints[2], outerTrianglePoints[0]}
+        };
+
+        int edgeThreshold = 20;
+        double minRedRatio = 0.70;
+        Random rand = new Random();//TODO: statisches rand nutzen
+
+        for (int i = 0; i < 3; i++){
+            Point start = edges[i][0];
+            Point end = edges[i][1];
+            int redPixelAmount = 0;
+
+            for (int j = 0; j < edgeThreshold; j++){
+                double t = rand.nextDouble();
+                double edgeX = start.x + t * (end.x - start.x);
+                double edgeY = start.y + t * (end.y - start.y);
+                double stepToCenter = 0.15;
+                int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
+                int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));
+
+                boolean inOuterTriangle = outerTriangle.contains(sampleX, sampleY);
+                boolean inInnerTriangle = innerTriangle.contains(sampleX, sampleY);
+
+                if (inOuterTriangle && !inInnerTriangle){
+                    if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height){
+                        int rgb = maskedSign.getRGB(sampleX, sampleY);
+                        if (isPixelRedHSV(rgb)){
+                            redPixelAmount++;
+                        }
+                    }
+                }
+            }
+
+            double redRatio = (double) redPixelAmount / edgeThreshold;
+            if (redRatio < minRedRatio){
+                return false;
+            }
+        }
+
+        // 4. evaluate each pixel
+        int totalCenterPixels = 0;
+        int whitePixelsInCenter = 0;
+        int blackPixelsInCenter = 0;
+        int totalEdgePixels = 0;
+        int redPixelsAtEdge = 0;
+        int countRedPixels = 0;
+        int countWhitePixels = 0;
+        int totalPixels = 0;
+
+        double sumXRed = 0, sumYRed = 0;
+        double sumXWhite = 0, sumYWhite = 0;
+
+        for (int x = 0; x < width; x++){
+            for (int y = 0; y < height; y++){
+                int rgb = maskedSign.getRGB(x, y);
+                if ((rgb & 0x00FFFFFF) == 0) continue;
+                totalPixels++;
+
+                double r = ((rgb >> 16) & 0xff) / 255.0;
+                double g = ((rgb >> 8) & 0xff) / 255.0;
+                double b = (rgb & 0xff) / 255.0;
+
+                // is centerPixel
+                boolean centerPixel = innerTriangle.contains(x, y);
+                if (centerPixel){
+                    totalCenterPixels++;
+                } else {
+                    totalEdgePixels++;
+                }
+
+                // calculate hsv
+                double max = Math.max(Math.max(r, g), b);
+                double min = Math.min(Math.min(r, g), b);
+                double delta = max-min;
+                double h, s, v;
+
+                // calc hue
+                if (delta == 0) {
+                    h = 0;
+                } else if (max == r) {
+                    h = 60 * (((g - b) / delta) % 6);
+                } else if (max == g) {
+                    h = 60 * (((b - r) / delta) + 2);
+                } else { // max == b
+                    h = 60 * (((r - g) / delta) + 4);
+                }
+
+                if (h < 0) h += 360;
+
+                // calc saturation
+                if (max == 0) {
+                    s = 0;
+                } else{
+                    s = delta / max;
+                }
+
+                // calc value
+                v = max;
+
+                boolean isHueRed = (h >= 0.0 && h <= 30.0) || (h >= 335.0 && h <= 360.0);
+                boolean isRed = isHueRed && (s >= 0.25) && (v >= 0.20);
+
+                boolean isWhite = (s <= 0.20) && (v >= 0.30);
+                boolean isBlack = (s < 0.25) && (v < 0.20);
+
+                if (isRed){
+                    countRedPixels++;
+                    sumXRed += x;
+                    sumYRed += y;
+                    if (!centerPixel) redPixelsAtEdge++;
+                }
+
+                if (isWhite){
+                    countWhitePixels++;
+                    sumXWhite += x;
+                    sumYWhite += y;
+                    if (centerPixel) whitePixelsInCenter++;
+                }
+
+                if (isBlack && centerPixel){
+                    blackPixelsInCenter++;
+                }
+            }
+        }
+
+        // early exit for amounts
+        if (countWhitePixels == 0 || countRedPixels == 0 || totalCenterPixels == 0 || totalEdgePixels == 0){
+            return false;
+        }
+
+        // 5. check base criteria
+
+        // sign coverage
+        double signCoverage = (double) (countRedPixels + countWhitePixels + blackPixelsInCenter) / totalPixels;
+        if (signCoverage < 0.75) return false;
+
+        // edge red ratio
+        double edgeRedRatio = (double) redPixelsAtEdge / totalEdgePixels;
+        if (edgeRedRatio <= 0.50) return false;
+
+        // center points match
+        double centerXRed = sumXRed / countRedPixels;
+        double centerYRed = sumYRed / countRedPixels;
+        double centerXWhite = sumXWhite / countWhitePixels;
+        double centerYWhite = sumYWhite / countWhitePixels;
+        double centerDistance = Math.sqrt(Math.pow(centerXRed - centerXWhite, 2) + Math.pow(centerYRed - centerYWhite, 2));
+        double centerTolerance = Math.max(width, height) * 0.10;
+        if (centerDistance > centerTolerance) return false;
+
+        // color ratios
+        double ratioRedWhite = (double) countRedPixels / countWhitePixels;
+        double centerWhiteRatio = (double) whitePixelsInCenter / totalCenterPixels;
+        double blackWhiteRatio = (double) blackPixelsInCenter / whitePixelsInCenter;
+
+        // pure white center, correct redWhiteRatio
+        boolean isVorfahrtAchten = (ratioRedWhite >= 0.75 && ratioRedWhite <= 1.5) &&
+                                   (centerWhiteRatio > 0.50);
+
+        // black in center, correct redWhiteRatio, correct blackWhiteRatio, correct centerWhiteRatio
+        boolean isVorfahrt = (ratioRedWhite >= 0.8 && ratioRedWhite <= 1.5) &&
+                             (blackWhiteRatio >= 0.2 && blackWhiteRatio <= 0.6) &&
+                             (centerWhiteRatio > 0.30) &&
+                             ((double) blackPixelsInCenter / totalCenterPixels > 0.1);
+
+        return isVorfahrtAchten || isVorfahrt;
+    }
+
     /**
      * Checks entropy and colours of triangle to determine if it is a vorfahrt-sign.
      * Checks: entropy, ratio red white, area coverage of red white, center points of red white, red pixels in center, black pixels in center.

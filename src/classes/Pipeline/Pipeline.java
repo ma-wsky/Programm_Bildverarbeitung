@@ -5,10 +5,20 @@ import classes.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Pipeline {
 
-    public static void findSign(String filename){
+    private static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(3);
+
+    public static void shutdown(){
+        THREAD_POOL.shutdown();
+    }
+
+    public static void findSign(String filename) {
         long progStart = System.nanoTime();
         long start = progStart;
         // 1. read image
@@ -41,13 +51,13 @@ public class Pipeline {
 
         // traverse pyramid
         int pyramidNum = pyramid.size();
-        for (int i = 0; i < pyramid.size(); i++){
+        for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage image = pyramid.get(i);
             BufferedImage copy = ImageIO.copyBufferedImage(image);
             long levelStart = System.nanoTime();
 
             // moving window
-            // TODO: check edges (run once from different edge)
+            // TODO: check edges (rechter rand und unten)
             int width = image.getWidth();
             int height = image.getHeight();
             int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
@@ -64,10 +74,16 @@ public class Pipeline {
             // check image as a whole
             System.out.println("check whole image...");
             // 2. preprocess image
+            start = System.nanoTime();
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
+            end = System.nanoTime();
+            System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
 
             // 3. perform checks
             boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
+            end = System.nanoTime();
+            System.out.println("<<< Image checked in " + (end - start) / 1000000 + " ms.");
+
 
             if (signFound) {
                 System.out.println("breaking...");
@@ -75,12 +91,86 @@ public class Pipeline {
                 break;
             }
 
+            // parallel moving window with streams
+            ArrayList<Point> windowPositions = new ArrayList<>();
+            for (int y = 0; y <= height - windowSize; y += stepSize) {
+                for (int x = 0; x <= width - windowSize; x += stepSize) {
+                    windowPositions.add(new Point(x, y));
+                }
+            }
+
+//            AtomicBoolean globalFound = new AtomicBoolean(false);
+//
+//            Optional<Point> window = windowPositions.stream()
+//                    .filter(pos -> {
+//                        if (globalFound.get()) return false;
+//
+//                        int x = pos.x;
+//                        int y = pos.y;
+//
+//                        // create mask of window
+//                        BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
+//                        Graphics2D g = windowMask.createGraphics();
+//                        ArrayList<Point> windowPoints = new ArrayList<>();
+//                        windowPoints.add(new Point(x, y));
+//                        windowPoints.add(new Point(x + windowSize, y));
+//                        windowPoints.add(new Point(x + windowSize, y + windowSize));
+//                        windowPoints.add(new Point(x, y + windowSize));
+//                        DrawingAndFillingPipeline.drawEdgesAndFill(g, windowPoints);
+//                        g.dispose();
+//
+//                        // crop and mask sign from original image
+//                        BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
+//                        if (maskedWindow == null) return false;
+//
+//                        if (globalFound.get()) return false;
+//
+//                        // preprocess image
+//                        BufferedImage preProcessedWindow = Pipeline.imagePreprocessing(maskedWindow);
+//
+//                        if (globalFound.get()) return false;
+//
+//                        // check for signs
+//                        boolean foundInThisWindow = Pipeline.checkForSign(preProcessedWindow, maskedWindow, copy, x, y);
+//
+//                        if (foundInThisWindow) {
+//                            System.out.println("Sign found!");
+//                        }
+//
+//                        return foundInThisWindow;
+//
+//                    })
+//                    .findAny();
+//
+//            signFound = window.isPresent() || globalFound.get();
+//
+//            long levelEnd = System.nanoTime();
+//            System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
+//
+//            if (signFound) {
+//                break;
+//            }
+//
+//            pyramidNum--;
+//
+//            if (i == 5) {
+//                BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
+//                pyramid.add(level0);
+//            }
+//        }
+//
+//        System.out.println("\nCalculations ended.");
+//        long progEnd = System.nanoTime();
+//        System.out.println("Total time: " + (progEnd - progStart) / 1000000 + " ms.");
+//        System.out.println("----------------------------------------------\n\n");
+//    }
+
             for (int y = 0; y <= height - windowSize; y += stepSize){
                 for (int x = 0; x <= width - windowSize; x += stepSize) {
 
                     // paint window
-                    BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
-                    ImageIO.displayImage(windowImage);
+//                    BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
+//                    ImageIO.displayImage(windowImage);
 
                     // create mask of window
                     BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
@@ -101,24 +191,23 @@ public class Pipeline {
                     preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
                     //ImageIO.displayImage(preProcessedImage);
                     end = System.nanoTime();
-                    //System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
+                    System.out.println("\n<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
 
                     // 3. perform checks
                     start = System.nanoTime();
                     signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y) || signFound;
                     end = System.nanoTime();
-                    System.out.println("\n<<< Window checked in " + (end - start) / 1000000 + " ms.");
+                    System.out.println("<<< Window checked in " + (end - start) / 1000000 + " ms.");
 
                     endOfLevel = (y+1 + stepSize > height - windowSize) && (x+1 + stepSize > width - windowSize);
 
                     // TODO: determine best sign of all found signs in level
                     // TODO: if multiple signs of same type get detected at the same global location -> sign found with enough certainty -> break
-                    if (signFound && endOfLevel) {
-                        System.out.println("Sign found, breaking...");
+                    if (signFound) {
                         break;
                     }
                 }
-                if (signFound && endOfLevel) break;
+                if (signFound) break;
             }
 
             long levelEnd = System.nanoTime();
@@ -250,23 +339,56 @@ public class Pipeline {
         DrawingAndFillingPipeline.drawLines(g3, bestLines, maskedWindow.getWidth(), maskedWindow.getHeight());
         //ImageIO.displayImage(bestLinesImage);
 
-//        boolean TsignFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-//        boolean RsignFound = false;
-//        boolean OsignFound = false;
-//
-//        if (!TsignFound) RsignFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-//
-//        //TODO: octagon check is very slow (40% of total runtime)
-//        if (!TsignFound && !RsignFound) OsignFound = FormChecker.checkOctagonForm(maskedWindow, bestLines);
-//
-//        return TsignFound || RsignFound || OsignFound;
+        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            boolean found = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+            long end = System.nanoTime();
+            System.out.println("<<< triangle in " + (end - start) / 1000000 + " ms.");
+            return found;
+        }, THREAD_POOL);
 
-        boolean signFound = false;
-        signFound = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
-        signFound = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
-        signFound = FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY) || signFound;
+        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            boolean found = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+            long end = System.nanoTime();
+            System.out.println("<<< rectangle in " + (end - start) / 1000000 + " ms.");
+            return found;
+        }, THREAD_POOL);
+
+        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> {
+            long start = System.nanoTime();
+            boolean found = FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY);
+            long end = System.nanoTime();
+            System.out.println("<<< octagon in " + (end - start) / 1000000 + " ms.");
+            return found;
+        }, THREAD_POOL);
+
+        CompletableFuture.allOf(triangleThread, rectangleThread, octagonThread).join();
+
+        boolean triangleFound = triangleThread.join();
+        boolean rectangleFound = rectangleThread.join();
+        boolean octagonFound = octagonThread.join();
+
+        boolean signFound = triangleFound || rectangleFound || octagonFound;
+        if (signFound) System.out.println(">>>>>>>>>>>>>>>>>>>>> valid sign found!");
 
         return signFound;
+
+//        boolean signFound = false;
+//        long start = System.nanoTime();
+//        if (FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
+//        long end = System.nanoTime();
+//        System.out.println("<<< triangle in " + (end - start) / 1000000 + " ms.");
+//
+//        if (FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
+//        end = System.nanoTime();
+//        System.out.println("<<< rectangle in " + (end - start) / 1000000 + " ms.");
+//
+//        if (FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
+//        end = System.nanoTime();
+//        System.out.println("<<< octagon in " + (end - start) / 1000000 + " ms.");
+//
+//        return signFound;
     }
 
     /**

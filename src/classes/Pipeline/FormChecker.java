@@ -27,12 +27,12 @@ public class FormChecker {
         ArrayList<HoughLine> validRectangleLines = getLines(validLines, 90);
 
         // copy for displaying lines
-        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D g2 = lineImage.createGraphics();
-        g2.setColor(Color.BLUE);
-        g2.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(lineImage);
+//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+//        Graphics2D g2 = lineImage.createGraphics();
+//        g2.setColor(Color.BLUE);
+//        g2.setStroke(new java.awt.BasicStroke(1));
+//        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+//        ImageIO.displayImage(lineImage);
 
         // check all found rectangles
         //System.out.println("\nchecking rectangle form...");
@@ -68,7 +68,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
 
                     // valid sign found
-                    System.out.println("\n>>>>>>>>> valid vorfahrtstraße-sign found!");
+                    //System.out.println("\n>>>>>>>>> valid vorfahrtstraße-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -83,7 +83,7 @@ public class FormChecker {
 
                     gOriginal.dispose();
 
-                    ImageIO.displayImage(originalImage);
+                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
 
@@ -144,12 +144,12 @@ public class FormChecker {
         ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
 
         // copy for displaying lines
-        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D g2 = lineImage.createGraphics();
-        g2.setColor(Color.RED);
-        g2.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(lineImage);
+//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+//        Graphics2D g2 = lineImage.createGraphics();
+//        g2.setColor(Color.RED);
+//        g2.setStroke(new java.awt.BasicStroke(1));
+//        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+//        ImageIO.displayImage(lineImage);
 
         // check all found triangles
         //System.out.println("\nchecking triangle form...");
@@ -202,17 +202,17 @@ public class FormChecker {
                 //ImageIO.displayImage(maskedSign);
 
                 // check the mask for the right colors
-                String foundSign = "";
-                if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign, currentTriangle)){
-                    foundSign = "vorfahrt";
-                } else if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign, currentTriangle)){
-                    foundSign = "vorfahrt-achten";
-                }
+//                String foundSign = "";
+//                if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign, currentTriangle)){
+//                    foundSign = "vorfahrt";
+//                } else if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign, currentTriangle)){
+//                    foundSign = "vorfahrt-achten";
+//                }
 
-                if (!foundSign.isEmpty()){
+                if (CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentTriangle)){
 
                     // valid sign found
-                    System.out.println("\n>>>>>>>>> valid " + foundSign + "-sign found!");
+                    //System.out.println("\n>>>>>>>>> valid " + foundSign + "-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -227,7 +227,7 @@ public class FormChecker {
 
                     gOriginal.dispose();
 
-                    ImageIO.displayImage(originalImage);
+                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
 
@@ -268,13 +268,13 @@ public class FormChecker {
             }
         }
 
-        // copy for displaying lines
-        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D g2 = lineImage.createGraphics();
-        g2.setColor(Color.GREEN);
-        g2.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(lineImage);
+//        // copy for displaying lines
+//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
+//        Graphics2D g2 = lineImage.createGraphics();
+//        g2.setColor(Color.GREEN);
+//        g2.setStroke(new java.awt.BasicStroke(1));
+//        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+//        ImageIO.displayImage(lineImage);
 
         // check all found octagons
         //System.out.println("\nchecking octagon form...");
@@ -312,7 +312,7 @@ public class FormChecker {
                 if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)){
 
                     // valid sign
-                    System.out.println("\n>>>>>>>>> valid stopp-sign found!");
+                    //System.out.println("\n>>>>>>>>> valid stopp-sign found!");
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
@@ -327,7 +327,7 @@ public class FormChecker {
 
                     gOriginal.dispose();
 
-                    ImageIO.displayImage(originalImage);
+                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
 
@@ -455,28 +455,27 @@ public class FormChecker {
                                         if (A.isEmpty() || B.isEmpty() || C.isEmpty() || D.isEmpty()) continue;
                                         if (!(A.size() == 2 || B.size() == 2 || C.size() == 2 || D.size() == 2)) continue;
 
-                                        // copy for displaying lines
-                                        BufferedImage lineImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-                                        Graphics2D g2 = lineImage.createGraphics();
-                                        g2.setColor(Color.WHITE);
-                                        g2.setStroke(new java.awt.BasicStroke(1));
-                                        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, width, height);
-                                        //ImageIO.displayImage(lineImage);
+//                                        // copy for displaying lines
+//                                        BufferedImage lineImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+//                                        Graphics2D g2 = lineImage.createGraphics();
+//                                        g2.setColor(Color.WHITE);
+//                                        g2.setStroke(new java.awt.BasicStroke(1));
+//                                        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, width, height);
+//                                        //ImageIO.displayImage(lineImage);
 
-                                        // copy for displaying lines
-                                        BufferedImage lineImage1 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-                                        Graphics2D g21 = lineImage1.createGraphics();
-                                        g21.setStroke(new java.awt.BasicStroke(1));
-                                        g21.setColor(Color.RED);
-                                        DrawingAndFillingPipeline.drawLines(g21, A, width, height);
-                                        g21.setColor(Color.BLUE);
-                                        DrawingAndFillingPipeline.drawLines(g21, B, width, height);
-                                        g21.setColor(Color.GREEN);
-                                        DrawingAndFillingPipeline.drawLines(g21, C, width, height);
-                                        g21.setColor(Color.YELLOW);
-                                        DrawingAndFillingPipeline.drawLines(g21, D, width, height);
-                                        //System.out.println();
-                                        //ImageIO.displayImage(lineImage1);
+//                                        // copy for displaying lines
+//                                        BufferedImage lineImage1 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+//                                        Graphics2D g21 = lineImage1.createGraphics();
+//                                        g21.setStroke(new java.awt.BasicStroke(1));
+//                                        g21.setColor(Color.RED);
+//                                        DrawingAndFillingPipeline.drawLines(g21, A, width, height);
+//                                        g21.setColor(Color.BLUE);
+//                                        DrawingAndFillingPipeline.drawLines(g21, B, width, height);
+//                                        g21.setColor(Color.GREEN);
+//                                        DrawingAndFillingPipeline.drawLines(g21, C, width, height);
+//                                        g21.setColor(Color.YELLOW);
+//                                        DrawingAndFillingPipeline.drawLines(g21, D, width, height);
+//                                        //ImageIO.displayImage(lineImage1);
 
                                         // calc sign width
                                         int d = 0;
@@ -686,18 +685,18 @@ public class FormChecker {
                                             }
                                         }
 
-                                        // copy for displaying lines
-                                        BufferedImage lineImage2 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-                                        Graphics2D g1 = lineImage2.createGraphics();
-                                        g1.setStroke(new java.awt.BasicStroke(1));
-                                        g1.setColor(Color.RED);
-                                        DrawingAndFillingPipeline.drawLines(g1, A, width, height);
-                                        g1.setColor(Color.BLUE);
-                                        DrawingAndFillingPipeline.drawLines(g1, B, width, height);
-                                        g1.setColor(Color.GREEN);
-                                        DrawingAndFillingPipeline.drawLines(g1, C, width, height);
-                                        g1.setColor(Color.YELLOW);
-                                        DrawingAndFillingPipeline.drawLines(g1, D, width, height);
+//                                        // copy for displaying lines
+//                                        BufferedImage lineImage2 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+//                                        Graphics2D g1 = lineImage2.createGraphics();
+//                                        g1.setStroke(new java.awt.BasicStroke(1));
+//                                        g1.setColor(Color.RED);
+//                                        DrawingAndFillingPipeline.drawLines(g1, A, width, height);
+//                                        g1.setColor(Color.BLUE);
+//                                        DrawingAndFillingPipeline.drawLines(g1, B, width, height);
+//                                        g1.setColor(Color.GREEN);
+//                                        DrawingAndFillingPipeline.drawLines(g1, C, width, height);
+//                                        g1.setColor(Color.YELLOW);
+//                                        DrawingAndFillingPipeline.drawLines(g1, D, width, height);
 
                                         // geo checks
 
@@ -1082,8 +1081,10 @@ public class FormChecker {
      */
     private static ArrayList<ArrayList<Point>> detectTriangleForm(ArrayList<HoughLine> validTriangleLines, int width, int height) {
         int size = validTriangleLines.size();
-        int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
-        int minSideLength = 30;
+        int diagonal = (int) Math.ceil(Math.sqrt(height * height + width * width));
+        int minSideLength = 30*30;
+        int insideImageTolerance = 15;
+        double sideRatioTolerance = 0.3;
         ArrayList<ArrayList<Point>> allFoundTriangles = new ArrayList<>();
 
         for (int i = 0; i < size; i++){
@@ -1100,36 +1101,46 @@ public class FormChecker {
 
                     // check intersections
                     Point pAB = PipelineHelper.getIntersection(a, b, diagonal);
+                    if (pAB == null || !PipelineHelper.isInsideImage(pAB, width, height, insideImageTolerance)){
+                        continue;
+                    }
                     Point pAC = PipelineHelper.getIntersection(a, c, diagonal);
+                    if (pAC == null || !PipelineHelper.isInsideImage(pAC, width, height, insideImageTolerance)) {
+                        continue;
+                    }
+
                     Point pBC = PipelineHelper.getIntersection(b, c, diagonal);
+                    if (pBC == null || !PipelineHelper.isInsideImage(pBC, width, height, insideImageTolerance)) {
+                        continue;
+                    }
 
-                    if (pAB == null || pBC == null || pAC == null) continue;
+                    // check squared side length
+                    double dx1 = pAB.x - pBC.x;
+                    double dy1 = pAB.y - pBC.y;
+                    double side1 = dx1 * dx1 + dy1 * dy1;
+                    if (side1 < minSideLength) continue;
 
-                    // check geometry
-                    int tolerance = 15;
-                    if (PipelineHelper.isInsideImage(pAB, width, height, tolerance) &&
-                            PipelineHelper.isInsideImage(pBC, width, height, tolerance) &&
-                            PipelineHelper.isInsideImage(pAC, width, height, tolerance)) {
+                    double dx2 = pBC.x - pAC.x;
+                    double dy2 = pBC.y - pAC.y;
+                    double side2 = dx2 * dx2 + dy2 * dy2;
+                    if (side2 < minSideLength) continue;
 
-                        // check side length
-                        double side1 = pAB.distance(pBC);
-                        double side2 = pBC.distance(pAC);
-                        double side3 = pAC.distance(pAB);
+                    double dx3 = pAC.x - pAB.x;
+                    double dy3 = pAC.y - pAB.y;
+                    double side3 = dx3 * dx3 + dy3 * dy3;
+                    if (side3 < minSideLength) continue;
 
-                        if (side1 >= minSideLength && side2 >= minSideLength && side3 >= minSideLength) {
-                            double t = 0.3;
-                            double maxSide = Math.max(Math.max(side1, side2), side3);
-                            double minSide = Math.min(Math.min(side1, side2), side3);
-                            double ratio = minSide/maxSide;
-                            if (ratio >= 1-t && ratio <= 1+t){
-                                ArrayList<Point> triangle = new ArrayList<>();
-                                triangle.add(pAB);
-                                triangle.add(pAC);
-                                triangle.add(pBC);
-                                allFoundTriangles.add(triangle);
-                            }
+                    // check side ratio
+                    double maxSide = Math.max(Math.max(side1, side2), side3);
+                    double minSide = Math.min(Math.min(side1, side2), side3);
+                    double ratio = minSide/maxSide;
 
-                        }
+                    if (ratio >= (1 - sideRatioTolerance) && ratio <= (1 + sideRatioTolerance)){
+                        ArrayList<Point> triangle = new ArrayList<>();
+                        triangle.add(pAB);
+                        triangle.add(pAC);
+                        triangle.add(pBC);
+                        allFoundTriangles.add(triangle);
                     }
                 }
             }
