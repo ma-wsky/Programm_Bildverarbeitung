@@ -1,14 +1,14 @@
 import classes.Pipeline.Pipeline;
 
 void main() {
-    long start = System.nanoTime();
 
 //    //samples
-//    Pipeline.findSign("pics/sample/V.jpg");
-//    Pipeline.findSign("pics/sample/A.jpg");
-//    Pipeline.findSign("pics/sample/P.jpg");
-//    Pipeline.findSign("pics/sample/S.jpg");
+    Pipeline.findSign("pics/sample/V.jpg");
+    Pipeline.findSign("pics/sample/A.jpg");
+    Pipeline.findSign("pics/sample/P.jpg");
+    Pipeline.findSign("pics/sample/S.jpg");
 
+    // TODO: sort things out with (- diagonal) everywhere
 
     // Vorfahrtsstraße
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest1.jpg"); // success
@@ -20,8 +20,8 @@ void main() {
 
 
     // achten
-    //Pipeline.findSign("pics/achten/achtenTest1.jpg"); // entropy dismissed, white value lowered -> success, false positives with moving window -> windowSize 300, step 50 -> success -> false positives that shouldnt exist after tri check
-    Pipeline.findSign("pics/achten/achtenTest2.jpg"); // edges get lost from Sobel to equidensity -> histogram equalization -> success
+//    Pipeline.findSign("pics/achten/achtenTest1.jpg"); // entropy dismissed, white value lowered -> success, false positives with moving window -> windowSize 300, step 50 -> success -> false positives that shouldn't exist after tri check
+//    Pipeline.findSign("pics/achten/achtenTest2.jpg"); // edges get lost from Sobel to equidensity -> histogram equalization -> success
 //    Pipeline.findSign("pics/achten/achtenTest3.jpg"); // no triangle found -> higher angle tolerance and side ratio tolerance, higher ratioRedWhite upper bound, moving window angles to steep -> success -> no success after tri check
 //    Pipeline.findSign("pics/achten/achtenTest4.jpg"); // noise produces too much lines -> try sectioned checks (moving window), moving window -> lines not found -> centerColor check is faulty -> success
 //    Pipeline.findSign("pics/achten/achtenTest5.jpg"); // didn't find crooked top line -> centerColor check is faulty -> success
@@ -34,7 +34,7 @@ void main() {
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest2.jpg"); // moving window no success -> histogram equal -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success -> false positive red wall -> tri edge check -> interesting false positives -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest4.jpg"); // couldn't find triangle due to tree noise and colour -> noise costs a lot of performance
-//    Pipeline.findSign("pics/pfeil/vf_03.jpg"); // false triangle -> need tri-edge colour check -> success -> DIFFERENT RESULT WHEN RUNNING MULTIPLE TIMES
+//    Pipeline.findSign("pics/pfeil/vf_03.jpg"); // false triangle -> need tri-edge color check -> success -> DIFFERENT RESULT WHEN RUNNING MULTIPLE TIMES
 //    Pipeline.findSign("pics/pfeil/vf_04.jpg"); // success -> false positive is interesting -> still false positives with tri edge check ????
 //    Pipeline.findSign("pics/pfeil/vf_05.jpg"); // false positive check -> no false positives (sign not fully included in window)
 
@@ -46,9 +46,6 @@ void main() {
 //    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 //    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
 //    Pipeline.findSign("pics/stopp/stop_6.jpg"); // noise due to letters and bird -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
-
-    long end = System.nanoTime();
-    System.out.println("Calculation time for all images: " + (end - start) / 1000000 + " ms.");
 
     Pipeline.shutdown();
 }

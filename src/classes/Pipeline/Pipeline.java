@@ -8,7 +8,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Pipeline {
 
@@ -18,23 +17,29 @@ public class Pipeline {
         THREAD_POOL.shutdown();
     }
 
+    /**
+     * Entry point for finding sign in image. Takes the filename and loads it.
+     * Constructs an image pyramid with scaled images. {@link PipelineHelper#scaleColorImageBoxDownsampling(BufferedImage, double)}
+     * If no sign is found inside pyramid, upscales the image to 2x using {@link PipelineHelper#upscaleColorImageNearestNeighbour(BufferedImage, double)}
+     * Traverses the pyramid top to bottom. For each level:
+     * Checks the whole level for a sign.
+     * Traverses the image with a moving window and checks for a sign.
+     * Constructs a mask and cuts the image to the window. {@link PipelineHelper#cropAndMaskSign(BufferedImage, BufferedImage)}
+     * Uses  {@link Pipeline#imagePreprocessing(BufferedImage)} and {@link Pipeline#checkForSign(BufferedImage, BufferedImage, BufferedImage, int, int)}
+     * to check for signs
+     * @param filename name of file
+     */
     public static void findSign(String filename) {
-        long progStart = System.nanoTime();
-        long start = progStart;
+
         // 1. read image
         BufferedImage originalImage = ImageIO.readImage(filename);
         if (originalImage == null) {
             System.err.println("Error reading image " + filename);
             return;
         }
-        BufferedImage scaledImage = null;
-        long end = System.nanoTime();
-        System.out.println("<<< Image read and converted in " + (end - start) / 1000000 + " ms.");
 
-        // construct pyramid
-        start = System.nanoTime();
-        BufferedImage level1 = originalImage;
-        BufferedImage level2 = PipelineHelper.scaleColorImageBoxDownsampling(level1, 0.5);
+        // 2. construct pyramid
+        BufferedImage level2 = PipelineHelper.scaleColorImageBoxDownsampling(originalImage, 0.5);
         BufferedImage level3 = PipelineHelper.scaleColorImageBoxDownsampling(level2, 0.5);
         BufferedImage level4 = PipelineHelper.scaleColorImageBoxDownsampling(level3, 0.5);
         BufferedImage level5 = PipelineHelper.scaleColorImageBoxDownsampling(level4, 0.5);
@@ -45,16 +50,12 @@ public class Pipeline {
         pyramid.add(level4);
         pyramid.add(level3);
         pyramid.add(level2);
-        pyramid.add(level1);
-        end = System.nanoTime();
-        System.out.println("<<< Pyramid constructed in " + (end - start) / 1000000 + " ms");
+        pyramid.add(originalImage);
 
-        // traverse pyramid
-        int pyramidNum = pyramid.size();
+        // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage image = pyramid.get(i);
             BufferedImage copy = ImageIO.copyBufferedImage(image);
-            long levelStart = System.nanoTime();
 
             // moving window
             // TODO: check edges (rechter rand und unten)
@@ -65,112 +66,19 @@ public class Pipeline {
 
             if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
 
-            System.out.println("--------------------------------------");
-            System.out.println("\n\nChecking pyramid level " + pyramidNum + "...");
-            ImageIO.displayImage(image);
-
-            boolean endOfLevel = false;
-
-            // check image as a whole
-            System.out.println("check whole image...");
-            // 2. preprocess image
-            start = System.nanoTime();
+            // 4. check image as a whole
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
-            end = System.nanoTime();
-            System.out.println("<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
-
-            // 3. perform checks
+            if (preProcessedImage == null) return;
             boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
-            end = System.nanoTime();
-            System.out.println("<<< Image checked in " + (end - start) / 1000000 + " ms.");
-
 
             if (signFound) {
-                System.out.println("breaking...");
                 ImageIO.displayImage(copy);
                 break;
             }
 
-            // parallel moving window with streams
-            ArrayList<Point> windowPositions = new ArrayList<>();
-            for (int y = 0; y <= height - windowSize; y += stepSize) {
-                for (int x = 0; x <= width - windowSize; x += stepSize) {
-                    windowPositions.add(new Point(x, y));
-                }
-            }
-
-//            AtomicBoolean globalFound = new AtomicBoolean(false);
-//
-//            Optional<Point> window = windowPositions.stream()
-//                    .filter(pos -> {
-//                        if (globalFound.get()) return false;
-//
-//                        int x = pos.x;
-//                        int y = pos.y;
-//
-//                        // create mask of window
-//                        BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
-//                        Graphics2D g = windowMask.createGraphics();
-//                        ArrayList<Point> windowPoints = new ArrayList<>();
-//                        windowPoints.add(new Point(x, y));
-//                        windowPoints.add(new Point(x + windowSize, y));
-//                        windowPoints.add(new Point(x + windowSize, y + windowSize));
-//                        windowPoints.add(new Point(x, y + windowSize));
-//                        DrawingAndFillingPipeline.drawEdgesAndFill(g, windowPoints);
-//                        g.dispose();
-//
-//                        // crop and mask sign from original image
-//                        BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
-//                        if (maskedWindow == null) return false;
-//
-//                        if (globalFound.get()) return false;
-//
-//                        // preprocess image
-//                        BufferedImage preProcessedWindow = Pipeline.imagePreprocessing(maskedWindow);
-//
-//                        if (globalFound.get()) return false;
-//
-//                        // check for signs
-//                        boolean foundInThisWindow = Pipeline.checkForSign(preProcessedWindow, maskedWindow, copy, x, y);
-//
-//                        if (foundInThisWindow) {
-//                            System.out.println("Sign found!");
-//                        }
-//
-//                        return foundInThisWindow;
-//
-//                    })
-//                    .findAny();
-//
-//            signFound = window.isPresent() || globalFound.get();
-//
-//            long levelEnd = System.nanoTime();
-//            System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
-//
-//            if (signFound) {
-//                break;
-//            }
-//
-//            pyramidNum--;
-//
-//            if (i == 5) {
-//                BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
-//                pyramid.add(level0);
-//            }
-//        }
-//
-//        System.out.println("\nCalculations ended.");
-//        long progEnd = System.nanoTime();
-//        System.out.println("Total time: " + (progEnd - progStart) / 1000000 + " ms.");
-//        System.out.println("----------------------------------------------\n\n");
-//    }
-
+            // 5. moving window
             for (int y = 0; y <= height - windowSize; y += stepSize){
                 for (int x = 0; x <= width - windowSize; x += stepSize) {
-
-                    // paint window
-//                    BufferedImage windowImage = DrawingAndFillingPipeline.drawWindow(image, x, y, windowSize);
-//                    ImageIO.displayImage(windowImage);
 
                     // create mask of window
                     BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
@@ -186,63 +94,46 @@ public class Pipeline {
                     BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
                     if (maskedWindow == null) continue;
 
-                    // 2. preprocess image
-                    start = System.nanoTime();
+                    // preprocess image
                     preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
-                    //ImageIO.displayImage(preProcessedImage);
-                    end = System.nanoTime();
-                    System.out.println("\n<<< Image preprocessed in " + (end - start) / 1000000 + " ms.");
+                    if (preProcessedImage == null) return;
 
-                    // 3. perform checks
-                    start = System.nanoTime();
-                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y) || signFound;
-                    end = System.nanoTime();
-                    System.out.println("<<< Window checked in " + (end - start) / 1000000 + " ms.");
+                    // perform checks
+                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y);
 
-                    endOfLevel = (y+1 + stepSize > height - windowSize) && (x+1 + stepSize > width - windowSize);
-
-                    // TODO: determine best sign of all found signs in level
-                    // TODO: if multiple signs of same type get detected at the same global location -> sign found with enough certainty -> break
-                    if (signFound) {
-                        break;
-                    }
+                    if (signFound) break;
                 }
                 if (signFound) break;
             }
 
-            long levelEnd = System.nanoTime();
-            System.out.println("<<< level " + pyramidNum + " checked in " + (levelEnd - levelStart) / 1000000 + " ms.");
             if (signFound) {
                 ImageIO.displayImage(copy);
                 break;
             }
-            pyramidNum--;
+
+            // 6. upscale image
             if (i == 5){
                 BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
                 pyramid.add(level0);
             }
         }
-
-        System.out.println("\nCalculations ended.");
-        long progEnd = System.nanoTime();
-        System.out.println("Total time: " + (progEnd - progStart) / 1000000 + " ms.");
-        System.out.println("----------------------------------------------\n\n");
-
     }
 
     /**
      * Calls {@link EdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
-     * Calls {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line.
-     * Sorts found lines and checks for intersection angles.
-     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
-     * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)} ,
-     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList, BufferedImage, int, int)}
+     * Accumulates lines, uses {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line,
+     * {@link PipelineHelper#isLineSolid(BufferedImage, HoughLine, int, int)} to determine solidness of possible line.
+     * Sorts found lines, merges similar lines and cuts the Array to the top 25 lines by votes.
+     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, BufferedImage, int, int)},
+     * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)},
+     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList, BufferedImage, int, int)} as threads for parallel form checks.
      * @param preProcessedImage BufferedImage preprocessed
      * @param maskedWindow BufferedImage original input
      * @return boolean if sign found
      */
     private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage originalImage, int windowX, int windowY){
-        //make edge black
+
+        // 1. make edge black
         int width = preProcessedImage.getWidth();
         int height = preProcessedImage.getHeight();
         int border = 5;
@@ -255,18 +146,18 @@ public class Pipeline {
             }
         }
 
+        // 2. accumulate lines
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
-        int threshold = 30; //TODO: abhängig von bild größe
+        int threshold = 30;
 
-        // accumulate lines
         for (int phi = 0; phi < accumulator.length; phi++){
             for (int r = 0; r < accumulator[phi].length; r++){
                 int votes = accumulator[phi][r];
                 if (votes > threshold){
-                    int minLength = 20;//TODO: abhängig von bild größe
-                    int maxAllowedGap = 5;//TODO: abhängig von bild größe
-                    int sizeOfNeighbourhood = 3;//TODO: abhängig von bild größe
+                    int minLength = 20;
+                    int maxAllowedGap = 5;
+                    int sizeOfNeighbourhood = 3;
                     if (PipelineHelper.isLocalMaximum(accumulator, phi, r, sizeOfNeighbourhood) && PipelineHelper.isLineSolid(preProcessedImage, new HoughLine(phi, r, votes), minLength, maxAllowedGap)){
                         lines.add(new HoughLine(phi, r, votes));
                     }
@@ -274,33 +165,25 @@ public class Pipeline {
             }
         }
 
-        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D g2 = lineImage.createGraphics();
-        g2.setColor(Color.BLUE);
-        g2.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g2, lines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(lineImage);
-
-        // sort
+        // 3. sort accumulated lines
         lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
 
-        // remove similar lines
+        // 4. remove similar lines
         ArrayList<HoughLine> noSimilarLines = new ArrayList<>();
-        int angleTolerance = 5; // TODO: abhängig von bildgröße
-        int radiusTolerance = 10; // TODO: abhängig von bildgröße
+        int angleTolerance = 5;
+        int radiusTolerance = 10;
+        int diagonal = (int) Math.ceil(Math.sqrt((height * height) + (width * width)));
 
         for (HoughLine newLine : lines){
             boolean isSimilar = false;
 
             for (HoughLine acceptedLine : noSimilarLines){
-                int dr = Math.abs(newLine.r - acceptedLine.r);
                 int dPhi = Math.abs(newLine.phi - acceptedLine.phi);
                 if (dPhi > 90) {
                     dPhi = 180 - dPhi;
                 }
 
                 if (dPhi <= angleTolerance){
-                    int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(originalImage.getHeight(), 2) + Math.pow(originalImage.getWidth(), 2)));
                     double posNew = newLine.r - diagonal;
                     double posAcc = acceptedLine.r - diagonal;
 
@@ -316,52 +199,23 @@ public class Pipeline {
             }
         }
 
-        BufferedImage noSomilarImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D gs = noSomilarImage.createGraphics();
-        gs.setColor(Color.BLUE);
-        gs.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(gs, noSimilarLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(noSomilarImage);
-
-        // sort lines and keep best
+        // 5. sort lines and keep best 25
         noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
-        int amountToKeep = 25; //TODO: abhängigkeitskriterium für mindestanzahl
+
         ArrayList<HoughLine> bestLines = new ArrayList<>();
+        int amountToKeep = 25;
         int limit = Math.min(amountToKeep, noSimilarLines.size());
+
         for (int i = 0; i < limit; i++) {
             bestLines.add(noSimilarLines.get(i));
         }
 
-        BufferedImage bestLinesImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-        Graphics2D g3 = bestLinesImage.createGraphics();
-        g3.setColor(Color.BLUE);
-        g3.setStroke(new java.awt.BasicStroke(1));
-        DrawingAndFillingPipeline.drawLines(g3, bestLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-        //ImageIO.displayImage(bestLinesImage);
+        // 6. threads for parallel form checks
+        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
 
-        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> {
-            long start = System.nanoTime();
-            boolean found = FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-            long end = System.nanoTime();
-            System.out.println("<<< triangle in " + (end - start) / 1000000 + " ms.");
-            return found;
-        }, THREAD_POOL);
+        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
 
-        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> {
-            long start = System.nanoTime();
-            boolean found = FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-            long end = System.nanoTime();
-            System.out.println("<<< rectangle in " + (end - start) / 1000000 + " ms.");
-            return found;
-        }, THREAD_POOL);
-
-        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> {
-            long start = System.nanoTime();
-            boolean found = FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY);
-            long end = System.nanoTime();
-            System.out.println("<<< octagon in " + (end - start) / 1000000 + " ms.");
-            return found;
-        }, THREAD_POOL);
+        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
 
         CompletableFuture.allOf(triangleThread, rectangleThread, octagonThread).join();
 
@@ -373,27 +227,12 @@ public class Pipeline {
         if (signFound) System.out.println(">>>>>>>>>>>>>>>>>>>>> valid sign found!");
 
         return signFound;
-
-//        boolean signFound = false;
-//        long start = System.nanoTime();
-//        if (FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
-//        long end = System.nanoTime();
-//        System.out.println("<<< triangle in " + (end - start) / 1000000 + " ms.");
-//
-//        if (FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
-//        end = System.nanoTime();
-//        System.out.println("<<< rectangle in " + (end - start) / 1000000 + " ms.");
-//
-//        if (FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY)) return true;
-//        end = System.nanoTime();
-//        System.out.println("<<< octagon in " + (end - start) / 1000000 + " ms.");
-//
-//        return signFound;
     }
 
     /**
      * Performs preprocessing on given BufferedImage:
-     * Calls {@link EdgeDetection#gaussianLowPass(BufferedImage, int)}
+     * Calls {@link EdgeDetection#gaussianLowPassSeperated(BufferedImage, int)}
+     * Calls {@link ImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
      * Calls {@link EdgeDetection#sobelFilter(BufferedImage, int)}
      * Calls {@link ImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
      * Calls {@link MorphologicalOperations#erosion(BufferedImage, boolean[][], int)}
@@ -406,7 +245,7 @@ public class Pipeline {
 
         // 1. lowpass
         BufferedImage lowpass = EdgeDetection.gaussianLowPassSeperated(image, 5);
-        //ImageIO.displayImage(lowpass);
+        if (lowpass == null) return null;
 
         // hist equal
         BufferedImage histOrNot = lowpass;
@@ -415,29 +254,21 @@ public class Pipeline {
         if (stats.getEntropy() > 5.5) {
             histOrNot = ImageManipulation.histogramEqualization(lowpass);
         }
-        //ImageIO.displayImage(histOrNot);
 
         // 2. sobel
         BufferedImage sobel = EdgeDetection.sobelFilter(histOrNot, 3);
-        //ImageIO.displayImage(sobel);
 
         // 3. equidensity
         BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
-        //ImageIO.displayImage(equidensity);
 
         // 4. closing with dilation and erosion
         boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};
         BufferedImage erosion = MorphologicalOperations.erosion(equidensity, mask, 1);
-        //ImageIO.displayImage(erosion);
 
         BufferedImage dilation = MorphologicalOperations.dilation(erosion, mask, 1);
-        //ImageIO.displayImage(dilation);
 
         // 5. negative
-        BufferedImage negative = ColorManipulation.negative(dilation);
-        //ImageIO.displayImage(negative);
-
-        return negative;
+        return ColorManipulation.negative(dilation);
     }
 
 }
