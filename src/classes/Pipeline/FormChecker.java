@@ -9,166 +9,79 @@ import java.util.Comparator;
 public class FormChecker {
 
     /**
-     * Validates geometry of rectangle by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
+     * Uses formFlag to differentiate between rectangle (0), triangle (1), and octagon (2).
+     * Validates geometry of selected shape by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)},
+     * {@link FormChecker#detectTriangleForm(ArrayList, int, int)} or {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
+     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)},
+     * {@link CharacteristicsChecker#isTriangleSignColorAndStats(BufferedImage, ArrayList)},
+     * or {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
-     * @param maskedWindow BufferedImage original
-     * @param validLines ArrayList<HoughLine> valid lines
-     * @return boolean if sign found
+     * @param maskedWindow BufferedImage window
+     * @param validLines ArrayList<HoughLine>
+     * @param originalImage BufferedImage original
+     * @param windowX int
+     * @param windowY int
+     * @param formFlag flag 0 -> rectangle, 1 -> triangle, 2-> octagon
+     * @return boolean if sign is found
      */
-    public static boolean checkRectangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
+    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY, int formFlag){
 
-        // 1. detect rectangle geometry in validLines
-        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        // 1. detect geometry in validLines
+        ArrayList<ArrayList<Point>> allFoundShapes = switch (formFlag) {
+            case 0 -> FormChecker.detectRectangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+            case 1 -> FormChecker.detectTriangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+            case 2 -> FormChecker.detectOctagonForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+            default -> throw new IllegalStateException("Unexpected value: " + formFlag);
+        };
 
-        if (!allFoundRectangles.isEmpty()){
+        if (allFoundShapes.isEmpty()) return false;
 
-            // 2. for each valid rectangle geometry
-            for (ArrayList<Point> currentRectangle : allFoundRectangles) {
+        // 2. for each valid shape geometry
+        for (ArrayList<Point> currentShape : allFoundShapes) {
 
-                // early exits
-                if (!PipelineHelper.isValidRectangleCenterColor(maskedWindow, currentRectangle)) continue;
-                if (PipelineHelper.isRectangleTooSmall(maskedWindow, currentRectangle)) continue;
+            // early exits
+            boolean isValid = switch (formFlag) {
+                case 0 -> PipelineHelper.isValidRectangleCenterColor(maskedWindow, currentShape)
+                        && !PipelineHelper.isRectangleTooSmall(maskedWindow, currentShape);
+                case 1 -> !PipelineHelper.isTriangleTooSmall(maskedWindow, currentShape);
+                case 2 -> !PipelineHelper.isOctagonTooSmall(maskedWindow, currentShape);
+                default -> false;
+            };
+            if (!isValid) continue;
 
-                // 3. create mask of rectangle
-                BufferedImage rectangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
-                Graphics2D g = rectangleMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentRectangle);
-                g.dispose();
+            // 3. create mask of shape
+            BufferedImage mask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
+            Graphics2D g = mask.createGraphics();
+            DrawingAndFillingPipeline.drawEdgesAndFill(g, currentShape);
+            g.dispose();
 
-                // 4. crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, rectangleMask);
-                if (maskedSign == null) continue;
+            // 4. crop and mask sign from original image
+            BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, mask);
+            if (maskedSign == null) continue;
 
-                // 5. check mask for the right colors
-                if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)) {
+            // 5. check mask for the right colors
+            boolean colorMatch = switch (formFlag) {
+                case 0 -> CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign);
+                case 1 -> CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentShape);
+                case 2 -> CharacteristicsChecker.isStoppColorAndStats(maskedSign);
+                default -> false;
+            };
+            if (!colorMatch) continue;
 
-                    // draw outline of found sign on original image
-                    Graphics2D gOriginal = originalImage.createGraphics();
-                    gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new BasicStroke(4));
+            // draw outline of found sign on original image
+            Graphics2D gOriginal = originalImage.createGraphics();
+            gOriginal.setColor(Color.GREEN);
+            gOriginal.setStroke(new BasicStroke(4));
 
-                    for (int j = 0; j < 4; j++) {
-                        Point pStart = currentRectangle.get(j);
-                        Point pEnd = currentRectangle.get((j + 1) % 4);
-                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
-                    }
-
-                    gOriginal.dispose();
-                    return true;
-                }
+            int numPoints = currentShape.size();
+            for (int j = 0; j < numPoints; j++) {
+                Point pStart = currentShape.get(j);
+                Point pEnd = currentShape.get((j + 1) % numPoints);
+                gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
             }
-        }
+            gOriginal.dispose();
 
-        return false;
-    }
-
-
-    /**
-     * Validates geometry of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isTriangleSignColorAndStats(BufferedImage, ArrayList)}.
-     * Draws bounds of sign on original if found.
-     * @param maskedWindow BufferedImage original
-     * @param validLines ArrayList<HoughLine> valid lines
-     * @return boolean if sign found
-     */
-    public static boolean checkTriangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
-
-        // 1. detect triangle geometry in validLines
-        ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-
-        if (!allFoundTriangles.isEmpty()){
-
-            // 2. for each valid triangle geometry
-            for (ArrayList<Point> currentTriangle : allFoundTriangles) {
-
-                // early exits
-                //if (!PipelineHelper.isValidTriangleCenterColor(maskedWindow, currentTriangle)) continue;
-                if (PipelineHelper.isTriangleTooSmall(maskedWindow, currentTriangle)) continue;
-
-                // 3. create mask of triangle
-                BufferedImage triangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
-                Graphics2D g = triangleMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentTriangle);
-                g.dispose();
-
-                // 4. crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, triangleMask);
-                if (maskedSign == null) continue;
-
-                // 5. check mask for the right colors
-                if (CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentTriangle)) {
-
-                    // draw outline of found sign on original image
-                    Graphics2D gOriginal = originalImage.createGraphics();
-                    gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new BasicStroke(4));
-
-                    for (int j = 0; j < 3; j++) {
-                        Point pStart = currentTriangle.get(j);
-                        Point pEnd = currentTriangle.get((j + 1) % 3);
-                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
-                    }
-
-                    gOriginal.dispose();
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-
-    /**
-     * Validates geometry of octagon by calling {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
-     * Draws bounds of sign on original if found.
-     * @param maskedWindow BufferedImage original
-     * @param validLines ArrayList<HoughLine> valid lines
-     * @return boolean if sign found
-     */
-    public static boolean checkOctagonForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
-
-        // 1. detect octagon geometry in validLines
-        ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-
-        if (!allFoundOctagons.isEmpty()){
-
-            // 2. for each valid octagon geometry
-            for (ArrayList<Point> currentOctagon : allFoundOctagons) {
-
-                // early exits
-                //if (!PipelineHelper.isValidOctagonCenterColor(maskedWindow, currentOctagon)) continue;
-                if (PipelineHelper.isOctagonTooSmall(maskedWindow, currentOctagon)) continue;
-
-                // 3. create mask of octagon
-                BufferedImage octagonMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
-                Graphics2D g = octagonMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentOctagon);
-                g.dispose();
-
-                // 4. crop and mask sign from original image
-                BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, octagonMask);
-                if (maskedSign == null) continue;
-
-                // 5. check mask for the right colors
-                if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)) {
-
-                    // draw outline of found sign on original image
-                    Graphics2D gOriginal = originalImage.createGraphics();
-                    gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new BasicStroke(4));
-
-                    for (int j = 0; j < 8; j++) {
-                        Point pStart = currentOctagon.get(j);
-                        Point pEnd = currentOctagon.get((j + 1) % 8);
-                        gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
-                    }
-
-                    gOriginal.dispose();
-                    return true;
-                }
-            }
+            return true;
         }
         return false;
     }

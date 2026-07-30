@@ -124,9 +124,7 @@ public class Pipeline {
      * Accumulates lines, uses {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line,
      * {@link PipelineHelper#isLineSolid(BufferedImage, HoughLine, int, int)} to determine solidness of possible line.
      * Sorts found lines, merges similar lines and cuts the Array to the top 25 lines by votes.
-     * Calls {@link FormChecker#checkTriangleForm(BufferedImage, ArrayList, BufferedImage, int, int)},
-     * {@link FormChecker#checkRectangleForm(BufferedImage, ArrayList, BufferedImage, int, int)},
-     * {@link FormChecker#checkOctagonForm(BufferedImage, ArrayList, BufferedImage, int, int)} as threads for parallel form checks.
+     * Calls {@link FormChecker#checkForm(BufferedImage, ArrayList, BufferedImage, int, int, int)} as threads for parallel form checks of rectangle, triangle and octagon.
      * @param preProcessedImage BufferedImage preprocessed
      * @param maskedWindow BufferedImage original input
      * @return boolean if sign found
@@ -211,11 +209,15 @@ public class Pipeline {
         }
 
         // 6. threads for parallel form checks
-        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkTriangleForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
 
-        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkRectangleForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
+        //rectangle
+        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 0), THREAD_POOL);
 
-        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkOctagonForm(maskedWindow, bestLines, originalImage, windowX, windowY), THREAD_POOL);
+        // triangle
+        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 1), THREAD_POOL);
+
+        //octagon
+        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 2), THREAD_POOL);
 
         CompletableFuture.allOf(triangleThread, rectangleThread, octagonThread).join();
 
