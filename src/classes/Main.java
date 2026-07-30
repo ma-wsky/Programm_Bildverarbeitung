@@ -9,6 +9,7 @@ void main() {
     Pipeline.findSign("pics/sample/S.jpg");
 
     // TODO: sort things out with (- diagonal) everywhere
+    // TODO: compress class FormChecker and use helper functions. Group the check functions together
 
     // Vorfahrtsstraße
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest1.jpg"); // success

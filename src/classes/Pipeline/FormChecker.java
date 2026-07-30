@@ -1,10 +1,7 @@
 package classes.Pipeline;
 
-import classes.ImageIO;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -12,68 +9,44 @@ import java.util.Comparator;
 public class FormChecker {
 
     /**
-     * Validates lines of rectangle based on intersection angles of pairs.
-     * Validates form of rectangle by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
+     * Validates geometry of rectangle by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)}.
+     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isVorfahrtsstrasseColorsAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
     public static boolean checkRectangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
-        long start = System.nanoTime();
 
-        // rectangle check
-        ArrayList<HoughLine> validRectangleLines = getLines(validLines, 90);
-
-        // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.BLUE);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        ImageIO.displayImage(lineImage);
-
-        // check all found rectangles
-        //System.out.println("\nchecking rectangle form...");
-
-        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validRectangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        // 1. detect rectangle geometry in validLines
+        ArrayList<ArrayList<Point>> allFoundRectangles = FormChecker.detectRectangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         if (!allFoundRectangles.isEmpty()){
-            //System.out.println(allFoundRectangles.size() + " rectangles found...");
-            int rectanglesChecked = 0;
 
-            for (int i = 0; i < allFoundRectangles.size(); i++){
+            // 2. for each valid rectangle geometry
+            for (ArrayList<Point> currentRectangle : allFoundRectangles) {
 
-                ArrayList<Point> currentRectangle = allFoundRectangles.get(i);
-                //System.out.println("checking rectangle " + (i+1) + "...");
-
-                // check center for early exit
+                // early exits
                 if (!PipelineHelper.isValidRectangleCenterColor(maskedWindow, currentRectangle)) continue;
-                // check size for early exit
                 if (PipelineHelper.isRectangleTooSmall(maskedWindow, currentRectangle)) continue;
-                rectanglesChecked++;
 
-                // create mask of rectangle
+                // 3. create mask of rectangle
                 BufferedImage rectangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = rectangleMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundRectangles.get(i));
+                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentRectangle);
+                g.dispose();
 
-                // crop and mask sign from original image
+                // 4. crop and mask sign from original image
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, rectangleMask);
                 if (maskedSign == null) continue;
-                //ImageIO.displayImage(maskedSign);
 
-                // check the mask for the right colors
-                if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)){
-
-                    // valid sign found
-                    //System.out.println("\n>>>>>>>>> valid vorfahrtstraße-sign found!");
+                // 5. check mask for the right colors
+                if (CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign)) {
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+                    gOriginal.setStroke(new BasicStroke(4));
 
                     for (int j = 0; j < 4; j++) {
                         Point pStart = currentRectangle.get(j);
@@ -82,142 +55,54 @@ public class FormChecker {
                     }
 
                     gOriginal.dispose();
-
-                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
-
-                g.dispose();
             }
-            //System.out.println(rectanglesChecked + " rectangles checked.");
-        } else {
-            //System.out.println("no rectangle detected!");
         }
 
-        long end = System.nanoTime();
-        //System.out.println("<<< Rectangle check finished in " + (end - start) / 1000000+ "ms");
         return false;
-        //g2.dispose();
     }
 
-    /**
-     * Accumulates all lines in validLines that have an intersection angle of angle.
-     * Uses {@link PipelineHelper#getAngleOfIntersection(HoughLine, HoughLine)}.
-     * @param validLines ArrayList<HoughLine> valid lines
-     * @param angle int angle
-     * @return ArrayList<HoughLine> valid lines of angle
-     */
-    private static ArrayList<HoughLine> getLines(ArrayList<HoughLine> validLines, int angle) {
-        int tolerance = 15;
-        ArrayList<HoughLine> validRectangleLines = new ArrayList<>();
-
-        for (int i = 0; i < validLines.size(); i++){
-            for (int j = 0; j < validLines.size(); j++){
-                if (i == j) continue;
-                HoughLine line1 = validLines.get(i);
-                HoughLine line2 = validLines.get(j);
-
-                int angleOfIntersection = PipelineHelper.getAngleOfIntersection(line1, line2);
-
-                if (angleOfIntersection >= (angle - tolerance) && angleOfIntersection <= (angle + tolerance)) {
-                    if (!validRectangleLines.contains(line1)) validRectangleLines.add(line1);
-                    if (!validRectangleLines.contains(line2)) validRectangleLines.add(line2);
-                }
-            }
-        }
-        return validRectangleLines;
-    }
 
     /**
-     * Validates lines of triangle based on intersection angles of pairs.
-     * Validates form of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isVorfahrtAchtenColorsAndStats(BufferedImage, ArrayList)} and {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)}.
+     * Validates geometry of triangle by calling {@link FormChecker#detectTriangleForm(ArrayList, int, int)}.
+     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isTriangleSignColorAndStats(BufferedImage, ArrayList)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
     public static boolean checkTriangleForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
-        long start = System.nanoTime();
 
-        // triangle check
-        ArrayList<HoughLine> validTriangleLines = FormChecker.getLines(validLines, 60);
-
-        // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.RED);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        ImageIO.displayImage(lineImage);
-
-        // check all found triangles
-        //System.out.println("\nchecking triangle form...");
-
-        ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validTriangleLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        for(ArrayList<Point> triangle : allFoundTriangles){
-//            BufferedImage triangleCopy = ImageIO.copyBufferedImage(originalImage);
-//            Graphics2D gTri = triangleCopy.createGraphics();
-//            gTri.setColor(Color.CYAN);
-//            gTri.setStroke(new java.awt.BasicStroke(1));
-//
-//            for (int j = 0; j < 3; j++) {
-//                Point pStart = triangle.get(j);
-//                Point pEnd = triangle.get((j + 1) % 3);
-//                gTri.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
-//            }
-//
-//            gTri.dispose();
-//
-//            ImageIO.displayImage(triangleCopy);
-//        }
-
-        long end = System.nanoTime();
-        //System.out.println("<<< Triangle forms found in " + (end - start) / 1000000+ "ms");
-        start = System.nanoTime();
+        // 1. detect triangle geometry in validLines
+        ArrayList<ArrayList<Point>> allFoundTriangles = FormChecker.detectTriangleForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         if (!allFoundTriangles.isEmpty()){
-            //System.out.println(allFoundTriangles.size() + " triangles found...");
-            int trianglesChecked = 0;
 
-            for (int i = 0; i < allFoundTriangles.size(); i++){
+            // 2. for each valid triangle geometry
+            for (ArrayList<Point> currentTriangle : allFoundTriangles) {
 
-                ArrayList<Point> currentTriangle = allFoundTriangles.get(i);
-                //System.out.println("checking triangle " + (i+1) + "...");
-
-                // check center for early exit
+                // early exits
                 //if (!PipelineHelper.isValidTriangleCenterColor(maskedWindow, currentTriangle)) continue;
-                // check size for early exit
                 if (PipelineHelper.isTriangleTooSmall(maskedWindow, currentTriangle)) continue;
-                trianglesChecked++;
 
-                // create mask of triangle
+                // 3. create mask of triangle
                 BufferedImage triangleMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = triangleMask.createGraphics();
                 DrawingAndFillingPipeline.drawEdgesAndFill(g, currentTriangle);
+                g.dispose();
 
-                // crop and mask sign from original image
+                // 4. crop and mask sign from original image
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, triangleMask);
                 if (maskedSign == null) continue;
-                //ImageIO.displayImage(maskedSign);
 
-                // check the mask for the right colors
-//                String foundSign = "";
-//                if (CharacteristicsChecker.isVorfahrtColorsAndStats(maskedSign, currentTriangle)){
-//                    foundSign = "vorfahrt";
-//                } else if (CharacteristicsChecker.isVorfahrtAchtenColorsAndStats(maskedSign, currentTriangle)){
-//                    foundSign = "vorfahrt-achten";
-//                }
-
-                if (CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentTriangle)){
-
-                    // valid sign found
-                    //System.out.println("\n>>>>>>>>> valid " + foundSign + "-sign found!");
+                // 5. check mask for the right colors
+                if (CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentTriangle)) {
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+                    gOriginal.setStroke(new BasicStroke(4));
 
                     for (int j = 0; j < 3; j++) {
                         Point pStart = currentTriangle.get(j);
@@ -226,98 +111,53 @@ public class FormChecker {
                     }
 
                     gOriginal.dispose();
-
-                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
-
-                g.dispose();
             }
-            //System.out.println(trianglesChecked + " triangles checked.");
-        } else {
-            //System.out.println("no triangle detected!");
         }
-
-        end = System.nanoTime();
-        //System.out.println("<<< Triangle check finished in " + (end - start) / 1000000+ "ms");
         return false;
-        //g2.dispose();
     }
 
 
     /**
-     * Validates lines of octagon based on intersection angles of pairs.
-     * Validates form of octagon by calling {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
-     * Calls {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
+     * Validates geometry of octagon by calling {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
+     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage original
      * @param validLines ArrayList<HoughLine> valid lines
      * @return boolean if sign found
      */
     public static boolean checkOctagonForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY) {
-        long start = System.nanoTime();
 
-        // octagon check
-        ArrayList<HoughLine> validOctagonLines = FormChecker.getLines(validLines, 45);
-        ArrayList<HoughLine> lines90 = FormChecker.getLines(validLines, 90);
-
-        // link with no duplicates
-        for (HoughLine line : lines90) {
-            if (!validOctagonLines.contains(line)) {
-                validOctagonLines.add(line);
-            }
-        }
-
-//        // copy for displaying lines
-//        BufferedImage lineImage = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), maskedWindow.getType());
-//        Graphics2D g2 = lineImage.createGraphics();
-//        g2.setColor(Color.GREEN);
-//        g2.setStroke(new java.awt.BasicStroke(1));
-//        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
-//        ImageIO.displayImage(lineImage);
-
-        // check all found octagons
-        //System.out.println("\nchecking octagon form...");
-
-        // TODO: infer octagon from partial shapes (6 or 7 lines)    pics/stopp/stoppTest2.jpg finds 7 lines, stoppTest3.jpg finds 5 lines
-        // TODO: make detectOctagonForm faster
-        ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validOctagonLines, maskedWindow.getWidth(), maskedWindow.getHeight());
+        // 1. detect octagon geometry in validLines
+        ArrayList<ArrayList<Point>> allFoundOctagons = FormChecker.detectOctagonForm(validLines, maskedWindow.getWidth(), maskedWindow.getHeight());
 
         if (!allFoundOctagons.isEmpty()){
-            //System.out.println(allFoundOctagons.size() + " octagons found...");
-            int octagonsChecked = 0;
 
-            for (int i = 0; i < allFoundOctagons.size(); i++){
+            // 2. for each valid octagon geometry
+            for (ArrayList<Point> currentOctagon : allFoundOctagons) {
 
-                ArrayList<Point> currentOctagon = allFoundOctagons.get(i);
-                //System.out.println("checking octagon " + (i+1) + "...");
-
-                //check center for early exit
+                // early exits
                 //if (!PipelineHelper.isValidOctagonCenterColor(maskedWindow, currentOctagon)) continue;
-                // check size for early exit
                 if (PipelineHelper.isOctagonTooSmall(maskedWindow, currentOctagon)) continue;
-                octagonsChecked++;
 
-                // create mask of octagon
+                // 3. create mask of octagon
                 BufferedImage octagonMask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
                 Graphics2D g = octagonMask.createGraphics();
-                DrawingAndFillingPipeline.drawEdgesAndFill(g, allFoundOctagons.get(i));
+                DrawingAndFillingPipeline.drawEdgesAndFill(g, currentOctagon);
+                g.dispose();
 
-                // crop and mask sign from original image
+                // 4. crop and mask sign from original image
                 BufferedImage maskedSign = PipelineHelper.cropAndMaskSign(maskedWindow, octagonMask);
                 if (maskedSign == null) continue;
-                //ImageIO.displayImage(maskedSign);
 
-                // check the mask for the right colors
-                if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)){
-
-                    // valid sign
-                    //System.out.println("\n>>>>>>>>> valid stopp-sign found!");
+                // 5. check mask for the right colors
+                if (CharacteristicsChecker.isStoppColorAndStats(maskedSign)) {
 
                     // draw outline of found sign on original image
                     Graphics2D gOriginal = originalImage.createGraphics();
                     gOriginal.setColor(Color.GREEN);
-                    gOriginal.setStroke(new java.awt.BasicStroke(4));
+                    gOriginal.setStroke(new BasicStroke(4));
 
                     for (int j = 0; j < 8; j++) {
                         Point pStart = currentOctagon.get(j);
@@ -326,51 +166,35 @@ public class FormChecker {
                     }
 
                     gOriginal.dispose();
-
-                    //ImageIO.displayImage(originalImage);
                     return true;
                 }
-
-                g.dispose();
             }
-            //System.out.println(octagonsChecked + " octagons checked.");
-        } else {
-            //System.out.println("no octagon detected!");
         }
-
-        long end = System.nanoTime();
-        //System.out.println("<<< Octagon check finished in " + (end - start) / 1000000+ "ms");
         return false;
-        //g2.dispose();
     }
 
+
     /**
-     * Function for validating that validOctagonLines construct an octagon.
-     * Sorts candidates into parallel groups and checks for 2 members each.
-     * Groups are sorted by angle to ensure correct cyclical intersection calculation.
-     * Checks cyclical intersections of adjacent groups to find all 16 potential vertices.
-     * Filters out invalid or distant intersections to isolate the 8 true corner points.
-     * Sorts the 8 true corner points by polar angle to establish a proper circular order.
-     * Checks if the sorted vertices are inside the image with tolerance.
-     * Checks ratio of shortest and longest sidelengths with tolerance.
-     * @param validOctagonLines ArrayList<classes.Pipeline.HoughLine>
+     * Function for detecting octagons inside validOctagonLines.
+     * Sorts validOctagonLines into angle groups. Sorts the groups based on distance.
+     * Takes 6 lines from the groups, two from two groups and 1 from the other two.
+     * Determines faulty lines and exchanges them with correct lines that get calculated to form an octagon.
+     * Checks intersections, if they are contained in the image, and sidelengths of the 8 lines to determine if it is an octagon.
+     * @param validOctagonLines ArrayList<HoughLine>
      * @param width int width of image
      * @param height int height of image
      * @return ArrayList<ArrayList<Point>> all found octagons
      */
     private static ArrayList<ArrayList<Point>> detectOctagonForm(ArrayList<HoughLine> validOctagonLines, int width, int height) {
-        int size = validOctagonLines.size();
         int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
-        int minSideLength = 30; // TODO: abhängig von bild größe
+        int minSideLength = 30;
         ArrayList<ArrayList<Point>> allFoundOctagons = new ArrayList<>();
 
-        // TODO: bei performanz-einbrüchen erst in winkelgruppen sortieren
+        // 1. sort validOctagonLines into angle-groups
         ArrayList<HoughLine> angle0_180 = new ArrayList<>();
         ArrayList<HoughLine> angle45 = new ArrayList<>();
         ArrayList<HoughLine> angle90 = new ArrayList<>();
         ArrayList<HoughLine> angle135 = new ArrayList<>();
-        // debug
-        ArrayList<HoughLine> noAngle = new ArrayList<>();
 
         for (HoughLine line : validOctagonLines) {
             int angle = line.phi;
@@ -384,11 +208,10 @@ public class FormChecker {
                 angle90.add(line);
             } else if (angle <= tolerance || angle >= 180 - tolerance) {
                 angle0_180.add(line);
-            } else {
-                noAngle.add(line);
             }
         }
 
+        // sort angle-groups based on distance
         angle0_180.sort(Comparator.comparingDouble(line -> {
             double rad = Math.toRadians(line.phi);
             double cos = Math.cos(rad);
@@ -411,11 +234,13 @@ public class FormChecker {
             return line.r / (Math.cos(rad) - Math.sin(rad));
         }));
 
-        // pull from bucket
+        // 2. check lines of groups for octagon geometry
         int minNumberOfLines = 6;
 
         for (int i = 0; i < angle0_180.size(); i++) {
             for (int j = angle0_180.size() - 1; j >= i; j--) {
+
+                // pull at least one line from every group
                 ArrayList<HoughLine> A = new ArrayList<>();
                 A.add(angle0_180.get(i));
 
@@ -425,6 +250,7 @@ public class FormChecker {
 
                 for (int k = 0; k < angle45.size(); k++) {
                     for (int l = angle45.size() - 1; l >= k; l--) {
+
                         ArrayList<HoughLine> B = new ArrayList<>();
                         B.add(angle45.get(k));
 
@@ -434,6 +260,7 @@ public class FormChecker {
 
                         for (int m = 0; m < angle90.size(); m++) {
                             for (int n = angle90.size() - 1; n >= m; n--) {
+
                                 ArrayList<HoughLine> C = new ArrayList<>();
                                 C.add(angle90.get(m));
 
@@ -443,6 +270,7 @@ public class FormChecker {
 
                                 for (int o = 0; o < angle135.size(); o++) {
                                     for (int p = angle135.size() - 1; p >= o; p--) {
+
                                         ArrayList<HoughLine> D = new ArrayList<>();
                                         D.add(angle135.get(o));
 
@@ -455,39 +283,11 @@ public class FormChecker {
                                         if (A.isEmpty() || B.isEmpty() || C.isEmpty() || D.isEmpty()) continue;
                                         if (!(A.size() == 2 || B.size() == 2 || C.size() == 2 || D.size() == 2)) continue;
 
-//                                        // copy for displaying lines
-//                                        BufferedImage lineImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-//                                        Graphics2D g2 = lineImage.createGraphics();
-//                                        g2.setColor(Color.WHITE);
-//                                        g2.setStroke(new java.awt.BasicStroke(1));
-//                                        DrawingAndFillingPipeline.drawLines(g2, validOctagonLines, width, height);
-//                                        //ImageIO.displayImage(lineImage);
 
-//                                        // copy for displaying lines
-//                                        BufferedImage lineImage1 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-//                                        Graphics2D g21 = lineImage1.createGraphics();
-//                                        g21.setStroke(new java.awt.BasicStroke(1));
-//                                        g21.setColor(Color.RED);
-//                                        DrawingAndFillingPipeline.drawLines(g21, A, width, height);
-//                                        g21.setColor(Color.BLUE);
-//                                        DrawingAndFillingPipeline.drawLines(g21, B, width, height);
-//                                        g21.setColor(Color.GREEN);
-//                                        DrawingAndFillingPipeline.drawLines(g21, C, width, height);
-//                                        g21.setColor(Color.YELLOW);
-//                                        DrawingAndFillingPipeline.drawLines(g21, D, width, height);
-//                                        //ImageIO.displayImage(lineImage1);
-
-                                        // calc sign width
-                                        int d = 0;
-                                        class BucketDist {
-                                            int id;
-                                            int dist;
-                                            BucketDist(int id, int dist) {
-                                                this.id = id;
-                                                this.dist = dist;
-                                            }
-                                        }
-                                        ArrayList<BucketDist> distances = new ArrayList<>();
+                                        // 3. calculate sign width
+                                        int signWidth = 0;
+                                        record GroupDistance(int id, int dist) {}
+                                        ArrayList<GroupDistance> distances = new ArrayList<>();
 
                                         if (A.size() == 2) {
                                             HoughLine l1 = A.get(0);
@@ -496,23 +296,21 @@ public class FormChecker {
                                             int r1 = l1.r;
                                             int r2 = l2.r;
 
-                                            // Bringt l1 in das Intervall [0, 90)
                                             if (l1.phi >= 90) {
                                                 r1 = -r1;
                                             }
 
-                                            // Bringt l2 in das Intervall [0, 90)
                                             if (l2.phi >= 90) {
                                                 r2 = -r2;
                                             }
 
-                                            distances.add(new BucketDist(1,Math.abs(r1 - r2)));
+                                            distances.add(new GroupDistance(1,Math.abs(r1 - r2)));
                                         } if (B.size() == 2) {
-                                            distances.add(new BucketDist(2, Math.abs(B.get(0).r - B.get(1).r)));
+                                            distances.add(new GroupDistance(2, Math.abs(B.get(0).r - B.get(1).r)));
                                         } if (C.size() == 2) {
-                                            distances.add(new BucketDist(3, Math.abs(C.get(0).r - C.get(1).r)));
+                                            distances.add(new GroupDistance(3, Math.abs(C.get(0).r - C.get(1).r)));
                                         } if (D.size() == 2) {
-                                            distances.add(new BucketDist(4, Math.abs(D.get(0).r - D.get(1).r)));
+                                            distances.add(new GroupDistance(4, Math.abs(D.get(0).r - D.get(1).r)));
                                         }
 
                                         int minDiff = Integer.MAX_VALUE;
@@ -528,14 +326,14 @@ public class FormChecker {
                                                     valid1 = distances.get(r).id;
                                                     valid2 = distances.get(s).id;
                                                     minDiff = diff;
-                                                    d = (d1 + d2) / 2;
+                                                    signWidth = (d1 + d2) / 2;
                                                 }
                                             }
                                         }
 
-                                        // clean buckets of garbage lines
+                                        // 4. clean groups of garbage lines
 
-                                        // approximate center with valid buckets
+                                        // approximate center with valid groups
                                         ArrayList<Point> approxCenterIntersections = new ArrayList<>();
                                         if (valid1 == 1 || valid2 == 1){
                                             for (HoughLine line : A) {
@@ -581,14 +379,14 @@ public class FormChecker {
                                         }
                                         Point approxCenter = new Point(sumx / approxCenterIntersections.size(), sumy / approxCenterIntersections.size());
 
-                                        // clean invalid buckets
+                                        // clean invalid groups of garbage lines
                                         if (valid1 != 1 && valid2 != 1){
-                                            //A
+                                            // A
                                             int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(A.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(A.getFirst().phi)) - (A.getFirst().r - diagonal)));
                                             int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(A.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(A.getLast().phi)) - (A.getLast().r - diagonal)));
 
-                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
-                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+                                            int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
 
                                             if (error1 < error2){
                                                 A.removeLast();
@@ -598,12 +396,12 @@ public class FormChecker {
                                         }
 
                                         if (valid1 != 2 && valid2 != 2){
-                                            //B
+                                            // B
                                             int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(B.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(B.getFirst().phi)) - (B.getFirst().r - diagonal)));
                                             int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(B.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(B.getLast().phi)) - (B.getLast().r - diagonal)));
 
-                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
-                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+                                            int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
 
                                             if (error1 < error2){
                                                 B.removeLast();
@@ -613,12 +411,12 @@ public class FormChecker {
                                         }
 
                                         if (valid1 != 3 && valid2 != 3){
-                                            //C
+                                            // C
                                             int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(C.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(C.getFirst().phi)) - (C.getFirst().r - diagonal)));
                                             int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(C.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(C.getLast().phi)) - (C.getLast().r - diagonal)));
 
-                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
-                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+                                            int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
 
                                             if (error1 < error2){
                                                 C.removeLast();
@@ -628,12 +426,12 @@ public class FormChecker {
                                         }
 
                                         if (valid1 != 4 && valid2 != 4){
-                                            //D
+                                            // D
                                             int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(D.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(D.getFirst().phi)) - (D.getFirst().r - diagonal)));
                                             int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(D.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(D.getLast().phi)) - (D.getLast().r - diagonal)));
 
-                                            int error1 = Math.abs(distanceCenter1 - (d / 2));
-                                            int error2 = Math.abs(distanceCenter2 - (d / 2));
+                                            int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
+                                            int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
 
                                             if (error1 < error2){
                                                 D.removeLast();
@@ -642,16 +440,15 @@ public class FormChecker {
                                             }
                                         }
 
-
-                                        // add 2nd lines
+                                        // 5. add 2nd lines to groups
                                         if (A.size() == 1) {
                                             HoughLine line = A.getFirst();
                                             int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
 
                                             if (rCenter > line.r) {
-                                                A.add(new HoughLine(line.phi, line.r + d, 100));
+                                                A.add(new HoughLine(line.phi, line.r + signWidth, 100));
                                             } else {
-                                                A.add(new HoughLine(line.phi, line.r - d, 100));
+                                                A.add(new HoughLine(line.phi, line.r - signWidth, 100));
                                             }
                                         }
                                         if (B.size() == 1) {
@@ -659,9 +456,9 @@ public class FormChecker {
                                             int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
 
                                             if (rCenter > line.r) {
-                                                B.add(new HoughLine(line.phi, line.r + d, 100));
+                                                B.add(new HoughLine(line.phi, line.r + signWidth, 100));
                                             } else {
-                                                B.add(new HoughLine(line.phi, line.r - d, 100));
+                                                B.add(new HoughLine(line.phi, line.r - signWidth, 100));
                                             }
                                         }
                                         if (C.size() == 1) {
@@ -669,9 +466,9 @@ public class FormChecker {
                                             int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
 
                                             if (rCenter > line.r) {
-                                                C.add(new HoughLine(line.phi, line.r + d, 100));
+                                                C.add(new HoughLine(line.phi, line.r + signWidth, 100));
                                             } else {
-                                                C.add(new HoughLine(line.phi, line.r - d, 100));
+                                                C.add(new HoughLine(line.phi, line.r - signWidth, 100));
                                             }
                                         }
                                         if (D.size() == 1) {
@@ -679,35 +476,25 @@ public class FormChecker {
                                             int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi)) + approxCenter.y * Math.sin(Math.toRadians(line.phi)) + diagonal);
 
                                             if (rCenter > line.r) {
-                                                D.add(new HoughLine(line.phi, line.r + d, 100));
+                                                D.add(new HoughLine(line.phi, line.r + signWidth, 100));
                                             } else {
-                                                D.add(new HoughLine(line.phi, line.r - d, 100));
+                                                D.add(new HoughLine(line.phi, line.r - signWidth, 100));
                                             }
                                         }
 
-//                                        // copy for displaying lines
-//                                        BufferedImage lineImage2 = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-//                                        Graphics2D g1 = lineImage2.createGraphics();
-//                                        g1.setStroke(new java.awt.BasicStroke(1));
-//                                        g1.setColor(Color.RED);
-//                                        DrawingAndFillingPipeline.drawLines(g1, A, width, height);
-//                                        g1.setColor(Color.BLUE);
-//                                        DrawingAndFillingPipeline.drawLines(g1, B, width, height);
-//                                        g1.setColor(Color.GREEN);
-//                                        DrawingAndFillingPipeline.drawLines(g1, C, width, height);
-//                                        g1.setColor(Color.YELLOW);
-//                                        DrawingAndFillingPipeline.drawLines(g1, D, width, height);
 
-                                        // geo checks
+                                        // 6. geometry checks
 
                                         // intersections
                                         ArrayList<Point> intersections = new ArrayList<>();
+
                                         for (HoughLine line : A) {
                                             for (HoughLine line2 : B) {
                                                 Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
                                                 if (intersection != null) intersections.add(intersection);
                                             }
                                         }
+
                                         for (HoughLine line : B) {
                                             for (HoughLine line2 : C) {
                                                 Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
@@ -721,6 +508,7 @@ public class FormChecker {
                                                 if (intersection != null) intersections.add(intersection);
                                             }
                                         }
+
                                         for (HoughLine line : D) {
                                             for (HoughLine line2 : A) {
                                                 Point intersection = PipelineHelper.getIntersection(line, line2, diagonal);
@@ -738,7 +526,7 @@ public class FormChecker {
                                         double centerX = sumX / intersections.size();
                                         double centerY = sumY / intersections.size();
 
-                                        // find 8 closest to center
+                                        // find 8 vertices closest to center
                                         if (intersections.size() < 8) continue;
                                         intersections.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
                                         ArrayList<Point> vertices = new ArrayList<>();
@@ -746,15 +534,11 @@ public class FormChecker {
                                             vertices.add(intersections.get(r));
                                         }
 
-                                        // is inside image
+                                        // check if vertices are inside image with tolerance
                                         boolean isInside = true;
-                                        int edgeTolerance = 40; //TODO: abhängig von größe des bildes
-                                        for (int q = 0; q < 8; q++) {
-                                            Point v = vertices.get(q);
-                                            if (v.x < -edgeTolerance ||
-                                                    v.x > width + edgeTolerance ||
-                                                    v.y < -edgeTolerance ||
-                                                    v.y > height + edgeTolerance) {
+                                        int edgeTolerance = 25;
+                                        for (Point v : vertices) {
+                                            if (!PipelineHelper.isInsideImage(v, width, height, edgeTolerance)){
                                                 isInside = false;
                                                 break;
                                             }
@@ -768,38 +552,31 @@ public class FormChecker {
                                             return Double.compare(angle1, angle2);
                                         });
 
-                                        // check geometry
-                                        int tolerance = 25; //TODO: abhängig von bild größe
-                                        if (PipelineHelper.isInsideImage(vertices.get(0), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(1), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(2), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(3), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(4), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(5), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(6), width, height, tolerance) &&
-                                                PipelineHelper.isInsideImage(vertices.get(7), width, height, tolerance)) {
+                                        // check side length
+                                        double s1 = vertices.get(0).distance(vertices.get(1));
+                                        if (s1 < minSideLength) continue;
+                                        double s2 = vertices.get(1).distance(vertices.get(2));
+                                        if (s2 < minSideLength) continue;
+                                        double s3 = vertices.get(2).distance(vertices.get(3));
+                                        if (s3 < minSideLength) continue;
+                                        double s4 = vertices.get(3).distance(vertices.get(4));
+                                        if (s4 < minSideLength) continue;
+                                        double s5 = vertices.get(4).distance(vertices.get(5));
+                                        if (s5 < minSideLength) continue;
+                                        double s6 = vertices.get(5).distance(vertices.get(6));
+                                        if (s6 < minSideLength) continue;
+                                        double s7 = vertices.get(6).distance(vertices.get(7));
+                                        if (s7 < minSideLength) continue;
+                                        double s8 = vertices.get(7).distance(vertices.get(0));
+                                        if (s8 < minSideLength) continue;
 
-                                            // check side length
-                                            double s1 = vertices.get(0).distance(vertices.get(1));
-                                            double s2 = vertices.get(1).distance(vertices.get(2));
-                                            double s3 = vertices.get(2).distance(vertices.get(3));
-                                            double s4 = vertices.get(3).distance(vertices.get(4));
-                                            double s5 = vertices.get(4).distance(vertices.get(5));
-                                            double s6 = vertices.get(5).distance(vertices.get(6));
-                                            double s7 = vertices.get(6).distance(vertices.get(7));
-                                            double s8 = vertices.get(7).distance(vertices.get(0));
-
-                                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength &&
-                                                    s5 > minSideLength && s6 > minSideLength && s7 > minSideLength && s8 > minSideLength) {
-                                                double t = 0.6; // 0.2
-                                                double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
-                                                double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
-                                                double ratio = minSide / maxSide;
-                                                if (ratio >= 1 - t && ratio <= 1 + t) {//0.688745
-                                                    ArrayList<Point> octagon = new ArrayList<>(vertices);
-                                                    allFoundOctagons.add(octagon);
-                                                }
-                                            }
+                                        double sideLengthRatioTolerance = 0.6;
+                                        double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
+                                        double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
+                                        double ratio = minSide / maxSide;
+                                        if (ratio >= (1 - sideLengthRatioTolerance) && ratio <= (1 + sideLengthRatioTolerance)) {
+                                            ArrayList<Point> octagon = new ArrayList<>(vertices);
+                                            allFoundOctagons.add(octagon);
                                         }
                                     }
                                 }
@@ -812,161 +589,6 @@ public class FormChecker {
         return allFoundOctagons;
     }
 
-//        for (int i = 0; i < size; i++) {
-//            for (int j = i + 1; j < size; j++) {
-//                for (int k = j + 1; k < size; k++) {
-//                    for (int l = k + 1; l < size; l++) {
-//                        for (int m = l + 1; m < size; m++){
-//                            for (int n = m + 1; n < size; n++){
-//                                for (int o = n + 1; o < size; o++){
-//                                    for (int p = o + 1; p < size; p++){
-//                                        HoughLine a = validOctagonLines.get(i);
-//                                        HoughLine b = validOctagonLines.get(j);
-//                                        HoughLine c = validOctagonLines.get(k);
-//                                        HoughLine d = validOctagonLines.get(l);
-//                                        HoughLine e = validOctagonLines.get(m);
-//                                        HoughLine f = validOctagonLines.get(n);
-//                                        HoughLine g = validOctagonLines.get(o);
-//                                        HoughLine h = validOctagonLines.get(p);
-//
-//                                        // sort into parallel groups
-//                                        ArrayList<ArrayList<HoughLine>> groups = new ArrayList<>();
-//                                        ArrayList<HoughLine> group1 = new ArrayList<>();
-//                                        group1.add(a);
-//                                        groups.add(group1);
-//
-//                                        HoughLine[] remaining = {b, c, d, e, f, g, h};
-//                                        int toleranz = 10;
-//
-//                                        for (HoughLine line : remaining) {
-//                                            boolean assigned = false;
-//
-//                                            for (ArrayList<HoughLine> group : groups){
-//                                                int diff = Math.abs(line.phi - group.getFirst().phi);
-//                                                if (diff > 90) diff = 180 - diff;
-//
-//                                                if (diff <= toleranz){
-//                                                    group.add(line);
-//                                                    assigned = true;
-//                                                    break;
-//                                                }
-//                                            }
-//
-//                                            if (!assigned && groups.size() < 4){
-//                                                ArrayList<HoughLine> newGroup = new ArrayList<>();
-//                                                newGroup.add(line);
-//                                                groups.add(newGroup);
-//                                            }
-//                                        }
-//
-//                                        if (groups.size() != 4 ||
-//                                                groups.get(0).size() != 2 ||
-//                                                groups.get(1).size() != 2 ||
-//                                                groups.get(2).size() != 2 ||
-//                                                groups.get(3).size() != 2){
-//                                            continue;
-//                                        }
-//
-//                                        // sort groups by angle
-//                                        groups.sort(Comparator.comparingDouble(group -> group.getFirst().phi));
-//
-//                                        // check intersections
-//                                        HoughLine[] p1 = { groups.get(0).get(0), groups.get(0).get(1) }; // 0°
-//                                        HoughLine[] p2 = { groups.get(1).get(0), groups.get(1).get(1) }; // 45°
-//                                        HoughLine[] p3 = { groups.get(2).get(0), groups.get(2).get(1) }; // 90°
-//                                        HoughLine[] p4 = { groups.get(3).get(0), groups.get(3).get(1) }; // 135°
-//
-//                                        ArrayList<Point> intersections = new ArrayList<>();
-//                                        for (int q = 0; q < 2; q++) {
-//                                            for (int r = 0; r < 2; r++) {
-//                                                intersections.add(PipelineHelper.getIntersection(p1[q], p2[r], diagonal)); // 0° mit 45°
-//                                                intersections.add(PipelineHelper.getIntersection(p2[q], p3[r], diagonal)); // 45° mit 90°
-//                                                intersections.add(PipelineHelper.getIntersection(p3[q], p4[r], diagonal)); // 90° mit 135°
-//                                                intersections.add(PipelineHelper.getIntersection(p4[q], p1[r], diagonal)); // 135° mit 0°
-//                                            }
-//                                        }
-//
-//                                        ArrayList<Point> validVertices = new ArrayList<>();
-//                                        int randToleranz = 40; //TODO: abhängig von größe des bildes
-//                                        for (Point v : intersections) {
-//                                            if (v != null && v.x >= -randToleranz && v.x < width + randToleranz
-//                                                    && v.y >= -randToleranz && v.y < height + randToleranz) {
-//                                                validVertices.add(v);
-//                                            }
-//                                        }
-//
-//                                        if (validVertices.size() < 8) {
-//                                            continue;
-//                                        }
-//
-//                                        // calculate center point
-//                                        double sumX = 0;
-//                                        double sumY = 0;
-//                                        for (Point v : validVertices){
-//                                            sumX += v.x;
-//                                            sumY += v.y;
-//                                        }
-//                                        double centerX = sumX / 8.0;
-//                                        double centerY = sumY / 8.0;
-//
-//                                        // find 8 closest to center
-//                                        validVertices.sort(Comparator.comparingDouble(v -> v.distanceSq(centerX, centerY)));
-//
-//                                        ArrayList<Point> vertices = new ArrayList<>();
-//                                        for (int v = 0; v < 8; v++) {
-//                                            vertices.add(validVertices.get(v));
-//                                        }
-//
-//                                        // sort vertices by polar angle
-//                                        vertices.sort((vert1, vert2) -> {
-//                                            double angle1 = Math.atan2(vert1.y - centerY, vert1.x - centerX);
-//                                            double angle2 = Math.atan2(vert2.y - centerY, vert2.x - centerX);
-//                                            return Double.compare(angle1, angle2);
-//                                        });
-//
-//                                        // check geometry
-//                                        int tolerance = 25; //TODO: abhängig von bild größe
-//                                        if (PipelineHelper.isInsideImage(vertices.get(0), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(1), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(2), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(3), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(4), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(5), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(6), width, height, tolerance) &&
-//                                                PipelineHelper.isInsideImage(vertices.get(7), width, height, tolerance)) {
-//
-//                                            // check side length
-//                                            double s1 = vertices.get(0).distance(vertices.get(1));
-//                                            double s2 = vertices.get(1).distance(vertices.get(2));
-//                                            double s3 = vertices.get(2).distance(vertices.get(3));
-//                                            double s4 = vertices.get(3).distance(vertices.get(4));
-//                                            double s5 = vertices.get(4).distance(vertices.get(5));
-//                                            double s6 = vertices.get(5).distance(vertices.get(6));
-//                                            double s7 = vertices.get(6).distance(vertices.get(7));
-//                                            double s8 = vertices.get(7).distance(vertices.get(0));
-//
-//                                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength &&
-//                                                    s5 > minSideLength && s6 > minSideLength && s7 > minSideLength && s8 > minSideLength) {
-//                                                double t = 0.2;
-//                                                double maxSide = Math.max(Math.max(Math.max(s1, s2), Math.max(s3, s4)), Math.max(Math.max(s5, s6), Math.max(s7, s8)));
-//                                                double minSide = Math.min(Math.min(Math.min(s1, s2), Math.min(s3, s4)), Math.min(Math.min(s5, s6), Math.min(s7, s8)));
-//                                                double ratio = minSide/maxSide;
-//                                                if (ratio >= 1-t && ratio <= 1+t){
-//                                                    ArrayList<Point> octagon = new ArrayList<>(vertices);
-//                                                    allFoundOctagons.add(octagon);
-//                                                }
-//                                            }
-//                                        }
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        }
-//        return allFoundOctagons;
-//    }
 
     /**
      * Function for validating that validRectangleLines construct a rectangle.
@@ -982,9 +604,12 @@ public class FormChecker {
     private static ArrayList<ArrayList<Point>> detectRectangleForm(ArrayList<HoughLine> validRectangleLines, int width, int height) {
         int size = validRectangleLines.size();
         int diagonal = (int) Math.ceil(Math.sqrt(Math.pow(height, 2) + Math.pow(width, 2)));
-        int minSideLength = 30;//TODO: abhängig von bild größe
+        int minSideLength = 30*30;
+        double sideLengthRatioTolerance = 0.2;
+        int edgeTolerance = 25;
         ArrayList<ArrayList<Point>> allFoundRectangles = new ArrayList<>();
 
+        // 1. take four lines from validRectangleLines
         for (int i = 0; i < size; i++) {
             for (int j = i + 1; j < size; j++) {
                 for (int k = j + 1; k < size; k++) {
@@ -995,12 +620,10 @@ public class FormChecker {
                         HoughLine c = validRectangleLines.get(k);
                         HoughLine d = validRectangleLines.get(l);
 
-                        // check angles
-                        if (!FormChecker.isRectangleAngles(a, b, c, d)){
-                            continue;
-                        }
+                        // 2. check angles
+                        if (!FormChecker.isRectangleAngles(a, b, c, d)) continue;
 
-                        // sort into parallel groups
+                        // 3. sort into parallel groups
                         ArrayList<HoughLine> group1 = new ArrayList<>();
                         ArrayList<HoughLine> group2 = new ArrayList<>();
                         group1.add(a);
@@ -1018,49 +641,54 @@ public class FormChecker {
                             }
                         }
 
-                        if (group1.size() != 2 || group2.size() != 2) {
-                            continue;
-                        }
+                        if (group1.size() != 2 || group2.size() != 2) continue;
+
                         HoughLine h1 = group1.get(0);
                         HoughLine h2 = group1.get(1);
                         HoughLine v1 = group2.get(0);
                         HoughLine v2 = group2.get(1);
 
-                        // check intersections
+                        // 4. check intersections
                         Point p1 = PipelineHelper.getIntersection(h1, v1, diagonal);
+                        if (p1 == null || !PipelineHelper.isInsideImage(p1, width, height, edgeTolerance)) continue;
                         Point p2 = PipelineHelper.getIntersection(h1, v2, diagonal);
+                        if (p2 == null || !PipelineHelper.isInsideImage(p2, width, height, edgeTolerance)) continue;
                         Point p3 = PipelineHelper.getIntersection(h2, v2, diagonal);
+                        if (p3 == null || !PipelineHelper.isInsideImage(p3, width, height, edgeTolerance)) continue;
                         Point p4 = PipelineHelper.getIntersection(h2, v1, diagonal);
+                        if (p4 == null || !PipelineHelper.isInsideImage(p4, width, height, edgeTolerance)) continue;
 
-                        if (p1 == null || p2 == null || p3 == null || p4 == null) continue;
+                        // 5. check squared side length
+                        double dx1 = p1.x - p2.x;
+                        double dy1 = p1.y - p2.y;
+                        double side1 = dx1 * dx1 + dy1 * dy1;
+                        if (side1 < minSideLength) continue;
 
-                        // check geometry
-                        int tolerance = 25; //TODO: abhängig von bild größe
-                        if (PipelineHelper.isInsideImage(p1, width, height, tolerance) &&
-                                PipelineHelper.isInsideImage(p2, width, height, tolerance) &&
-                                PipelineHelper.isInsideImage(p3, width, height, tolerance) &&
-                                PipelineHelper.isInsideImage(p4, width, height, tolerance)) {
+                        double dx2 = p2.x - p3.x;
+                        double dy2 = p2.y - p3.y;
+                        double side2 = dx2 * dx2 + dy2 * dy2;
+                        if (side2 < minSideLength) continue;
 
-                            // check side length
-                            double s1 = p1.distance(p2);
-                            double s2 = p2.distance(p3);
-                            double s3 = p3.distance(p4);
-                            double s4 = p4.distance(p1);
+                        double dx3 = p3.x - p4.x;
+                        double dy3 = p3.y - p4.y;
+                        double side3 = dx3 * dx3 + dy3 * dy3;
+                        if (side3 < minSideLength) continue;
 
-                            if (s1 > minSideLength && s2 > minSideLength && s3 > minSideLength && s4 > minSideLength) {
-                                double t = 0.2;
-                                double maxSide = Math.max(Math.max(s1, s2), Math.max(s3, s4));
-                                double minSide = Math.min(Math.min(s1, s2), Math.min(s3, s4));
-                                double ratio = minSide/maxSide;
-                                if (ratio >= 1-t && ratio <= 1+t){
-                                    ArrayList<Point> rectangle = new ArrayList<>();
-                                    rectangle.add(p1);
-                                    rectangle.add(p2);
-                                    rectangle.add(p3);
-                                    rectangle.add(p4);
-                                    allFoundRectangles.add(rectangle);
-                                }
-                            }
+                        double dx4 = p4.x - p1.x;
+                        double dy4 = p4.y - p1.y;
+                        double side4 = dx4 * dx4 + dy4 * dy4;
+                        if (side4 < minSideLength) continue;
+
+                        double maxSide = Math.max(Math.max(side1, side2), Math.max(side3, side4));
+                        double minSide = Math.min(Math.min(side1, side2), Math.min(side3, side4));
+                        double ratio = minSide/maxSide;
+                        if (ratio >= (1 - sideLengthRatioTolerance) && ratio <= (1 + sideLengthRatioTolerance)){
+                            ArrayList<Point> rectangle = new ArrayList<>();
+                            rectangle.add(p1);
+                            rectangle.add(p2);
+                            rectangle.add(p3);
+                            rectangle.add(p4);
+                            allFoundRectangles.add(rectangle);
                         }
                     }
                 }
@@ -1087,6 +715,7 @@ public class FormChecker {
         double sideRatioTolerance = 0.3;
         ArrayList<ArrayList<Point>> allFoundTriangles = new ArrayList<>();
 
+        // 1. take three lines from validTriangleLines
         for (int i = 0; i < size; i++){
             for (int j = i + 1; j < size; j++){
                 for (int k = j + 1; k < size; k++){
@@ -1094,27 +723,18 @@ public class FormChecker {
                     HoughLine b = validTriangleLines.get(j);
                     HoughLine c = validTriangleLines.get(k);
 
-                    // check angles
-                    if (!FormChecker.isTriangleAngles(a, b, c)){
-                        continue;
-                    }
+                    // 2. check angles
+                    if (!FormChecker.isTriangleAngles(a, b, c)) continue;
 
-                    // check intersections
+                    // 3. check intersections
                     Point pAB = PipelineHelper.getIntersection(a, b, diagonal);
-                    if (pAB == null || !PipelineHelper.isInsideImage(pAB, width, height, insideImageTolerance)){
-                        continue;
-                    }
+                    if (pAB == null || !PipelineHelper.isInsideImage(pAB, width, height, insideImageTolerance)) continue;
                     Point pAC = PipelineHelper.getIntersection(a, c, diagonal);
-                    if (pAC == null || !PipelineHelper.isInsideImage(pAC, width, height, insideImageTolerance)) {
-                        continue;
-                    }
-
+                    if (pAC == null || !PipelineHelper.isInsideImage(pAC, width, height, insideImageTolerance)) continue;
                     Point pBC = PipelineHelper.getIntersection(b, c, diagonal);
-                    if (pBC == null || !PipelineHelper.isInsideImage(pBC, width, height, insideImageTolerance)) {
-                        continue;
-                    }
+                    if (pBC == null || !PipelineHelper.isInsideImage(pBC, width, height, insideImageTolerance)) continue;
 
-                    // check squared side length
+                    // 4. check squared side length
                     double dx1 = pAB.x - pBC.x;
                     double dy1 = pAB.y - pBC.y;
                     double side1 = dx1 * dx1 + dy1 * dy1;
@@ -1150,11 +770,11 @@ public class FormChecker {
 
 
     /**
-     * Checks if four HoughLines form a rectangle.
-     * @param a classes.Pipeline.HoughLine
-     * @param b classes.Pipeline.HoughLine
-     * @param c classes.Pipeline.HoughLine
-     * @param d classes.Pipeline.HoughLine
+     * Checks if four HoughLines form a rectangle based on angles with tolerance.
+     * @param a HoughLine
+     * @param b HoughLine
+     * @param c HoughLine
+     * @param d HoughLine
      * @return boolean if lines form a rectangle
      */
     private static boolean isRectangleAngles(HoughLine a, HoughLine b, HoughLine c, HoughLine d) {
@@ -1170,15 +790,15 @@ public class FormChecker {
         int diffOrthogonal = phi[2] - phi[1];
 
         return diffParallel1 <= parallelTolerance &&
-                diffParallel2 <= parallelTolerance &&
-                Math.abs(diffOrthogonal - 90) <= orthogonalTolerance;
+               diffParallel2 <= parallelTolerance &&
+               Math.abs(diffOrthogonal - 90) <= orthogonalTolerance;
     }
 
     /**
      * Checks lines a, b, c for an angle difference of 60° with tolerance.
-     * @param a classes.Pipeline.HoughLine
-     * @param b classes.Pipeline.HoughLine
-     * @param c classes.Pipeline.HoughLine
+     * @param a HoughLine
+     * @param b HoughLine
+     * @param c HoughLine
      * @return boolean if angles match 60°
      */
     private static boolean isTriangleAngles(HoughLine a, HoughLine b, HoughLine c) {
@@ -1192,11 +812,9 @@ public class FormChecker {
         int diff3 = 180 - (phi[2] - phi[0]);
 
         return Math.abs(diff1 - 60) <= tolerance &&
-                Math.abs(diff2 - 60) <= tolerance &&
-                Math.abs(diff3 - 60) <= tolerance;
+               Math.abs(diff2 - 60) <= tolerance &&
+               Math.abs(diff3 - 60) <= tolerance;
     }
-
-
 
 
 }
