@@ -281,6 +281,96 @@ public class CharacteristicsChecker {
             outerTriangle.addPoint(newX, newY);
         }
 
+//        // debug red edges image
+//        // Kopie des Bildes erstellen, damit wir das Original nicht überschreiben
+//        BufferedImage debugImg = new BufferedImage(
+//                maskedSign.getWidth(),
+//                maskedSign.getHeight(),
+//                BufferedImage.TYPE_INT_ARGB
+//        );
+//        Graphics2D gD = debugImg.createGraphics();
+//        gD.drawImage(maskedSign, 0, 0, null);
+//
+//        width = maskedSign.getWidth();
+//        height = maskedSign.getHeight();
+//
+//        // 1. Koordinaten & Schwerpunkte wie im echten Check berechnen
+//        cropX = Math.min(Math.min(triangle.get(0).x, triangle.get(1).x), triangle.get(2).x);
+//        cropY = Math.min(Math.min(triangle.get(0).y, triangle.get(1).y), triangle.get(2).y);
+//
+//        centerX = ((triangle.get(0).x - cropX) + (triangle.get(1).x - cropX) + (triangle.get(2).x - cropX)) / 3.0;
+//        centerY = ((triangle.get(0).y - cropY) + (triangle.get(1).y - cropY) + (triangle.get(2).y - cropY)) / 3.0;
+//
+//        // Inneres Dreieck (50% Skalierung)
+//        Polygon innerTriangleDebug = new Polygon();
+//        scale = 0.50;
+//        for (Point p : triangle) {
+//            int newX = (int) Math.round(centerX + scale * (p.x - cropX - centerX));
+//            int newY = (int) Math.round(centerY + scale * (p.y - cropY - centerY));
+//            innerTriangleDebug.addPoint(newX, newY);
+//        }
+//
+//        // Äußeres Dreieck
+//        Polygon outerTriangleDebug = new Polygon();
+//        Point[] outerPoints = new Point[3];
+//        for (int i = 0; i < 3; i++) {
+//            Point p = triangle.get(i);
+//            int newX = p.x - cropX;
+//            int newY = p.y - cropY;
+//            outerPoints[i] = new Point(newX, newY);
+//            outerTriangleDebug.addPoint(newX, newY);
+//        }
+//
+//        // 2. Polygon-Linien einzeichnen
+//        gD.setStroke(new BasicStroke(2));
+//        gD.setColor(Color.BLUE);
+//        gD.drawPolygon(outerTriangleDebug);
+//
+//        gD.setColor(Color.CYAN);
+//        gD.drawPolygon(innerTriangleDebug);
+//
+//        // 3. Kanten-Abtastpunkte einzeichnen
+//        Point[][] edges = {
+//                {outerPoints[0], outerPoints[1]},
+//                {outerPoints[1], outerPoints[2]},
+//                {outerPoints[2], outerPoints[0]}
+//        };
+//
+//        double[] stepsToCenter = {0.10, 0.15, 0.20};
+//        int edgeThreshold = 20;
+//
+//        for (int i = 0; i < 3; i++) {
+//            Point start = edges[i][0];
+//            Point end = edges[i][1];
+//
+//            for (int j = 0; j < edgeThreshold; j++) {
+//                double t = (j + 0.5) / (double) edgeThreshold;
+//                double edgeX = start.x + t * (end.x - start.x);
+//                double edgeY = start.y + t * (end.y - start.y);
+//
+//                for (double stepToCenter : stepsToCenter) {
+//                    int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
+//                    int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));
+//
+//                    if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height) {
+//                        int rgb = maskedSign.getRGB(sampleX, sampleY);
+//
+//                        // Prüfen, ob der Punkt rot ist
+//                        if (isPixelRedHSV(rgb)) {
+//                            gD.setColor(Color.GREEN); // Treffer (Rot erkannt)
+//                        } else {
+//                            gD.setColor(Color.RED);   // Niete (Kein Rot)
+//                        }
+//
+//                        // Zeichne ein kleines 2x2 Rechteck für jeden Abtastpunkt
+//                        gD.fillRect(sampleX, sampleY, 1, 1);
+//                    }
+//                }
+//            }
+//        }
+//
+//        gD.dispose();
+
         // 3. check for three red edges
         Point[][] edges = {
                 {outerTrianglePoints[0], outerTrianglePoints[1]},
@@ -289,8 +379,9 @@ public class CharacteristicsChecker {
         };
 
         int edgeThreshold = 20;
-        double minRedRatio = 0.70;
-        Random rand = new Random();//TODO: statisches rand nutzen
+        double minRedRatio = 0.50;// prev: 0.70
+        double[] stepsToCenter = {0.10, 0.15, 0.20};
+        //Random rand = new Random();//TODO: deterministisch programmieren
 
         for (int i = 0; i < 3; i++){
             Point start = edges[i][0];
@@ -298,27 +389,28 @@ public class CharacteristicsChecker {
             int redPixelAmount = 0;
 
             for (int j = 0; j < edgeThreshold; j++){
-                double t = rand.nextDouble();
+                double t = (j + 0.5) / (double) edgeThreshold;//TODO: deterministisch programmieren
                 double edgeX = start.x + t * (end.x - start.x);
                 double edgeY = start.y + t * (end.y - start.y);
-                double stepToCenter = 0.15;
-                int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
-                int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));
 
-                boolean inOuterTriangle = outerTriangle.contains(sampleX, sampleY);
-                boolean inInnerTriangle = innerTriangle.contains(sampleX, sampleY);
+                for (double stepToCenter : stepsToCenter){
+                    int sampleX = (int) Math.round(edgeX + stepToCenter * (centerX - edgeX));
+                    int sampleY = (int) Math.round(edgeY + stepToCenter * (centerY - edgeY));boolean inOuterTriangle = outerTriangle.contains(sampleX, sampleY);
 
-                if (inOuterTriangle && !inInnerTriangle){
-                    if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height){
-                        int rgb = maskedSign.getRGB(sampleX, sampleY);
-                        if (isPixelRedHSV(rgb)){
-                            redPixelAmount++;
+                    boolean inInnerTriangle = innerTriangle.contains(sampleX, sampleY);
+
+                    if (inOuterTriangle && !inInnerTriangle){
+                        if (sampleX >= 0 && sampleX < width && sampleY >= 0 && sampleY < height){
+                            int rgb = maskedSign.getRGB(sampleX, sampleY);
+                            if (isPixelRedHSV(rgb)){
+                                redPixelAmount++;
+                            }
                         }
                     }
                 }
             }
 
-            double redRatio = (double) redPixelAmount / edgeThreshold;
+            double redRatio = (double) redPixelAmount / (edgeThreshold * stepsToCenter.length);
             if (redRatio < minRedRatio){
                 return false;
             }
