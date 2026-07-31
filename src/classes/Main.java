@@ -3,10 +3,10 @@ import classes.Pipeline.Pipeline;
 void main() {
 
 //    //samples
-    Pipeline.findSign("pics/sample/V.jpg");
-    Pipeline.findSign("pics/sample/A.jpg");
-    Pipeline.findSign("pics/sample/P.jpg");
-    Pipeline.findSign("pics/sample/S.jpg");
+//    Pipeline.findSign("pics/sample/V.jpg");
+//    Pipeline.findSign("pics/sample/A.jpg");
+//    Pipeline.findSign("pics/sample/P.jpg");
+//    Pipeline.findSign("pics/sample/S.jpg");
 
     // TODO: sort things out with (- diagonal) everywhere
     // TODO: compress class FormChecker and use helper functions
@@ -42,10 +42,10 @@ void main() {
 
     // stopp
 //    Pipeline.findSign("pics/stopp/stoppTest1.jpg"); // not all lines of octagon found -> noise
-//    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
-//    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
-//    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
-//    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
+    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
+    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success TODO: findet dreieck wegen tri red check, sonst läuft durch
+    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success TODO: läuft ohne schild durch nach cleanup
+    Pipeline.findSign("pics/stopp/stoppTest5.jpg"); // increased upper bound of ratioRedWhite -> success
 //    Pipeline.findSign("pics/stopp/stop_6.jpg"); // noise due to letters and bird -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 
     Pipeline.shutdown();
