@@ -1,16 +1,6 @@
 package classes.Pipeline;
 
-public class HoughLine implements Comparable<HoughLine>{
-
-    public final int phi;
-    public final int r;
-    public final int votes;
-
-    public HoughLine(int phi, int r, int votes){
-        this.phi = phi;
-        this.r = r;
-        this.votes = votes;
-    }
+public record HoughLine(int phi, int r, int votes) implements Comparable<HoughLine> {
 
     @Override
     public int compareTo(HoughLine other) {

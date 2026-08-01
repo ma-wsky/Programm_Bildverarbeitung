@@ -1,4 +1,4 @@
-package classes.Pipeline;
+package classes.Pipeline.Helper;
 
 import classes.GlobalHelperFunctions;
 
@@ -16,15 +16,19 @@ public class ColorCheckHelper {
      * Helper class for returning {@link ColorCheckHelper#analyzeImageColors(BufferedImage, Polygon)}
      */
     public static class ImageColorStats{
-        int totalPixels = 0;
-        int countYellow = 0, countWhite = 0, countRed = 0;
-        double sumXYellow = 0, sumYYellow = 0;
-        double sumXWhite = 0, sumYWhite = 0;
-        double sumXRed = 0, sumYRed = 0;
+        public int totalPixels = 0;
+        public int countYellow = 0;
+        public int countWhite = 0;
+        public int countRed = 0;
+        private double sumXYellow = 0, sumYYellow = 0;
+        private double sumXWhite = 0, sumYWhite = 0;
+        private double sumXRed = 0, sumYRed = 0;
 
-        int totalCenterPixels = 0, totalEdgePixels = 0;
-        int whitePixelsInCenter = 0, blackPixelsInCenter = 0;
-        int redPixelsAtEdge = 0;
+        public int totalCenterPixels = 0;
+        public int totalEdgePixels = 0;
+        public int whitePixelsInCenter = 0;
+        public int blackPixelsInCenter = 0;
+        public int redPixelsAtEdge = 0;
 
         private double getSquaredDistance(double sumX1, double sumY1, int count1, double sumX2, double sumY2, int count2) {
             if (count1 == 0 || count2 == 0) return Double.MAX_VALUE;

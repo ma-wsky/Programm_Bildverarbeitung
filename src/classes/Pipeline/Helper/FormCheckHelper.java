@@ -1,6 +1,7 @@
-package classes.Pipeline;
+package classes.Pipeline.Helper;
 
 import classes.GlobalHelperFunctions;
+import classes.Pipeline.HoughLine;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -105,11 +106,11 @@ public class FormCheckHelper {
      * @return Point intersection point
      */
     public static Point getIntersection(HoughLine a, HoughLine b, int diagonal) {
-        double r1 = a.r - diagonal;
-        double r2 = b.r - diagonal;
+        double r1 = a.r() - diagonal;
+        double r2 = b.r() - diagonal;
 
-        double phi1 = Math.toRadians(a.phi);
-        double phi2 = Math.toRadians(b.phi);
+        double phi1 = Math.toRadians(a.phi());
+        double phi2 = Math.toRadians(b.phi());
 
         double denominator = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2);
 
@@ -193,7 +194,7 @@ public class FormCheckHelper {
      * @return boolean if lines form a rectangle
      */
     public static boolean isRectangleAngles(HoughLine a, HoughLine b, HoughLine c, HoughLine d) {
-        int[] phi = {a.phi, b.phi, c.phi, d.phi};
+        int[] phi = {a.phi(), b.phi(), c.phi(), d.phi()};
         Arrays.sort(phi);
 
         int parallelTolerance = 8;
@@ -217,7 +218,7 @@ public class FormCheckHelper {
      * @return boolean if angles match 60°
      */
     public static boolean isTriangleAngles(HoughLine a, HoughLine b, HoughLine c) {
-        int[] phi = {a.phi, b.phi, c.phi};
+        int[] phi = {a.phi(), b.phi(), c.phi()};
         Arrays.sort(phi);
 
         int tolerance = 30;
@@ -249,35 +250,35 @@ public class FormCheckHelper {
 
         // sort by x-position
         g0.sort(Comparator.comparingDouble(line -> {
-            double rad = Math.toRadians(line.phi);
+            double rad = Math.toRadians(line.phi());
             double cos = Math.cos(rad);
             if (Math.abs(cos) < 0.0001) cos = 0.0001;
-            double realR = line.r - diagonal;
+            double realR = line.r() - diagonal;
             return (realR - (height / 2.0) * Math.sin(rad)) / cos;
         }));
 
         // sort by Achsenabschnitt
         g45.sort(Comparator.comparingDouble(line -> {
-            double rad = Math.toRadians(line.phi);
+            double rad = Math.toRadians(line.phi());
             double denominator = Math.cos(rad) + Math.sin(rad);
             if (Math.abs(denominator) < 0.0001) denominator = 0.0001;
-            return line.r / denominator;
+            return line.r() / denominator;
         }));
 
         // sort by y-position
         g90.sort(Comparator.comparingDouble(line -> {
-            double rad = Math.toRadians(line.phi);
+            double rad = Math.toRadians(line.phi());
             double sin = Math.sin(rad);
             if (Math.abs(sin) < 0.0001) sin = 0.0001;
-            return (line.r - (width / 2.0) * Math.cos(rad)) / sin;
+            return (line.r() - (width / 2.0) * Math.cos(rad)) / sin;
         }));
 
         // sort by Achsenabschnitt
         g135.sort(Comparator.comparingDouble(line -> {
-            double rad = Math.toRadians(line.phi);
+            double rad = Math.toRadians(line.phi());
             double denominator = Math.cos(rad) - Math.sin(rad);
             if (Math.abs(denominator) < 0.0001) denominator = 0.0001;
-            return line.r / denominator;
+            return line.r() / denominator;
         }));
     }
 
@@ -314,13 +315,13 @@ public class FormCheckHelper {
 
         // calculate distances for lines of every group
         if (A.size() == 2){
-            int r1 = A.get(0).phi >= 90 ? -A.get(0).r : A.get(0).r;
-            int r2 = A.get(1).phi >= 90 ? -A.get(1).r : A.get(1).r;
+            int r1 = A.get(0).phi() >= 90 ? -A.get(0).r() : A.get(0).r();
+            int r2 = A.get(1).phi() >= 90 ? -A.get(1).r() : A.get(1).r();
             distances.add(new GroupDistance(1, Math.abs(r1 - r2)));
         }
-        if (B.size() == 2) distances.add(new GroupDistance(2, Math.abs(B.get(0).r - B.get(1).r)));
-        if (C.size() == 2) distances.add(new GroupDistance(3, Math.abs(C.get(0).r - C.get(1).r)));
-        if (D.size() == 2) distances.add(new GroupDistance(4, Math.abs(D.get(0).r - D.get(1).r)));
+        if (B.size() == 2) distances.add(new GroupDistance(2, Math.abs(B.get(0).r() - B.get(1).r())));
+        if (C.size() == 2) distances.add(new GroupDistance(3, Math.abs(C.get(0).r() - C.get(1).r())));
+        if (D.size() == 2) distances.add(new GroupDistance(4, Math.abs(D.get(0).r() - D.get(1).r())));
 
         if (distances.size() < 2) return new SignWidthResult(0, 0, 0);
 
@@ -417,8 +418,8 @@ public class FormCheckHelper {
      */
     public static void cleanGarbageLines(ArrayList<HoughLine> group, Point approxCenter, int signWidth, int diagonal) {
 
-        int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getFirst().phi)) + approxCenter.y * Math.sin(Math.toRadians(group.getFirst().phi)) - (group.getFirst().r - diagonal)));
-        int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getLast().phi)) + approxCenter.y * Math.sin(Math.toRadians(group.getLast().phi)) - (group.getLast().r - diagonal)));
+        int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getFirst().phi())) + approxCenter.y * Math.sin(Math.toRadians(group.getFirst().phi())) - (group.getFirst().r() - diagonal)));
+        int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getLast().phi())) + approxCenter.y * Math.sin(Math.toRadians(group.getLast().phi())) - (group.getLast().r() - diagonal)));
 
         int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
         int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
@@ -458,14 +459,14 @@ public class FormCheckHelper {
     private static void completeSingleGroup(ArrayList<HoughLine> group, Point approxCenter, int signWidth, int diagonal){
         if (group.size() == 1) {
             HoughLine line = group.getFirst();
-            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi))
-                    + approxCenter.y * Math.sin(Math.toRadians(line.phi))
+            int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi()))
+                    + approxCenter.y * Math.sin(Math.toRadians(line.phi()))
                     + diagonal);
 
-            if (rCenter > line.r) {
-                group.add(new HoughLine(line.phi, line.r + signWidth, 100));
+            if (rCenter > line.r()) {
+                group.add(new HoughLine(line.phi(), line.r() + signWidth, 100));
             } else {
-                group.addFirst(new HoughLine(line.phi, line.r - signWidth, 100));
+                group.addFirst(new HoughLine(line.phi(), line.r() - signWidth, 100));
             }
         }
     }

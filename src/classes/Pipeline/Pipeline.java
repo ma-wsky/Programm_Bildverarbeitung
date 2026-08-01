@@ -1,6 +1,7 @@
 package classes.Pipeline;
 
 import classes.*;
+import classes.Pipeline.Helper.PipelineHelper;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -163,7 +164,7 @@ public class Pipeline {
         }
 
         // 3. sort accumulated lines
-        lines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
+        lines.sort((line1, line2) -> Integer.compare(line2.votes(), line1.votes()));
 
         // 4. remove similar lines
         ArrayList<HoughLine> noSimilarLines = new ArrayList<>();
@@ -178,8 +179,8 @@ public class Pipeline {
                 int dPhi = PipelineHelper.getAngleOfIntersection(newLine, acceptedLine);
 
                 if (dPhi <= angleTolerance){
-                    double posNew = newLine.r - diagonal;
-                    double posAcc = acceptedLine.r - diagonal;
+                    double posNew = newLine.r() - diagonal;
+                    double posAcc = acceptedLine.r() - diagonal;
 
                     if (Math.abs(posNew - posAcc) <= radiusTolerance){
                         isSimilar = true;
@@ -194,7 +195,7 @@ public class Pipeline {
         }
 
         // 5. sort lines and keep best 25
-        noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes, line1.votes));
+        noSimilarLines.sort((line1, line2) -> Integer.compare(line2.votes(), line1.votes()));
 
         ArrayList<HoughLine> bestLines = new ArrayList<>();
         int amountToKeep = 25;

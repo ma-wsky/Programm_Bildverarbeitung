@@ -1,6 +1,7 @@
-package classes.Pipeline;
+package classes.Pipeline.Helper;
 
 import classes.GlobalHelperFunctions;
+import classes.Pipeline.HoughLine;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -101,14 +102,14 @@ public class PipelineHelper {
         int height = image.getHeight();
         int diagonal = (int) Math.ceil(Math.sqrt(height*height + width*width));
 
-        int distance = line.r - diagonal;
-        double radPhi = Math.toRadians(line.phi);
+        int distance = line.r() - diagonal;
+        double radPhi = Math.toRadians(line.phi());
 
         int longestChain = 0;
         int currentChain = 0;
         int currentGap = 0;
 
-        if (line.phi > 45 && line.phi < 135){
+        if (line.phi() > 45 && line.phi() < 135){
             // more horizontal
             for (int x = 0; x < width; x++){
                 int y = (int) ((distance - x * Math.cos(radPhi)) / Math.sin(radPhi));
@@ -180,7 +181,7 @@ public class PipelineHelper {
      * @return int angle of intersection
      */
     public static int getAngleOfIntersection(HoughLine line1, HoughLine line2) {
-        int deltaPhi = Math.abs(line1.phi - line2.phi);
+        int deltaPhi = Math.abs(line1.phi() - line2.phi());
         if (deltaPhi > 90) deltaPhi = 180 - deltaPhi;
 
         return deltaPhi;

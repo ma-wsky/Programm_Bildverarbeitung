@@ -1,5 +1,8 @@
 package classes.Pipeline;
 
+import classes.Pipeline.Helper.FormCheckHelper;
+import classes.Pipeline.Helper.PipelineHelper;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -225,7 +228,7 @@ public class FormChecker {
         ArrayList<HoughLine> g135 = new ArrayList<>();
 
         for (HoughLine line : validOctagonLines) {
-            int angle = line.phi;
+            int angle = line.phi();
             if (angle <= 45 + angleTolerance && angle >= 45 - angleTolerance) g45.add(line);
             else if (angle <= 135 + angleTolerance && angle >= 135 - angleTolerance) g135.add(line);
             else if (angle <= 90 + angleTolerance && angle >= 90 - angleTolerance) g90.add(line);

@@ -1,5 +1,7 @@
 package classes.Pipeline;
 
+import classes.Pipeline.Helper.ColorCheckHelper;
+
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;

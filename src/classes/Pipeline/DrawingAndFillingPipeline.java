@@ -20,8 +20,8 @@ public class DrawingAndFillingPipeline {
         //g.setColor(Color.RED);
         g.setStroke(new java.awt.BasicStroke(1));
         for (HoughLine line : validLines){
-            int r = line.r;
-            int phi = line.phi;
+            int r = line.r();
+            int phi = line.phi();
             int x1, x2, y1, y2;
             int distance = r- diagonal;
             double radPhi = Math.toRadians(phi);

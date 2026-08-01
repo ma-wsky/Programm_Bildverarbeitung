@@ -8,7 +8,7 @@ void main() {
     Pipeline.findSign("pics/sample/P.jpg");
     Pipeline.findSign("pics/sample/S.jpg");
 
-    // TODO: put all used functions from outside pipeline into pipeline classes: -> ImageIO noch
+    // TODO: put all used functions from outside pipeline into pipeline classes: -> ImageIO, MorphologicalOperations, ColorManipulation, GlobalHelper, DeskriptiveStats noch
     // TODO: group files in Pipeline folder (helper, image processing, checks)
 
     // TODO: sort things out with (- diagonal) everywhere
