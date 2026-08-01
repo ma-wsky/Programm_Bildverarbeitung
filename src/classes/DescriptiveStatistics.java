@@ -100,7 +100,7 @@ public class DescriptiveStatistics {
      * Calculates the gray-value-matrix from a BufferedImage.
      * Extracts rgb-values and calculates gray-value for each pixel.
      */
-    void calculateGrayValueMatrix() {
+    public void calculateGrayValueMatrix() {
 
         for (int y = 0; y < this.height; y++) {
             for (int x = 0; x < this.width; x++) {
@@ -184,7 +184,7 @@ public class DescriptiveStatistics {
         }
     }
 
-    void calculateMean() {
+    public void calculateMean() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
@@ -202,7 +202,7 @@ public class DescriptiveStatistics {
      * Calculates the variance of an array.
      * Uses {@link #calculateMean()} for mean^2
      */
-    void calculateVariance() {
+    public void calculateVariance() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
@@ -274,7 +274,7 @@ public class DescriptiveStatistics {
         this.relativeFrequency = amountsD;
     }
 
-    void calculateRelativeCumulativeFrequencyArray() {
+    public void calculateRelativeCumulativeFrequencyArray() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }

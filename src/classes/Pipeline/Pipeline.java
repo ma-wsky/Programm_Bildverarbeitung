@@ -230,9 +230,9 @@ public class Pipeline {
     /**
      * Performs preprocessing on given BufferedImage:
      * Calls {@link PipelineEdgeDetection#gaussianLowPassSeparated(BufferedImage, int)}
-     * Calls {@link ImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
+     * Calls {@link PipelineImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
      * Calls {@link PipelineEdgeDetection#sobelFilter(BufferedImage, int)}
-     * Calls {@link ImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
+     * Calls {@link PipelineImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
      * Calls {@link MorphologicalOperations#erosion(BufferedImage, boolean[][], int)}
      * Calls {@link MorphologicalOperations#dilation(BufferedImage, boolean[][], int)}
      * Calls {@link ColorManipulation#negative(BufferedImage)}
@@ -250,14 +250,14 @@ public class Pipeline {
         DescriptiveStatistics stats = new DescriptiveStatistics(lowpass);
         stats.calculateEntropy();
         if (stats.getEntropy() > 5.5) {
-            histOrNot = ImageManipulation.histogramEqualization(lowpass);
+            histOrNot = PipelineImageManipulation.histogramEqualization(lowpass);
         }
 
         // 2. sobel
         BufferedImage sobel = PipelineEdgeDetection.sobelFilter(histOrNot, 3);
 
         // 3. equidensity
-        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
+        BufferedImage equidensity = PipelineImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
 
         // 4. closing with dilation and erosion
         boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};
