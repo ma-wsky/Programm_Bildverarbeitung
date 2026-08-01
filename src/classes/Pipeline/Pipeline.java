@@ -176,10 +176,7 @@ public class Pipeline {
             boolean isSimilar = false;
 
             for (HoughLine acceptedLine : noSimilarLines){
-                int dPhi = Math.abs(newLine.phi - acceptedLine.phi);
-                if (dPhi > 90) {
-                    dPhi = 180 - dPhi;
-                }
+                int dPhi = PipelineHelper.getAngleOfIntersection(newLine, acceptedLine);
 
                 if (dPhi <= angleTolerance){
                     double posNew = newLine.r - diagonal;

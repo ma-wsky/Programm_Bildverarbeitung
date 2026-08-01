@@ -10,7 +10,7 @@ void main() {
 
     // TODO: sort things out with (- diagonal) everywhere
     // TODO: sort out helpers from formchecker into formcheckhelper
-    // TODO: tri color seems to be to lenient some times (detected while reworking octagon). no false case since working octagon rework though
+    // TODO: tri color seems to be to lenient some times (detected while reworking octagon). stoppTest1 has false positive triangle
 
     // Vorfahrtsstraße
 //    Pipeline.findSign("pics/vorfahrt/vorfahrtTest1.jpg"); // success
@@ -35,14 +35,14 @@ void main() {
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest1.jpg"); // hab to tweak color detection again -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest2.jpg"); // moving window no success -> histogram equal -> success
 //    Pipeline.findSign("pics/pfeil/vorfahrtTest3.jpg"); // success -> false positive red wall -> tri edge check -> interesting false positives -> success
-//    Pipeline.findSign("pics/pfeil/vorfahrtTest4.jpg"); // couldn't find triangle due to tree noise and colour -> noise costs a lot of performance
+//    Pipeline.findSign("pics/pfeil/vorfahrtTest4.jpg"); // couldn't find triangle due to tree noise and color -> noise costs a lot of performance
 //    Pipeline.findSign("pics/pfeil/vf_03.jpg"); // false triangle -> need tri-edge color check -> success -> DIFFERENT RESULT WHEN RUNNING MULTIPLE TIMES
 //    Pipeline.findSign("pics/pfeil/vf_04.jpg"); // success -> false positive is interesting -> still false positives with tri edge check ????
 //    Pipeline.findSign("pics/pfeil/vf_05.jpg"); // false positive check -> no false positives (sign not fully included in window)
 
 
     // stopp
-//    Pipeline.findSign("pics/stopp/stoppTest1.jpg"); // not all lines of octagon found -> noise
+//    Pipeline.findSign("pics/stopp/stoppTest1.jpg"); // not all lines of octagon found -> noise -> triangle false positive -> fix tri edge check
 //    Pipeline.findSign("pics/stopp/stoppTest2.jpg"); // other edges are more defined -> octagon construction algo 7 -> success
 //    Pipeline.findSign("pics/stopp/stoppTest3.jpg"); // not all edges found -> too many lines because of text in middle -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
 //    Pipeline.findSign("pics/stopp/stoppTest4.jpg"); // not all edges found -> same reason -> octagon construction algo 6 -> higher tolerance of sidelength ratio -> success
