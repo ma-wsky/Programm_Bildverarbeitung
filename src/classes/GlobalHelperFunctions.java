@@ -1,5 +1,8 @@
 package classes;
 
+import java.awt.*;
+import java.util.ArrayList;
+
 public class GlobalHelperFunctions {
 
     public static int calculateGrayValueFromRGB(int rgb){
@@ -46,4 +49,16 @@ public class GlobalHelperFunctions {
 
         return new double[]{h, s, v};
     }
-}
+
+    public static double[] calculateCenterCoordinates(ArrayList<Point> points){
+        double sumX = 0;
+        double sumY = 0;
+        for (Point p : points) {
+            sumX += p.x;
+            sumY += p.y;
+        }
+
+        double centerX = sumX / points.size();
+        double centerY = sumY / points.size();
+        return new double[]{centerX, centerY};
+    }}

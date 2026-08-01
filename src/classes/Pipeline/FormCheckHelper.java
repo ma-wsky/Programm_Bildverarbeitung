@@ -1,5 +1,7 @@
 package classes.Pipeline;
 
+import classes.GlobalHelperFunctions;
+
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -410,7 +412,7 @@ public class FormCheckHelper {
         if (intersections.size() < 8) return null;
 
         // calculate center point
-        double[] center = FormCheckHelper.calculateCenterCoordinates(intersections);
+        double[] center = GlobalHelperFunctions.calculateCenterCoordinates(intersections);
         double centerX = center[0];
         double centerY = center[1];
 
@@ -454,7 +456,7 @@ public class FormCheckHelper {
         if (points == null || points.isEmpty()) return;
 
         // calculate center
-        double[] center = FormCheckHelper.calculateCenterCoordinates(points);
+        double[] center = GlobalHelperFunctions.calculateCenterCoordinates(points);
         double centerX = center[0];
         double centerY = center[1];
 
@@ -464,19 +466,6 @@ public class FormCheckHelper {
             double angle2 = Math.atan2((p2.y - centerY), p2.x - centerX);
             return Double.compare(angle1, angle2);
         });
-    }
-
-    private static double[] calculateCenterCoordinates(ArrayList<Point> points){
-        double sumX = 0;
-        double sumY = 0;
-        for (Point p : points) {
-            sumX += p.x;
-            sumY += p.y;
-        }
-
-        double centerX = sumX / points.size();
-        double centerY = sumY / points.size();
-        return new double[]{centerX, centerY};
     }
 
 }
