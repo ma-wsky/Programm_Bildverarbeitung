@@ -51,7 +51,7 @@ public class FormChecker {
             // 3. create mask of shape
             BufferedImage mask = new BufferedImage(maskedWindow.getWidth(), maskedWindow.getHeight(), BufferedImage.TYPE_BYTE_BINARY);
             Graphics2D g = mask.createGraphics();
-            DrawingAndFillingPipeline.drawEdgesAndFill(g, currentShape);
+            PipelineHelper.drawEdgesAndFill(g, currentShape);
             g.dispose();
 
             // 4. crop and mask sign from original image

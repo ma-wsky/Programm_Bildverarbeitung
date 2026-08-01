@@ -87,7 +87,7 @@ public class Pipeline {
                     windowPoints.add(new Point(x + windowSize, y));
                     windowPoints.add(new Point(x + windowSize, y + windowSize));
                     windowPoints.add(new Point(x, y +windowSize));
-                    DrawingAndFillingPipeline.drawEdgesAndFill(g, windowPoints);
+                    PipelineHelper.drawEdgesAndFill(g, windowPoints);
 
                     // crop and mask sign from original image
                     BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
