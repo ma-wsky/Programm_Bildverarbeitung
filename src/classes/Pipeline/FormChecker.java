@@ -11,9 +11,9 @@ public class FormChecker {
      * Uses formFlag to differentiate between rectangle (0), triangle (1), and octagon (2).
      * Validates geometry of selected shape by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)},
      * {@link FormChecker#detectTriangleForm(ArrayList, int, int)} or {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link CharacteristicsChecker#isVorfahrtColorsAndStats(BufferedImage, ArrayList)},
-     * {@link CharacteristicsChecker#isTriangleSignColorAndStats(BufferedImage, ArrayList)},
-     * or {@link CharacteristicsChecker#isStoppColorAndStats(BufferedImage)}.
+     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link ColorChecker#isVorfahrtsstrasseColors(BufferedImage, ArrayList)},
+     * {@link ColorChecker#isTriangleSignColors(BufferedImage, ArrayList)},
+     * or {@link ColorChecker#isStoppColors(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage window
      * @param validLines ArrayList<HoughLine>
@@ -60,9 +60,9 @@ public class FormChecker {
 
             // 5. check mask for the right colors
             boolean colorMatch = switch (formFlag) {
-                case 0 -> CharacteristicsChecker.isVorfahrtsstrasseColorsAndStats(maskedSign);
-                case 1 -> CharacteristicsChecker.isTriangleSignColorAndStats(maskedSign, currentShape);
-                case 2 -> CharacteristicsChecker.isStoppColorAndStats(maskedSign);
+                case 0 -> ColorChecker.isVorfahrtsstrasseColors(maskedSign, currentShape);
+                case 1 -> ColorChecker.isTriangleSignColors(maskedSign, currentShape);
+                case 2 -> ColorChecker.isStoppColors(maskedSign);
                 default -> false;
             };
             if (!colorMatch) continue;

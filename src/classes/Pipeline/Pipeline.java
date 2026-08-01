@@ -58,7 +58,6 @@ public class Pipeline {
             BufferedImage copy = ImageIO.copyBufferedImage(image);
 
             // moving window
-            // TODO: check edges (rechter rand und unten)
             int width = image.getWidth();
             int height = image.getHeight();
             int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
