@@ -40,10 +40,10 @@ public class FormChecker {
 
             // early exits
             boolean isValid = switch (formFlag) {
-                case 0 -> PipelineHelper.isValidRectangleCenterColor(maskedWindow, currentShape)
-                        && !PipelineHelper.isRectangleTooSmall(maskedWindow, currentShape);
-                case 1 -> !PipelineHelper.isTriangleTooSmall(maskedWindow, currentShape);
-                case 2 -> !PipelineHelper.isOctagonTooSmall(maskedWindow, currentShape);
+                case 0 -> FormCheckHelper.isValidRectangleCenterColor(maskedWindow, currentShape)
+                        && FormCheckHelper.isShapeBigEnough(currentShape, 20);
+                case 1 -> FormCheckHelper.isShapeBigEnough(currentShape, Math.min(maskedWindow.getWidth(), maskedWindow.getHeight()) / 10.0);
+                case 2 -> FormCheckHelper.isShapeBigEnough(currentShape, 20);
                 default -> false;
             };
             if (!isValid) continue;
@@ -130,10 +130,10 @@ public class FormChecker {
 
                         // 4. check intersections
                         ArrayList<Point> rectangle = new ArrayList<>(Arrays.asList(
-                                PipelineHelper.getIntersection(h1, v1, diagonal),
-                                PipelineHelper.getIntersection(h1, v2, diagonal),
-                                PipelineHelper.getIntersection(h2, v2, diagonal),
-                                PipelineHelper.getIntersection(h2, v1, diagonal)
+                                FormCheckHelper.getIntersection(h1, v1, diagonal),
+                                FormCheckHelper.getIntersection(h1, v2, diagonal),
+                                FormCheckHelper.getIntersection(h2, v2, diagonal),
+                                FormCheckHelper.getIntersection(h2, v1, diagonal)
                         ));
                         if (FormCheckHelper.arePointsInvalidOrOutsideImage(rectangle, width, height, edgeTolerance)) continue;
 
@@ -181,9 +181,9 @@ public class FormChecker {
 
                     // 3. check intersections
                     ArrayList<Point> triangle = new ArrayList<>(Arrays.asList(
-                            PipelineHelper.getIntersection(a, b, diagonal),
-                            PipelineHelper.getIntersection(a, c, diagonal),
-                            PipelineHelper.getIntersection(b, c, diagonal)
+                            FormCheckHelper.getIntersection(a, b, diagonal),
+                            FormCheckHelper.getIntersection(a, c, diagonal),
+                            FormCheckHelper.getIntersection(b, c, diagonal)
                     ));
                     if (FormCheckHelper.arePointsInvalidOrOutsideImage(triangle, width, height, insideImageTolerance)) continue;
 

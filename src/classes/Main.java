@@ -8,6 +8,9 @@ void main() {
     Pipeline.findSign("pics/sample/P.jpg");
     Pipeline.findSign("pics/sample/S.jpg");
 
+    // TODO: put all used functions from outside pipeline into pipeline classes: EdgeDetection -> EdgeDetectionPipeline
+    // TODO: group files in Pipeline folder (helper, image processing, checks)
+
     // TODO: sort things out with (- diagonal) everywhere
     // TODO: tri color seems to be to lenient some times (detected while reworking octagon). stoppTest1 has false positive triangle
     // TODO: check moving window edges (rechter rand und unten)

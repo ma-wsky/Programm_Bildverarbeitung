@@ -119,7 +119,7 @@ public class Pipeline {
     }
 
     /**
-     * Calls {@link EdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
+     * Calls {@link PipelineEdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
      * Accumulates lines, uses {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line,
      * {@link PipelineHelper#isLineSolid(BufferedImage, HoughLine, int, int)} to determine solidness of possible line.
      * Sorts found lines, merges similar lines and cuts the Array to the top 25 lines by votes.
@@ -145,7 +145,7 @@ public class Pipeline {
 
         // 2. accumulate lines
         ArrayList<HoughLine> lines = new ArrayList<>();
-        int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
+        int[][] accumulator = PipelineEdgeDetection.houghTransformation(preProcessedImage);
         int threshold = 30;
 
         for (int phi = 0; phi < accumulator.length; phi++){
@@ -229,9 +229,9 @@ public class Pipeline {
 
     /**
      * Performs preprocessing on given BufferedImage:
-     * Calls {@link EdgeDetection#gaussianLowPassSeperated(BufferedImage, int)}
+     * Calls {@link PipelineEdgeDetection#gaussianLowPassSeparated(BufferedImage, int)}
      * Calls {@link ImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
-     * Calls {@link EdgeDetection#sobelFilter(BufferedImage, int)}
+     * Calls {@link PipelineEdgeDetection#sobelFilter(BufferedImage, int)}
      * Calls {@link ImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
      * Calls {@link MorphologicalOperations#erosion(BufferedImage, boolean[][], int)}
      * Calls {@link MorphologicalOperations#dilation(BufferedImage, boolean[][], int)}
@@ -242,7 +242,7 @@ public class Pipeline {
     private static BufferedImage imagePreprocessing(BufferedImage image){
 
         // 1. lowpass
-        BufferedImage lowpass = EdgeDetection.gaussianLowPassSeperated(image, 5);
+        BufferedImage lowpass = PipelineEdgeDetection.gaussianLowPassSeparated(image, 5);
         if (lowpass == null) return null;
 
         // hist equal
@@ -254,7 +254,7 @@ public class Pipeline {
         }
 
         // 2. sobel
-        BufferedImage sobel = EdgeDetection.sobelFilter(histOrNot, 3);
+        BufferedImage sobel = PipelineEdgeDetection.sobelFilter(histOrNot, 3);
 
         // 3. equidensity
         BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);

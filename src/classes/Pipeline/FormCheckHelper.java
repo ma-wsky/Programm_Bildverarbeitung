@@ -3,6 +3,7 @@ package classes.Pipeline;
 import classes.GlobalHelperFunctions;
 
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -12,6 +13,28 @@ public class FormCheckHelper {
     //------------------------------------------------------------------------------------------------------------------
     // helper for rectangle, triangle and octagon
     //------------------------------------------------------------------------------------------------------------------
+
+    /**
+     * Checks if shape formed by currentShape has side lengths > minLength.
+     * @param currentShape ArrayList<Point>
+     * @param minLength double
+     * @return boolean
+     */
+    public static boolean isShapeBigEnough(ArrayList<Point> currentShape, double minLength){
+        double minLengthSq = minLength * minLength;
+
+        for (int i = 0; i < currentShape.size(); i++){
+            Point p1 = currentShape.get(i);
+            Point p2 = currentShape.get((i + 1) % currentShape.size());
+
+            double dx = p2.x - p1.x;
+            double dy = p2.y - p1.y;
+            double lengthSq = dx * dx + dy * dy;
+
+            if (lengthSq < minLengthSq) return false;
+        }
+        return true;
+    }
 
     /**
      * Calculates sides from vertices array and checks lengths against minSideLength.
@@ -46,7 +69,7 @@ public class FormCheckHelper {
     }
 
     /**
-     * Checks if points from vertices array are invalid (== null) or outside of image using {@link PipelineHelper#isInsideImage(Point, int, int, int)}.
+     * Checks if points from vertices array are invalid (== null) or outside of image using {@link FormCheckHelper#isInsideImage(Point, int, int, int)}.
      * @param vertices ArrayList<Point>
      * @param width int
      * @param height int
@@ -55,11 +78,50 @@ public class FormCheckHelper {
      */
     public static boolean arePointsInvalidOrOutsideImage(ArrayList<Point> vertices, int width, int height, int tolerance){
         for (Point v : vertices){
-            if (v == null || !PipelineHelper.isInsideImage(v, width, height, tolerance)){
+            if (v == null || !FormCheckHelper.isInsideImage(v, width, height, tolerance)){
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Helper to check if p is inside the image with tolerance.
+     * @param p Point
+     * @param width int
+     * @param height int
+     * @param t int
+     * @return boolean if p is inside the image
+     */
+    public static boolean isInsideImage(Point p, int width, int height, int t) {
+        return (p.x < (width+t) && p.x > (-t)) && (p.y < (height+t) && p.y > -t);
+    }
+
+    /**
+     * Returns intersection point of lines a and b
+     * @param a classes.Pipeline.HoughLine
+     * @param b classes.Pipeline.HoughLine
+     * @param diagonal image diagonal
+     * @return Point intersection point
+     */
+    public static Point getIntersection(HoughLine a, HoughLine b, int diagonal) {
+        double r1 = a.r - diagonal;
+        double r2 = b.r - diagonal;
+
+        double phi1 = Math.toRadians(a.phi);
+        double phi2 = Math.toRadians(b.phi);
+
+        double denominator = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2);
+
+        // return if parallel
+        if (Math.abs(denominator) < 0.0001) {
+            return null;
+        }
+
+        int x = (int) Math.round((r1 * Math.sin(phi2) - r2 * Math.sin(phi1)) / denominator);
+        int y = (int) Math.round((r2 * Math.cos(phi1) - r1 * Math.cos(phi2)) / denominator);
+
+        return new Point(x, y);
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -95,6 +157,27 @@ public class FormCheckHelper {
         }
 
         return new HoughLine[] {group1.get(0), group1.get(1), group2.get(0), group2.get(1)};
+    }
+
+    /**
+     * Checks central pixels color against blue
+     * @param originalImage BufferedImage
+     * @param currentRectangle ArrayList<Point>
+     * @return boolean if center color is valid
+     */
+    public static boolean isValidRectangleCenterColor(BufferedImage originalImage, ArrayList<Point> currentRectangle) {
+        int centerX = (currentRectangle.get(0).x + currentRectangle.get(1).x + currentRectangle.get(2).x + currentRectangle.get(3).x) / 4;
+        int centerY = (currentRectangle.get(0).y + currentRectangle.get(1).y + currentRectangle.get(2).y + currentRectangle.get(3).y) / 4;
+
+        if (centerX < 0 || centerX >= originalImage.getWidth() || centerY < 0 || centerY >= originalImage.getHeight()) return true;
+
+        int centerRGB = originalImage.getRGB(centerX, centerY);
+        int cR = (centerRGB >> 16) & 0xFF;
+        int cG = (centerRGB >> 8) & 0xFF;
+        int cB = centerRGB & 0xFF;
+
+        // no blue
+        return cB <= cR || cB <= cG || cB <= 80;
     }
 
     //------------------------------------------------------------------------------------------------------------------
@@ -266,7 +349,7 @@ public class FormCheckHelper {
 
     /**
      * Approximates the center point of four groups.
-     * Checks intersections of lines of groups that have two lines.
+     * Checks intersections of lines of groups that have two lines. {@link FormCheckHelper#getIntersection(HoughLine, HoughLine, int)}
      * Sums x and y coordinates for center point.
      * @param A ArrayList<HoughLine>
      * @param B ArrayList<HoughLine>
@@ -281,7 +364,7 @@ public class FormCheckHelper {
         if (A.size() == 2 || B.size() == 2){
             for (HoughLine line1 : A) {
                 for (HoughLine line2 : B) {
-                    Point intersection = PipelineHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -289,7 +372,7 @@ public class FormCheckHelper {
         if (B.size() == 2 || C.size() == 2){
             for (HoughLine line1 : B) {
                 for (HoughLine line2 : C) {
-                    Point intersection = PipelineHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -297,7 +380,7 @@ public class FormCheckHelper {
         if (C.size() == 2 || D.size() == 2){
             for (HoughLine line1 : C) {
                 for (HoughLine line2 : D) {
-                    Point intersection = PipelineHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -305,7 +388,7 @@ public class FormCheckHelper {
         if (D.size() == 2 || A.size() == 2){
             for (HoughLine line1 : D) {
                 for (HoughLine line2 : A) {
-                    Point intersection = PipelineHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -430,7 +513,7 @@ public class FormCheckHelper {
 
     /**
      * Calculates intersections between HoughLines of two groups.
-     * {@link PipelineHelper#getIntersection(HoughLine, HoughLine, int)}
+     * {@link FormCheckHelper#getIntersection(HoughLine, HoughLine, int)}
      * @param group1 ArrayList<HoughLine>
      * @param group2 ArrayList<HoughLine>
      * @param diagonal int
@@ -439,7 +522,7 @@ public class FormCheckHelper {
     private static void calculateIntersectionsBetweenGroups(ArrayList<HoughLine> group1, ArrayList<HoughLine> group2, int diagonal, ArrayList<Point> outIntersections) {
         for (HoughLine line1 : group1) {
             for (HoughLine line2 : group2) {
-                Point p = PipelineHelper.getIntersection(line1, line2, diagonal);
+                Point p = FormCheckHelper.getIntersection(line1, line2, diagonal);
                 if (p != null) {
                     outIntersections.add(p);
                 }
