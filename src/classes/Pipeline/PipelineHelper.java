@@ -7,7 +7,7 @@ import java.awt.image.BufferedImage;
 public class PipelineHelper {
 
     /**
-     * Crops a given BufferedImage using a BufferedImage as a mask.
+     * Crops image using mask.
      * Copies only pixels that are 255 white in the mask.
      * @param image BufferedImage to crop
      * @param mask BufferedImage to use as mask
@@ -89,7 +89,7 @@ public class PipelineHelper {
     /**
      * Checks if a line has a minimumLength of a segment and a maximumAllowedGap between segments.
      * @param image BufferedImage
-     * @param line classes.Pipeline.HoughLine
+     * @param line HoughLine
      * @param minLength minimum length of segment
      * @param maxAllowedGap maximum allowed gap between segments
      * @return boolean if line is solid
@@ -113,6 +113,8 @@ public class PipelineHelper {
 
                 if (y >= 0 && y < height){
                     boolean isEdge = false;
+
+                    // iterate neighbors
                     for (int dy = -1; dy <= 1; dy++) {
                         if (y + dy >= 0 && y + dy < height) {
                             if (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x, y + dy)) == 255) {
@@ -141,6 +143,8 @@ public class PipelineHelper {
 
                 if (x >= 0 && x < width) {
                     boolean isEdge = false;
+
+                    // iterate neighbors
                     for (int dx = -1; dx <= 1; dx++) {
                         if (x + dx >= 0 && x + dx < width) {
                             if (GlobalHelperFunctions.calculateGrayValueFromRGB(image.getRGB(x + dx, y)) == 255) {
@@ -169,8 +173,8 @@ public class PipelineHelper {
 
     /**
      * Calculates the angle of intersection between two HoughLines.
-     * @param line1 classes.Pipeline.HoughLine
-     * @param line2 classes.Pipeline.HoughLine
+     * @param line1 HoughLine
+     * @param line2 HoughLine
      * @return int angle of intersection
      */
     public static int getAngleOfIntersection(HoughLine line1, HoughLine line2) {
@@ -208,7 +212,7 @@ public class PipelineHelper {
                     continue;
                 }
 
-                // neighbour is bigger
+                // neighbor is bigger
                 if (accumulator[targetPhi][targetR] > accumulator[phi][r]){
                     return false;
                 }
@@ -217,6 +221,12 @@ public class PipelineHelper {
         return true;
     }
 
+    /**
+     * Uses box downsampling to downscale image.
+     * @param image BufferedImage
+     * @param factor double
+     * @return BufferedImage downscaled by factor
+     */
     public static BufferedImage scaleColorImageBoxDownsampling(BufferedImage image, double factor){
         if (factor > 2 || factor < 0.1) return null;
 
@@ -251,6 +261,7 @@ public class PipelineHelper {
                     }
                 }
 
+                // set new pixel value
                 if (pixelCount > 0) {
                     int avgR = (int) (sumR / pixelCount);
                     int avgG = (int) (sumG / pixelCount);
@@ -265,11 +276,17 @@ public class PipelineHelper {
         return scaledImage;
     }
 
-    public static BufferedImage upscaleColorImageNearestNeighbour(BufferedImage original, double factor) {
-        if (factor <= 1.0) return original;
+    /**
+     * Uses nearest neighbor to upscale image.
+     * @param image BufferedImage
+     * @param factor double
+     * @return BufferedImage upscaled by factor
+     */
+    public static BufferedImage upscaleColorImageNearestNeighbour(BufferedImage image, double factor) {
+        if (factor <= 1.0) return image;
 
-        int oldWidth = original.getWidth();
-        int oldHeight = original.getHeight();
+        int oldWidth = image.getWidth();
+        int oldHeight = image.getHeight();
 
         int newWidth = (int) (oldWidth * factor);
         int newHeight = (int) (oldHeight * factor);
@@ -282,7 +299,7 @@ public class PipelineHelper {
                 int oldX = Math.clamp((int) (x / factor), 0, oldWidth - 1);
                 int oldY = Math.clamp((int) (y / factor), 0, oldHeight - 1);
 
-                upscaledImage.setRGB(x, y, original.getRGB(oldX, oldY));
+                upscaledImage.setRGB(x, y, image.getRGB(oldX, oldY));
             }
         }
 
