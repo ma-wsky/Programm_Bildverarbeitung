@@ -59,6 +59,8 @@ public class Pipeline {
         pyramid.add(originalImage);
 
         int maxDimensionForProcessing = 650;
+        int windowSize = 200;
+        int stepSize = 25;
 
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
@@ -66,21 +68,20 @@ public class Pipeline {
             int width = image.getWidth();
             int height = image.getHeight();
 
+            // early exit
             if (width > maxDimensionForProcessing || height > maxDimensionForProcessing) {
                 System.err.println("no sign found!");
                 break;
             }
-            BufferedImage copy = ImageIO.copyBufferedImage(image);
 
-            // moving window
-            int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
-            int stepSize = 25;
-
+            // early continue
             if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
+
+            BufferedImage copy = ImageIO.copyBufferedImage(image);
 
             // 4. check image as a whole
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
-            if (preProcessedImage == null) return;
+            if (preProcessedImage == null) continue;
             boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
 
             if (signFound) {
@@ -89,8 +90,28 @@ public class Pipeline {
             }
 
             // 5. moving window
-            for (int y = 0; y <= height - windowSize; y += stepSize){
-                for (int x = 0; x <= width - windowSize; x += stepSize) {
+
+            // find all x positions of window
+            ArrayList<Integer> xPositions = new ArrayList<>();
+            for (int x = 0; x <= width - windowSize; x += stepSize){
+                xPositions.add(x);
+            }
+            if (xPositions.isEmpty() || xPositions.getLast() != width - windowSize){
+                xPositions.add(width - windowSize);
+            }
+
+            // find all y positions of window
+            ArrayList<Integer> yPositions = new ArrayList<>();
+            for (int y = 0; y <= height - windowSize; y += stepSize) {
+                yPositions.add(y);
+            }
+            if (yPositions.isEmpty() || yPositions.getLast() != height - windowSize) {
+                yPositions.add(height - windowSize);
+            }
+
+            // traverse window positions
+            for (int y : yPositions){
+                for (int x : xPositions) {
 
                     // create mask of window
                     BufferedImage windowMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
@@ -108,7 +129,7 @@ public class Pipeline {
 
                     // preprocess image
                     preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
-                    if (preProcessedImage == null) return;
+                    if (preProcessedImage == null) continue;
 
                     // perform checks
                     signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y);

@@ -3,13 +3,12 @@ import main.java.mawsky.trafficsign.core.Pipeline;
 void main() {
 
     //samples
-//    Pipeline.findSign("src/main/resources/sample/V.jpg");
-//    Pipeline.findSign("src/main/resources/sample/A.jpg");
-//    Pipeline.findSign("src/main/resources/sample/P.jpg");
-//    Pipeline.findSign("src/main/resources/sample/S.jpg");
+    Pipeline.findSign("src/main/resources/sample/V.jpg");
+    Pipeline.findSign("src/main/resources/sample/A.jpg");
+    Pipeline.findSign("src/main/resources/sample/P.jpg");
+    Pipeline.findSign("src/main/resources/sample/S.jpg");
 
     // TODO: tri color seems to be to lenient some times (detected while reworking octagon). stoppTest1 has false positive triangle
-    // TODO: check moving window edges (rechter rand und unten)
 
     // Vorfahrtsstraße
 //    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest1.jpg"); // success
