@@ -1,6 +1,5 @@
 package classes.Pipeline;
 
-import classes.ColorManipulation;
 import classes.GlobalHelperFunctions;
 
 import java.awt.image.BufferedImage;

@@ -1,4 +1,7 @@
-package classes;
+package classes.Pipeline;
+
+import classes.GlobalHelperFunctions;
+import classes.ImageIO;
 
 import java.awt.image.BufferedImage;
 

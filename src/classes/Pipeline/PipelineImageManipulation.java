@@ -1,6 +1,5 @@
 package classes.Pipeline;
 
-import classes.ColorManipulation;
 import classes.DescriptiveStatistics;
 import classes.GlobalHelperFunctions;
 
