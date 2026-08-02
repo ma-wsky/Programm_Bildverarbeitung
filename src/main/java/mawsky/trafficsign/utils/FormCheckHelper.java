@@ -1,6 +1,6 @@
-package classes.Pipeline.Helper;
+package main.java.mawsky.trafficsign.utils;
 
-import classes.Pipeline.HoughLine;
+import main.java.mawsky.trafficsign.core.HoughLine;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -99,8 +99,8 @@ public class FormCheckHelper {
 
     /**
      * Returns intersection point of lines a and b
-     * @param a classes.Pipeline.HoughLine
-     * @param b classes.Pipeline.HoughLine
+     * @param a main.java.mawsky.trafficsign.core.HoughLine
+     * @param b main.java.mawsky.trafficsign.core.HoughLine
      * @param diagonal image diagonal
      * @return Point intersection point
      */

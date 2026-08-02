@@ -1,4 +1,4 @@
-package classes.Pipeline.Helper;
+package main.java.mawsky.trafficsign.utils;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;

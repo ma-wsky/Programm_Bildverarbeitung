@@ -1,4 +1,4 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.core;
 
 public record HoughLine(int phi, int r, int votes) implements Comparable<HoughLine> {
 

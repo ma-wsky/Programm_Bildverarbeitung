@@ -1,10 +1,11 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.processing;
 
-import classes.Pipeline.Helper.GlobalHelperFunctions;
+import main.java.mawsky.trafficsign.core.DescriptiveStatistics;
+import main.java.mawsky.trafficsign.utils.GlobalHelperFunctions;
 
 import java.awt.image.BufferedImage;
 
-public class PipelineImageManipulation {
+public class ImageManipulation {
 
     /**
      * Performs first order equidensity operation on given image.

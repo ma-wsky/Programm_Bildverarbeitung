@@ -1,10 +1,11 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.processing;
 
-import classes.Pipeline.Helper.GlobalHelperFunctions;
+import main.java.mawsky.trafficsign.utils.GlobalHelperFunctions;
+import main.java.mawsky.trafficsign.io.ImageIO;
 
 import java.awt.image.BufferedImage;
 
-public class PipelineEdgeDetection {
+public class EdgeDetection {
 
     /**
      * Calculates a lowpass for image with gauß.
@@ -107,7 +108,7 @@ public class PipelineEdgeDetection {
 
         // create images
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
-        BufferedImage newImage = PipelineImageIO.copyBufferedImage(grayScaleImage);
+        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
 
         // Sobel algorithm with edge case cutting
         for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {

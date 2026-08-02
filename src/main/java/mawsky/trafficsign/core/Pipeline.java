@@ -1,6 +1,12 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.core;
 
-import classes.Pipeline.Helper.PipelineHelper;
+import main.java.mawsky.trafficsign.utils.PipelineHelper;
+import main.java.mawsky.trafficsign.io.ImageIO;
+import main.java.mawsky.trafficsign.detection.FormChecker;
+import main.java.mawsky.trafficsign.processing.ColorManipulation;
+import main.java.mawsky.trafficsign.processing.MorphologicalOperations;
+import main.java.mawsky.trafficsign.processing.EdgeDetection;
+import main.java.mawsky.trafficsign.processing.ImageManipulation;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -32,7 +38,7 @@ public class Pipeline {
     public static void findSign(String filename) {
 
         // 1. read image
-        BufferedImage originalImage = PipelineImageIO.readImage(filename);
+        BufferedImage originalImage = ImageIO.readImage(filename);
         if (originalImage == null) {
             System.err.println("Error reading image " + filename);
             return;
@@ -55,7 +61,7 @@ public class Pipeline {
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage image = pyramid.get(i);
-            BufferedImage copy = PipelineImageIO.copyBufferedImage(image);
+            BufferedImage copy = ImageIO.copyBufferedImage(image);
 
             // moving window
             int width = image.getWidth();
@@ -71,7 +77,7 @@ public class Pipeline {
             boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
 
             if (signFound) {
-                PipelineImageIO.displayImage(copy);
+                ImageIO.displayImage(copy);
                 break;
             }
 
@@ -106,7 +112,7 @@ public class Pipeline {
             }
 
             if (signFound) {
-                PipelineImageIO.displayImage(copy);
+                ImageIO.displayImage(copy);
                 break;
             }
 
@@ -119,7 +125,7 @@ public class Pipeline {
     }
 
     /**
-     * Calls {@link PipelineEdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
+     * Calls {@link EdgeDetection#houghTransformation(BufferedImage)} to determine Hough room.
      * Accumulates lines, uses {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line,
      * {@link PipelineHelper#isLineSolid(BufferedImage, HoughLine, int, int)} to determine solidness of possible line.
      * Sorts found lines, merges similar lines and cuts the Array to the top 25 lines by votes.
@@ -145,7 +151,7 @@ public class Pipeline {
 
         // 2. accumulate lines
         ArrayList<HoughLine> lines = new ArrayList<>();
-        int[][] accumulator = PipelineEdgeDetection.houghTransformation(preProcessedImage);
+        int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
         int threshold = 30;
 
         for (int phi = 0; phi < accumulator.length; phi++){
@@ -229,10 +235,10 @@ public class Pipeline {
 
     /**
      * Performs preprocessing on given BufferedImage:
-     * Calls {@link PipelineEdgeDetection#gaussianLowPassSeparated(BufferedImage, int)}
-     * Calls {@link PipelineImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
-     * Calls {@link PipelineEdgeDetection#sobelFilter(BufferedImage, int)}
-     * Calls {@link PipelineImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
+     * Calls {@link EdgeDetection#gaussianLowPassSeparated(BufferedImage, int)}
+     * Calls {@link ImageManipulation#histogramEqualization(BufferedImage)} if entropy is above 5.5
+     * Calls {@link EdgeDetection#sobelFilter(BufferedImage, int)}
+     * Calls {@link ImageManipulation#equidensityFirstOrderGrayImageCustomBounds(BufferedImage, int, int, int, int, int)}
      * Calls {@link MorphologicalOperations#erosion(BufferedImage, boolean[][], int)}
      * Calls {@link MorphologicalOperations#dilation(BufferedImage, boolean[][], int)}
      * Calls {@link ColorManipulation#negative(BufferedImage)}
@@ -242,7 +248,7 @@ public class Pipeline {
     private static BufferedImage imagePreprocessing(BufferedImage image){
 
         // 1. lowpass
-        BufferedImage lowpass = PipelineEdgeDetection.gaussianLowPassSeparated(image, 5);
+        BufferedImage lowpass = EdgeDetection.gaussianLowPassSeparated(image, 5);
         if (lowpass == null) return null;
 
         // hist equal
@@ -250,14 +256,14 @@ public class Pipeline {
         DescriptiveStatistics stats = new DescriptiveStatistics(lowpass);
         stats.calculateEntropy();
         if (stats.getEntropy() > 5.5) {
-            histOrNot = PipelineImageManipulation.histogramEqualization(lowpass);
+            histOrNot = ImageManipulation.histogramEqualization(lowpass);
         }
 
         // 2. sobel
-        BufferedImage sobel = PipelineEdgeDetection.sobelFilter(histOrNot, 3);
+        BufferedImage sobel = EdgeDetection.sobelFilter(histOrNot, 3);
 
         // 3. equidensity
-        BufferedImage equidensity = PipelineImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
+        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
 
         // 4. closing with dilation and erosion
         boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};

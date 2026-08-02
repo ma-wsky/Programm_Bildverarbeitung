@@ -1,7 +1,7 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.processing;
 
-import classes.Pipeline.Helper.GlobalHelperFunctions;
-import classes.ImageIO;
+import main.java.mawsky.trafficsign.utils.GlobalHelperFunctions;
+import main.java.mawsky.trafficsign.io.ImageIO;
 
 import java.awt.image.BufferedImage;
 

@@ -1,6 +1,6 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.detection;
 
-import classes.Pipeline.Helper.ColorCheckHelper;
+import main.java.mawsky.trafficsign.utils.ColorCheckHelper;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;

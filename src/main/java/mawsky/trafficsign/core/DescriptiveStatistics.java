@@ -1,4 +1,4 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.core;
 
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
@@ -70,7 +70,7 @@ public class DescriptiveStatistics {
      * {@code @Link} #timestep(String, Runnable)
      */
     void timeCalculationOfAllStatistics() {
-        System.out.println("\n--- Starting Statistics classes.Pipeline ---\n");
+        System.out.println("\n--- Starting Statistics main.java.mawsky.trafficsign.Pipeline ---\n");
 
         timeStep("Gray Value Matrix",     this::calculateGrayValueMatrix);
         timeStep("Co-occurrence Matrix",  this::calculateCoOccurrenceMatrix);
