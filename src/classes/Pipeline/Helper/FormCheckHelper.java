@@ -1,6 +1,5 @@
 package classes.Pipeline.Helper;
 
-import classes.GlobalHelperFunctions;
 import classes.Pipeline.HoughLine;
 
 import java.awt.*;

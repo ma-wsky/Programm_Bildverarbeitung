@@ -1,6 +1,7 @@
 package classes;
 
 import classes.Pipeline.ColorManipulation;
+import classes.Pipeline.Helper.GlobalHelperFunctions;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;

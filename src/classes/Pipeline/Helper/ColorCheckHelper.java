@@ -1,7 +1,5 @@
 package classes.Pipeline.Helper;
 
-import classes.GlobalHelperFunctions;
-
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;

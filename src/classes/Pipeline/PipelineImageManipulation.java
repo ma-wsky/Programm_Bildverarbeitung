@@ -1,7 +1,7 @@
 package classes.Pipeline;
 
 import classes.DescriptiveStatistics;
-import classes.GlobalHelperFunctions;
+import classes.Pipeline.Helper.GlobalHelperFunctions;
 
 import java.awt.image.BufferedImage;
 
