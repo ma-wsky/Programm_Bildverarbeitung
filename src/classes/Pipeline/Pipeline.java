@@ -1,6 +1,5 @@
 package classes.Pipeline;
 
-import classes.*;
 import classes.Pipeline.Helper.PipelineHelper;
 
 import java.awt.*;

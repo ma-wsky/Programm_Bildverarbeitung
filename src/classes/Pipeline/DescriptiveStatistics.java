@@ -1,4 +1,4 @@
-package classes;
+package classes.Pipeline;
 
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
