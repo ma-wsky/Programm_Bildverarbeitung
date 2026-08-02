@@ -1,6 +1,6 @@
-package classes.Pipeline.Helper;
+package main.java.mawsky.trafficsign.utils;
 
-import classes.Pipeline.HoughLine;
+import main.java.mawsky.trafficsign.core.HoughLine;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;

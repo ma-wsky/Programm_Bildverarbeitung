@@ -1,6 +1,5 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.io;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -9,7 +8,7 @@ import java.awt.image.WritableRaster;
 import java.io.File;
 import java.io.IOException;
 
-public class PipelineImageIO {
+public class ImageIO {
 
     /**
      * Reads a file as a BufferedImage.
@@ -24,7 +23,7 @@ public class PipelineImageIO {
         // load data into ram
         BufferedImage readImage;
         try {
-            readImage = ImageIO.read(file);
+            readImage = javax.imageio.ImageIO.read(file);
             System.out.println("Image " + filename + " loaded successfully!");
             return readImage;
 

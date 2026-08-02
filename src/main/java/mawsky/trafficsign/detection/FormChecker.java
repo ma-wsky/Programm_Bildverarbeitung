@@ -1,7 +1,8 @@
-package classes.Pipeline;
+package main.java.mawsky.trafficsign.detection;
 
-import classes.Pipeline.Helper.FormCheckHelper;
-import classes.Pipeline.Helper.PipelineHelper;
+import main.java.mawsky.trafficsign.utils.FormCheckHelper;
+import main.java.mawsky.trafficsign.utils.PipelineHelper;
+import main.java.mawsky.trafficsign.core.HoughLine;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
