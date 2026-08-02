@@ -58,14 +58,21 @@ public class Pipeline {
         pyramid.add(level2);
         pyramid.add(originalImage);
 
+        int maxDimensionForProcessing = 650;
+
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage image = pyramid.get(i);
+            int width = image.getWidth();
+            int height = image.getHeight();
+
+            if (width > maxDimensionForProcessing || height > maxDimensionForProcessing) {
+                System.err.println("no sign found!");
+                break;
+            }
             BufferedImage copy = ImageIO.copyBufferedImage(image);
 
             // moving window
-            int width = image.getWidth();
-            int height = image.getHeight();
             int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
             int stepSize = 25;
 

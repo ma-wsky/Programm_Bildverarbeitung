@@ -42,10 +42,10 @@ void main() {
 
 
     // stopp
-//    Pipeline.findSign("src/main/resources/stopp/stoppTest1.jpg"); // triangle false positive -> fix tri edge check
+//    Pipeline.findSign("src/main/resources/stopp/stoppTest1.jpg"); // false positive
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest2.jpg"); // success
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest3.jpg"); // success
-    Pipeline.findSign("src/main/resources/stopp/stoppTest4.jpg"); // success
+//    Pipeline.findSign("src/main/resources/stopp/stoppTest4.jpg"); // success
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest5.jpg"); // success
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest6.jpg"); // success
 
