@@ -2,7 +2,6 @@ package classes.Pipeline;
 
 import classes.ColorManipulation;
 import classes.GlobalHelperFunctions;
-import classes.ImageIO;
 
 import java.awt.image.BufferedImage;
 
@@ -109,7 +108,7 @@ public class PipelineEdgeDetection {
 
         // create images
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
-        BufferedImage newImage = ImageIO.copyBufferedImage(grayScaleImage);
+        BufferedImage newImage = PipelineImageIO.copyBufferedImage(grayScaleImage);
 
         // Sobel algorithm with edge case cutting
         for (int x = distance; x < grayScaleImage.getWidth()-distance; x++) {

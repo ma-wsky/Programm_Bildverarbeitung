@@ -33,7 +33,7 @@ public class Pipeline {
     public static void findSign(String filename) {
 
         // 1. read image
-        BufferedImage originalImage = ImageIO.readImage(filename);
+        BufferedImage originalImage = PipelineImageIO.readImage(filename);
         if (originalImage == null) {
             System.err.println("Error reading image " + filename);
             return;
@@ -56,7 +56,7 @@ public class Pipeline {
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage image = pyramid.get(i);
-            BufferedImage copy = ImageIO.copyBufferedImage(image);
+            BufferedImage copy = PipelineImageIO.copyBufferedImage(image);
 
             // moving window
             int width = image.getWidth();
@@ -72,7 +72,7 @@ public class Pipeline {
             boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
 
             if (signFound) {
-                ImageIO.displayImage(copy);
+                PipelineImageIO.displayImage(copy);
                 break;
             }
 
@@ -107,7 +107,7 @@ public class Pipeline {
             }
 
             if (signFound) {
-                ImageIO.displayImage(copy);
+                PipelineImageIO.displayImage(copy);
                 break;
             }
 
