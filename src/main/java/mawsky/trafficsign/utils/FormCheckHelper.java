@@ -101,12 +101,11 @@ public class FormCheckHelper {
      * Returns intersection point of lines a and b
      * @param a main.java.mawsky.trafficsign.core.HoughLine
      * @param b main.java.mawsky.trafficsign.core.HoughLine
-     * @param diagonal image diagonal
      * @return Point intersection point
      */
-    public static Point getIntersection(HoughLine a, HoughLine b, int diagonal) {
-        double r1 = a.r() - diagonal;
-        double r2 = b.r() - diagonal;
+    public static Point getIntersection(HoughLine a, HoughLine b) {
+        double r1 = a.r();
+        double r2 = b.r();
 
         double phi1 = Math.toRadians(a.phi());
         double phi2 = Math.toRadians(b.phi());
@@ -243,17 +242,15 @@ public class FormCheckHelper {
      * @param g135 ArrayList<HoughLine>
      * @param width int
      * @param height int
-     * @param diagonal int
      */
-    public static void sortAngleGroupsByPosition(ArrayList<HoughLine> g0, ArrayList<HoughLine> g45, ArrayList<HoughLine> g90, ArrayList<HoughLine> g135, int width, int height, int diagonal){
+    public static void sortAngleGroupsByPosition(ArrayList<HoughLine> g0, ArrayList<HoughLine> g45, ArrayList<HoughLine> g90, ArrayList<HoughLine> g135, int width, int height){
 
         // sort by x-position
         g0.sort(Comparator.comparingDouble(line -> {
             double rad = Math.toRadians(line.phi());
             double cos = Math.cos(rad);
             if (Math.abs(cos) < 0.0001) cos = 0.0001;
-            double realR = line.r() - diagonal;
-            return (realR - (height / 2.0) * Math.sin(rad)) / cos;
+            return (line.r() - (height / 2.0) * Math.sin(rad)) / cos;
         }));
 
         // sort by Achsenabschnitt
@@ -313,11 +310,7 @@ public class FormCheckHelper {
         ArrayList<GroupDistance> distances = new ArrayList<>();
 
         // calculate distances for lines of every group
-        if (A.size() == 2){
-            int r1 = A.get(0).phi() >= 90 ? -A.get(0).r() : A.get(0).r();
-            int r2 = A.get(1).phi() >= 90 ? -A.get(1).r() : A.get(1).r();
-            distances.add(new GroupDistance(1, Math.abs(r1 - r2)));
-        }
+        if (A.size() == 2) distances.add(new GroupDistance(1, Math.abs(A.get(0).r() - A.get(1).r())));
         if (B.size() == 2) distances.add(new GroupDistance(2, Math.abs(B.get(0).r() - B.get(1).r())));
         if (C.size() == 2) distances.add(new GroupDistance(3, Math.abs(C.get(0).r() - C.get(1).r())));
         if (D.size() == 2) distances.add(new GroupDistance(4, Math.abs(D.get(0).r() - D.get(1).r())));
@@ -349,22 +342,21 @@ public class FormCheckHelper {
 
     /**
      * Approximates the center point of four groups.
-     * Checks intersections of lines of groups that have two lines. {@link FormCheckHelper#getIntersection(HoughLine, HoughLine, int)}
+     * Checks intersections of lines of groups that have two lines. {@link #getIntersection(HoughLine, HoughLine)}
      * Sums x and y coordinates for center point.
      * @param A ArrayList<HoughLine>
      * @param B ArrayList<HoughLine>
      * @param C ArrayList<HoughLine>
      * @param D ArrayList<HoughLine>
-     * @param diagonal int
      * @return Point approximated center point
      */
-    public static Point calculateApproxCenter(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D, int diagonal){
+    public static Point calculateApproxCenter(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D){
         ArrayList<Point> intersections = new ArrayList<>();
 
         if (A.size() == 2 || B.size() == 2){
             for (HoughLine line1 : A) {
                 for (HoughLine line2 : B) {
-                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -372,7 +364,7 @@ public class FormCheckHelper {
         if (B.size() == 2 || C.size() == 2){
             for (HoughLine line1 : B) {
                 for (HoughLine line2 : C) {
-                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -380,7 +372,7 @@ public class FormCheckHelper {
         if (C.size() == 2 || D.size() == 2){
             for (HoughLine line1 : C) {
                 for (HoughLine line2 : D) {
-                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -388,7 +380,7 @@ public class FormCheckHelper {
         if (D.size() == 2 || A.size() == 2){
             for (HoughLine line1 : D) {
                 for (HoughLine line2 : A) {
-                    Point intersection = FormCheckHelper.getIntersection(line1, line2, diagonal);
+                    Point intersection = FormCheckHelper.getIntersection(line1, line2);
                     if (intersection != null) intersections.add(intersection);
                 }
             }
@@ -413,13 +405,17 @@ public class FormCheckHelper {
      * @param group ArrayList<HoughLine>
      * @param approxCenter Point
      * @param signWidth int
-     * @param diagonal int
      */
-    public static void cleanGarbageLines(ArrayList<HoughLine> group, Point approxCenter, int signWidth, int diagonal) {
+    public static void cleanGarbageLines(ArrayList<HoughLine> group, Point approxCenter, int signWidth) {
 
-        int distanceCenter1 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getFirst().phi())) + approxCenter.y * Math.sin(Math.toRadians(group.getFirst().phi())) - (group.getFirst().r() - diagonal)));
-        int distanceCenter2 = (int) Math.abs((approxCenter.x * Math.cos(Math.toRadians(group.getLast().phi())) + approxCenter.y * Math.sin(Math.toRadians(group.getLast().phi())) - (group.getLast().r() - diagonal)));
+        int rCenter1 = (int) (approxCenter.x * Math.cos(Math.toRadians(group.getFirst().phi()))
+                + approxCenter.y * Math.sin(Math.toRadians(group.getFirst().phi())));
 
+        int rCenter2 = (int) (approxCenter.x * Math.cos(Math.toRadians(group.getLast().phi()))
+                + approxCenter.y * Math.sin(Math.toRadians(group.getLast().phi())));
+
+        int distanceCenter1 = Math.abs(rCenter1 - group.getFirst().r());
+        int distanceCenter2 = Math.abs(rCenter2 - group.getLast().r());
         int error1 = Math.abs(distanceCenter1 - (signWidth / 2));
         int error2 = Math.abs(distanceCenter2 - (signWidth / 2));
 
@@ -431,20 +427,19 @@ public class FormCheckHelper {
     }
 
     /**
-     * Calls {@link FormCheckHelper#completeSingleGroup(ArrayList, Point, int, int)} for A, B, C and D.
+     * Calls {@link #completeSingleGroup(ArrayList, Point, int)} for A, B, C and D.
      * @param A ArrayList<HoughLine>
      * @param B ArrayList<HoughLine>
      * @param C ArrayList<HoughLine>
      * @param D ArrayList<HoughLine>
      * @param approxCenter Point
      * @param signWidth int
-     * @param diagonal int
      */
-    public static void addSecondLines(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D, Point approxCenter, int signWidth, int diagonal){
-        FormCheckHelper.completeSingleGroup(A, approxCenter, signWidth, diagonal);
-        FormCheckHelper.completeSingleGroup(B, approxCenter, signWidth, diagonal);
-        FormCheckHelper.completeSingleGroup(C, approxCenter, signWidth, diagonal);
-        FormCheckHelper.completeSingleGroup(D, approxCenter, signWidth, diagonal);
+    public static void addSecondLines(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D, Point approxCenter, int signWidth){
+        FormCheckHelper.completeSingleGroup(A, approxCenter, signWidth);
+        FormCheckHelper.completeSingleGroup(B, approxCenter, signWidth);
+        FormCheckHelper.completeSingleGroup(C, approxCenter, signWidth);
+        FormCheckHelper.completeSingleGroup(D, approxCenter, signWidth);
     }
 
     /**
@@ -453,14 +448,12 @@ public class FormCheckHelper {
      * @param group ArrayList<HoughLine>
      * @param approxCenter Point
      * @param signWidth int
-     * @param diagonal int
      */
-    private static void completeSingleGroup(ArrayList<HoughLine> group, Point approxCenter, int signWidth, int diagonal){
+    private static void completeSingleGroup(ArrayList<HoughLine> group, Point approxCenter, int signWidth){
         if (group.size() == 1) {
             HoughLine line = group.getFirst();
             int rCenter = (int) (approxCenter.x * Math.cos(Math.toRadians(line.phi()))
-                    + approxCenter.y * Math.sin(Math.toRadians(line.phi()))
-                    + diagonal);
+                    + approxCenter.y * Math.sin(Math.toRadians(line.phi())));
 
             if (rCenter > line.r()) {
                 group.add(new HoughLine(line.phi(), line.r() + signWidth, 100));
@@ -472,7 +465,7 @@ public class FormCheckHelper {
 
     /**
      * Calculates octagon points.
-     * Calculates intersections between groups {@link FormCheckHelper#calculateIntersectionsBetweenGroups(ArrayList, ArrayList, int, ArrayList)}.
+     * Calculates intersections between groups {@link #calculateIntersectionsBetweenGroups(ArrayList, ArrayList, ArrayList)}.
      * Calculates center point by summing all x and y coordinates.
      * Sorts intersection points based on distance to center point.
      * Returns array of 8 points closest to center point.
@@ -480,17 +473,16 @@ public class FormCheckHelper {
      * @param B ArrayList<HoughLine>
      * @param C ArrayList<HoughLine>
      * @param D ArrayList<HoughLine>
-     * @param diagonal int
      * @return ArrayList<Point> octagon points
      */
-    public static ArrayList<Point> calculateOctagonPoints(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D, int diagonal) {
+    public static ArrayList<Point> calculateOctagonPoints(ArrayList<HoughLine> A, ArrayList<HoughLine> B, ArrayList<HoughLine> C, ArrayList<HoughLine> D) {
         ArrayList<Point> intersections = new ArrayList<>();
 
         // calculate intersections between groups
-        calculateIntersectionsBetweenGroups(A, B, diagonal, intersections);
-        calculateIntersectionsBetweenGroups(B, C, diagonal, intersections);
-        calculateIntersectionsBetweenGroups(C, D, diagonal, intersections);
-        calculateIntersectionsBetweenGroups(D, A, diagonal, intersections);
+        calculateIntersectionsBetweenGroups(A, B, intersections);
+        calculateIntersectionsBetweenGroups(B, C, intersections);
+        calculateIntersectionsBetweenGroups(C, D, intersections);
+        calculateIntersectionsBetweenGroups(D, A, intersections);
 
         if (intersections.size() < 8) return null;
 
@@ -513,16 +505,15 @@ public class FormCheckHelper {
 
     /**
      * Calculates intersections between HoughLines of two groups.
-     * {@link FormCheckHelper#getIntersection(HoughLine, HoughLine, int)}
+     * {@link #getIntersection(HoughLine, HoughLine)}
      * @param group1 ArrayList<HoughLine>
      * @param group2 ArrayList<HoughLine>
-     * @param diagonal int
      * @param outIntersections ArrayList<Point> where intersections are saved
      */
-    private static void calculateIntersectionsBetweenGroups(ArrayList<HoughLine> group1, ArrayList<HoughLine> group2, int diagonal, ArrayList<Point> outIntersections) {
+    private static void calculateIntersectionsBetweenGroups(ArrayList<HoughLine> group1, ArrayList<HoughLine> group2, ArrayList<Point> outIntersections) {
         for (HoughLine line1 : group1) {
             for (HoughLine line2 : group2) {
-                Point p = FormCheckHelper.getIntersection(line1, line2, diagonal);
+                Point p = FormCheckHelper.getIntersection(line1, line2);
                 if (p != null) {
                     outIntersections.add(p);
                 }

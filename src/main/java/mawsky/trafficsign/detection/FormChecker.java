@@ -103,7 +103,6 @@ public class FormChecker {
      */
     private static ArrayList<ArrayList<Point>> detectRectangleForm(ArrayList<HoughLine> validRectangleLines, int width, int height) {
         int size = validRectangleLines.size();
-        int diagonal = (int) Math.ceil(Math.sqrt(height * height + width * width));
         int minSideLength = 30;
         double sideRatioTolerance = 0.2;
         int edgeTolerance = 25;
@@ -134,10 +133,10 @@ public class FormChecker {
 
                         // 4. check intersections
                         ArrayList<Point> rectangle = new ArrayList<>(Arrays.asList(
-                                FormCheckHelper.getIntersection(h1, v1, diagonal),
-                                FormCheckHelper.getIntersection(h1, v2, diagonal),
-                                FormCheckHelper.getIntersection(h2, v2, diagonal),
-                                FormCheckHelper.getIntersection(h2, v1, diagonal)
+                                FormCheckHelper.getIntersection(h1, v1),
+                                FormCheckHelper.getIntersection(h1, v2),
+                                FormCheckHelper.getIntersection(h2, v2),
+                                FormCheckHelper.getIntersection(h2, v1)
                         ));
                         if (FormCheckHelper.arePointsInvalidOrOutsideImage(rectangle, width, height, edgeTolerance)) continue;
 
@@ -165,7 +164,6 @@ public class FormChecker {
      */
     private static ArrayList<ArrayList<Point>> detectTriangleForm(ArrayList<HoughLine> validTriangleLines, int width, int height) {
         int size = validTriangleLines.size();
-        int diagonal = (int) Math.ceil(Math.sqrt(height * height + width * width));
         int minSideLength = 30;
         int insideImageTolerance = 15;
         double sideRatioTolerance = 0.3;
@@ -185,9 +183,9 @@ public class FormChecker {
 
                     // 3. check intersections
                     ArrayList<Point> triangle = new ArrayList<>(Arrays.asList(
-                            FormCheckHelper.getIntersection(a, b, diagonal),
-                            FormCheckHelper.getIntersection(a, c, diagonal),
-                            FormCheckHelper.getIntersection(b, c, diagonal)
+                            FormCheckHelper.getIntersection(a, b),
+                            FormCheckHelper.getIntersection(a, c),
+                            FormCheckHelper.getIntersection(b, c)
                     ));
                     if (FormCheckHelper.arePointsInvalidOrOutsideImage(triangle, width, height, insideImageTolerance)) continue;
 
@@ -214,7 +212,6 @@ public class FormChecker {
      * @return ArrayList<ArrayList<Point>> all found octagons
      */
     private static ArrayList<ArrayList<Point>> detectOctagonForm(ArrayList<HoughLine> validOctagonLines, int width, int height) {
-        int diagonal = (int) Math.ceil(Math.sqrt(height * height + width * width));
         int minSideLength = 30;
         double sideRatioTolerance = 0.6;
         int edgeTolerance = 25;
@@ -239,7 +236,7 @@ public class FormChecker {
         if (g0.isEmpty() || g45.isEmpty() || g90.isEmpty() || g135.isEmpty()) return allFoundOctagons;
 
         // 2. sort angle-groups by position
-        FormCheckHelper.sortAngleGroupsByPosition(g0, g45, g90, g135, width, height, diagonal);
+        FormCheckHelper.sortAngleGroupsByPosition(g0, g45, g90, g135, width, height);
 
         // 3. check lines of groups for octagon geometry
         for (int i = 0; i < g0.size(); i++) {
@@ -274,28 +271,28 @@ public class FormChecker {
                                         if (signWidth <= 0) continue;
 
                                         // 5. calculate approx center
-                                        Point approxCenter = FormCheckHelper.calculateApproxCenter(A, B, C, D, diagonal);
+                                        Point approxCenter = FormCheckHelper.calculateApproxCenter(A, B, C, D);
                                         if (approxCenter == null) continue;
 
                                         // 6. clean groups of garbage lines
                                         if (widthResult.validGroup1() != 1 && widthResult.validGroup2() != 1) {
-                                            FormCheckHelper.cleanGarbageLines(A, approxCenter, signWidth, diagonal);
+                                            FormCheckHelper.cleanGarbageLines(A, approxCenter, signWidth);
                                         }
                                         if (widthResult.validGroup1() != 2 && widthResult.validGroup2() != 2) {
-                                            FormCheckHelper.cleanGarbageLines(B, approxCenter, signWidth, diagonal);
+                                            FormCheckHelper.cleanGarbageLines(B, approxCenter, signWidth);
                                         }
                                         if (widthResult.validGroup1() != 3 && widthResult.validGroup2() != 3) {
-                                            FormCheckHelper.cleanGarbageLines(C, approxCenter, signWidth, diagonal);
+                                            FormCheckHelper.cleanGarbageLines(C, approxCenter, signWidth);
                                         }
                                         if (widthResult.validGroup1() != 4 && widthResult.validGroup2() != 4) {
-                                            FormCheckHelper.cleanGarbageLines(D, approxCenter, signWidth, diagonal);
+                                            FormCheckHelper.cleanGarbageLines(D, approxCenter, signWidth);
                                         }
 
                                         // 7. add second lines to groups where missing
-                                        FormCheckHelper.addSecondLines(A, B, C, D, approxCenter, signWidth, diagonal);
+                                        FormCheckHelper.addSecondLines(A, B, C, D, approxCenter, signWidth);
 
                                         // 8. determine octagon
-                                        ArrayList<Point> vertices = FormCheckHelper.calculateOctagonPoints(A, B, C, D, diagonal);
+                                        ArrayList<Point> vertices = FormCheckHelper.calculateOctagonPoints(A, B, C, D);
                                         if (vertices == null) continue;
 
                                         // 9. sort vertices by polar angle

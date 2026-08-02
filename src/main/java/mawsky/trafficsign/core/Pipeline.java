@@ -152,17 +152,22 @@ public class Pipeline {
         // 2. accumulate lines
         ArrayList<HoughLine> lines = new ArrayList<>();
         int[][] accumulator = EdgeDetection.houghTransformation(preProcessedImage);
+        int diagonal = (int) Math.ceil(Math.sqrt((height * height) + (width * width)));
         int threshold = 30;
 
         for (int phi = 0; phi < accumulator.length; phi++){
-            for (int r = 0; r < accumulator[phi].length; r++){
-                int votes = accumulator[phi][r];
+            for (int rIndex = 0; rIndex < accumulator[phi].length; rIndex++){
+                int votes = accumulator[phi][rIndex];
                 if (votes > threshold){
                     int minLength = 20;
                     int maxAllowedGap = 5;
                     int sizeOfNeighbourhood = 3;
-                    if (PipelineHelper.isLocalMaximum(accumulator, phi, r, sizeOfNeighbourhood) && PipelineHelper.isLineSolid(preProcessedImage, new HoughLine(phi, r, votes), minLength, maxAllowedGap)){
-                        lines.add(new HoughLine(phi, r, votes));
+
+                    int realR = rIndex - diagonal;
+                    HoughLine line = new HoughLine(phi, realR, votes);
+
+                    if (PipelineHelper.isLocalMaximum(accumulator, phi, rIndex, sizeOfNeighbourhood) && PipelineHelper.isLineSolid(preProcessedImage, line, minLength, maxAllowedGap)){
+                        lines.add(line);
                     }
                 }
             }
@@ -175,7 +180,6 @@ public class Pipeline {
         ArrayList<HoughLine> noSimilarLines = new ArrayList<>();
         int angleTolerance = 5;
         int radiusTolerance = 10;
-        int diagonal = (int) Math.ceil(Math.sqrt((height * height) + (width * width)));
 
         for (HoughLine newLine : lines){
             boolean isSimilar = false;
@@ -184,8 +188,8 @@ public class Pipeline {
                 int dPhi = PipelineHelper.getAngleOfIntersection(newLine, acceptedLine);
 
                 if (dPhi <= angleTolerance){
-                    double posNew = newLine.r() - diagonal;
-                    double posAcc = acceptedLine.r() - diagonal;
+                    double posNew = newLine.r();
+                    double posAcc = acceptedLine.r();
 
                     if (Math.abs(posNew - posAcc) <= radiusTolerance){
                         isSimilar = true;

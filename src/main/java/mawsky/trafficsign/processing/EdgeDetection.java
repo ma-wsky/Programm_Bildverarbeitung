@@ -181,7 +181,6 @@ public class EdgeDetection {
             }
         }
         return accumulator;
-        // TODO: in richtiges r umrechnen beim erstellen von HoughLine Objekten, damit nicht überall diagonal abgezogen werden muss
     }
 
 }

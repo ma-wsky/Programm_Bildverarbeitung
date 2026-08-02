@@ -99,9 +99,8 @@ public class PipelineHelper {
     public static boolean isLineSolid(BufferedImage image, HoughLine line, int minLength, int maxAllowedGap) {
         int width = image.getWidth();
         int height = image.getHeight();
-        int diagonal = (int) Math.ceil(Math.sqrt(height*height + width*width));
 
-        int distance = line.r() - diagonal;
+        int distance = line.r();
         double radPhi = Math.toRadians(line.phi());
 
         int longestChain = 0;
