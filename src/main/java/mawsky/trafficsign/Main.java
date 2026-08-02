@@ -3,10 +3,10 @@ import main.java.mawsky.trafficsign.core.Pipeline;
 void main() {
 
     //samples
-    Pipeline.findSign("src/main/resources/sample/V.jpg");
-    Pipeline.findSign("src/main/resources/sample/A.jpg");
-    Pipeline.findSign("src/main/resources/sample/P.jpg");
-    Pipeline.findSign("src/main/resources/sample/S.jpg");
+//    Pipeline.findSign("src/main/resources/sample/V.jpg");
+//    Pipeline.findSign("src/main/resources/sample/A.jpg");
+//    Pipeline.findSign("src/main/resources/sample/P.jpg");
+//    Pipeline.findSign("src/main/resources/sample/S.jpg");
 
     // TODO: sort things out with (- diagonal) everywhere
     // TODO: tri color seems to be to lenient some times (detected while reworking octagon). stoppTest1 has false positive triangle
