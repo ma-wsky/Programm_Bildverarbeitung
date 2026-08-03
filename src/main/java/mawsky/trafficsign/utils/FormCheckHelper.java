@@ -94,7 +94,7 @@ public class FormCheckHelper {
      * @return boolean if p is inside the image
      */
     public static boolean isInsideImage(Point p, int width, int height, int t) {
-        return (p.x < (width+t) && p.x > (-t)) && (p.y < (height+t) && p.y > -t);
+        return (p.x < (width + t) && p.x > (-t)) && (p.y < (height + t) && p.y > -t);
     }
 
     /**
@@ -253,7 +253,7 @@ public class FormCheckHelper {
             return (line.r() - (height / 2.0) * Math.sin(rad)) / cos;
         }));
 
-        // sort by Achsenabschnitt
+        // sort by diagonal y = x
         g45.sort(Comparator.comparingDouble(line -> {
             double rad = Math.toRadians(line.phi());
             double denominator = Math.cos(rad) + Math.sin(rad);
@@ -269,7 +269,7 @@ public class FormCheckHelper {
             return (line.r() - (width / 2.0) * Math.cos(rad)) / sin;
         }));
 
-        // sort by Achsenabschnitt
+        // sort by anti-diagonal y = -x
         g135.sort(Comparator.comparingDouble(line -> {
             double rad = Math.toRadians(line.phi());
             double denominator = Math.cos(rad) - Math.sin(rad);

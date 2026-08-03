@@ -136,7 +136,7 @@ public class ColorCheckHelper {
      * @return Polygon
      */
     public static Polygon createScaledPolygon(ArrayList<Point> points, double scale){
-        // calculate top left
+        // calculate bounding box
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
         double sumX = 0;
@@ -193,7 +193,7 @@ public class ColorCheckHelper {
         double[] stepsToCenter = {0.10, 0.15, 0.20};
         int numPoints = triangle.size();
 
-        // calculate top left
+        // calculate bounding box
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
         for (Point p : triangle){

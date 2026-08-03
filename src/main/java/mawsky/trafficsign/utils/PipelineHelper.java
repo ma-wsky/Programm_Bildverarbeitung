@@ -198,23 +198,23 @@ public class PipelineHelper {
             for (int dR = -sizeOfWindow; dR <= sizeOfWindow; dR++){
                 if (dPhi == 0 && dR == 0) continue;
 
-                int targetPhi = phi + dPhi;
-                int targetR = r + dR;
+                int neighborPhiIndex = phi + dPhi;
+                int neighborRIndex = r + dR;
 
                 // closed loop for angles
-                if (targetPhi < 0){
-                    targetPhi = accumulator.length - 1;
-                } else if (targetPhi >= accumulator.length) {
-                    targetPhi = 0;
+                if (neighborPhiIndex < 0){
+                    neighborPhiIndex = accumulator.length - 1;
+                } else if (neighborPhiIndex >= accumulator.length) {
+                    neighborPhiIndex = 0;
                 }
 
                 // bounds for r
-                if (targetR < 0 || targetR >= accumulator[targetPhi].length){
+                if (neighborRIndex < 0 || neighborRIndex >= accumulator[neighborPhiIndex].length){
                     continue;
                 }
 
                 // neighbor is bigger
-                if (accumulator[targetPhi][targetR] > accumulator[phi][r]){
+                if (accumulator[neighborPhiIndex][neighborRIndex] > accumulator[phi][r]){
                     return false;
                 }
             }

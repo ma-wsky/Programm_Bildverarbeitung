@@ -43,10 +43,17 @@ public class MorphologicalOperations {
      */
     private static BufferedImage morph(BufferedImage image, boolean[][] mask, boolean dilationFlag){
 
-        // early exit
+        // early exits
         if(mask.length % 2 == 0){
             // matrix has no middle
             System.err.println("The mask must have uneven number of elements.");
+            return null;
+        }
+
+        int distance = mask.length / 2;
+
+        if (!mask[distance][distance]) {
+            System.err.println("The central element of the mask must be true.");
             return null;
         }
 
@@ -54,60 +61,30 @@ public class MorphologicalOperations {
         BufferedImage grayScaleImage = ColorManipulation.grayScale(image);
         BufferedImage newImage = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_BYTE_GRAY);
 
-        int distance = mask.length / 2;
 
-        // dilation
-        if (dilationFlag){
-            // edge case: cutting
-            for (int x = distance; x < image.getWidth()-distance; x++){
-                for (int y = distance; y < image.getHeight()-distance; y++){
+        // edge case: cutting
+        for (int x = distance; x < image.getWidth() - distance; x++) {
+            for (int y = distance; y < image.getHeight() - distance; y++) {
 
-                    double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
+                double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
 
-                    // iterate mask and determine value
-                    for (int c = -distance; c <= distance; c++){
-                        for (int r = -distance; r <= distance; r++){
-                            if (!mask[c+distance][r+distance]) continue;
+                // iterate mask and determine value
+                for (int c = -distance; c <= distance; c++) {
+                    for (int r = -distance; r <= distance; r++) {
+                        if (!mask[c + distance][r + distance]) continue;
 
-                            double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
+                        double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x + c, y + r));
 
-                            // dilation
-                            if (grayValue > value){
-                                value = grayValue;
-                            }
+                        // perform dilation or erosion based on flag
+                        if (dilationFlag ? (grayValue > value) : (grayValue < value)) {
+                            value = grayValue;
                         }
                     }
-
-                    int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
-                    int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
-                    newImage.setRGB(x, y, newRgb);
                 }
-            }
-        } else {
-            // erosion
-            for (int x = distance; x < image.getWidth()-distance; x++){
-                for (int y = distance; y < image.getHeight()-distance; y++){
 
-                    double value = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x, y));
-
-                    // iterate mask and determine value
-                    for (int c = -distance; c <= distance; c++){
-                        for (int r = -distance; r <= distance; r++){
-                            if (!mask[c+distance][r+distance]) continue;
-
-                            double grayValue = GlobalHelperFunctions.calculateGrayValueFromRGB(grayScaleImage.getRGB(x+c, y+r));
-
-                            // erosion
-                            if (grayValue < value){
-                                value = grayValue;
-                            }
-                        }
-                    }
-
-                    int a =  (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
-                    int newRgb = (a << 24) | ((int)value << 16) | ((int)value << 8) | (int)value;
-                    newImage.setRGB(x, y, newRgb);
-                }
+                int a = (grayScaleImage.getRGB(x, y) >> 24) & 0xff;
+                int newRgb = (a << 24) | ((int) value << 16) | ((int) value << 8) | (int) value;
+                newImage.setRGB(x, y, newRgb);
             }
         }
 
