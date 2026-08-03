@@ -44,7 +44,9 @@ public class ColorChecker {
         if (!centersMatch) return false;
 
         // 6. check center is yellow
-        return stats.totalCenterPixels > 0 && ((double) stats.whitePixelsInCenter / stats.totalCenterPixels < 0.50);
+        boolean isCenterYellow = stats.totalCenterPixels > 0 && ((double) stats.whitePixelsInCenter / stats.totalCenterPixels < 0.50);
+        if (isCenterYellow) System.out.println(">>>>> valid Vorfahrtsstraßenschild found! <<<<<");
+        return isCenterYellow;
     }
 
 
@@ -82,6 +84,19 @@ public class ColorChecker {
         }
 
         // 5. check base criteria
+        // debug
+        BufferedImage debugImg = new BufferedImage(
+                maskedSign.getWidth(),
+                maskedSign.getHeight(),
+                BufferedImage.TYPE_INT_ARGB
+        );
+        Graphics2D gD = debugImg.createGraphics();
+        gD.drawImage(maskedSign, 0, 0, null);
+        gD.setStroke(new BasicStroke(2));
+        gD.setColor(Color.BLUE);
+        gD.drawPolygon(outerTriangle);
+        gD.setColor(Color.CYAN);
+        gD.drawPolygon(innerTriangle);
 
         // check sign coverage
         double signCoverage = (double) (stats.countRed + stats.countWhite + stats.blackPixelsInCenter) / stats.totalPixels;
@@ -105,14 +120,17 @@ public class ColorChecker {
 
         // pure white center, correct redWhiteRatio
         boolean isVorfahrtAchten = (ratioRedWhite >= 0.75 && ratioRedWhite <= 1.5) &&
-                (centerWhiteRatio > 0.50);
+                (centerWhiteRatio > 0.50) &&
+                (stats.blackPixelsInCenter < (stats.totalCenterPixels / 20));
 
         // black in center, correct redWhiteRatio, correct blackWhiteRatio, correct centerWhiteRatio
         boolean isVorfahrt = (ratioRedWhite >= 0.8 && ratioRedWhite <= 1.5) &&
-                (blackWhiteRatio >= 0.2 && blackWhiteRatio <= 0.6) &&
+                (blackWhiteRatio >= 0.2 && blackWhiteRatio <= 1.0) &&
                 (centerWhiteRatio > 0.30) &&
                 ((double) stats.blackPixelsInCenter / stats.totalCenterPixels > 0.1);
 
+        if (isVorfahrt) System.out.println(">>>>> valid Vorfahrtschild found! <<<<<");
+        if (isVorfahrtAchten) System.out.println(">>>>> valid Vorfahrt-Achten Schild found! <<<<<");
         return isVorfahrtAchten || isVorfahrt;
     }
 
@@ -151,7 +169,9 @@ public class ColorChecker {
 
         double tolerance = Math.max(width, height) * 0.07;
         double distanceSquared = distanceX * distanceX + distanceY * distanceY;
-        return (distanceSquared <= (tolerance * tolerance));
+        boolean isCenterRed = distanceSquared <= (tolerance * tolerance);
+        if (isCenterRed) System.out.println(">>>>> valid Stopp Schild found! <<<<<");
+        return isCenterRed;
     }
 
 }

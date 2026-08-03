@@ -24,7 +24,6 @@ public class ImageIO {
         BufferedImage readImage;
         try {
             readImage = javax.imageio.ImageIO.read(file);
-            System.out.println("Image " + filename + " loaded successfully!");
             return readImage;
 
         } catch (IOException e) {

@@ -15,19 +15,19 @@ public class FormChecker {
      * Uses formFlag to differentiate between rectangle (0), triangle (1), and octagon (2).
      * Validates geometry of selected shape by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)},
      * {@link FormChecker#detectTriangleForm(ArrayList, int, int)} or {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from originalImage, calls {@link ColorChecker#isVorfahrtsstrasseColors(BufferedImage, ArrayList)},
+     * For each found geometry: cuts a mask of the sign from pyramidImage, calls {@link ColorChecker#isVorfahrtsstrasseColors(BufferedImage, ArrayList)},
      * {@link ColorChecker#isTriangleSignColors(BufferedImage, ArrayList)},
      * or {@link ColorChecker#isStoppColors(BufferedImage)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage window
      * @param validLines ArrayList<HoughLine>
-     * @param originalImage BufferedImage original
+     * @param pyramidImage BufferedImage original
      * @param windowX int
      * @param windowY int
      * @param formFlag flag 0 -> rectangle, 1 -> triangle, 2-> octagon
      * @return boolean if sign is found
      */
-    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage originalImage, int windowX, int windowY, int formFlag){
+    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage pyramidImage, int windowX, int windowY, int formFlag){
 
         // 1. detect geometry in validLines
         ArrayList<ArrayList<Point>> allFoundShapes = switch (formFlag) {
@@ -71,8 +71,8 @@ public class FormChecker {
             };
             if (!colorMatch) continue;
 
-            // draw outline of found sign on original image
-            Graphics2D gOriginal = originalImage.createGraphics();
+            // draw outline of found sign on pyramid image
+            Graphics2D gOriginal = pyramidImage.createGraphics();
             gOriginal.setColor(Color.GREEN);
             gOriginal.setStroke(new BasicStroke(4));
 

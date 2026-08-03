@@ -36,6 +36,7 @@ public class Pipeline {
      * @param filename name of file
      */
     public static void findSign(String filename) {
+        long start_time = System.nanoTime();
 
         // 1. read image
         BufferedImage originalImage = ImageIO.readImage(filename);
@@ -43,6 +44,8 @@ public class Pipeline {
             System.err.println("Error reading image " + filename);
             return;
         }
+
+        System.out.println("\n> Image " + filename + " read successfully!");
 
         // 2. construct pyramid
         BufferedImage level2 = PipelineHelper.scaleColorImageBoxDownsampling(originalImage, 0.5);
@@ -58,34 +61,39 @@ public class Pipeline {
         pyramid.add(level2);
         pyramid.add(originalImage);
 
+        System.out.println("> Pyramid constructed successfully!");
+
         int maxDimensionForProcessing = 650;
-        int windowSize = 200;
         int stepSize = 25;
 
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
-            BufferedImage image = pyramid.get(i);
-            int width = image.getWidth();
-            int height = image.getHeight();
+            BufferedImage pyramidImage = pyramid.get(i);
+            int width = pyramidImage.getWidth();
+            int height = pyramidImage.getHeight();
 
             // early exit
             if (width > maxDimensionForProcessing || height > maxDimensionForProcessing) {
-                System.err.println("no sign found!");
+                ImageIO.displayImage(pyramidImage);
+                System.out.println(">>>>> no sign found! <<<<<");
                 break;
             }
 
             // early continue
-            if (image.getHeight() < windowSize || image.getWidth() < windowSize) continue;
+            int windowSize = Math.min(200, Math.min(width, height));
+            if (windowSize < 100) continue;
 
-            BufferedImage copy = ImageIO.copyBufferedImage(image);
+            BufferedImage copy = ImageIO.copyBufferedImage(pyramidImage);
 
-            // 4. check image as a whole
-            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(image);
+            System.out.println("> Starting search on level " + (i + 1));
+
+            // 4. check pyramidImage as a whole
+            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(pyramidImage);
             if (preProcessedImage == null) continue;
-            boolean signFound = Pipeline.checkForSign(preProcessedImage, image, copy, 0, 0);
+            boolean signFound = Pipeline.checkForSign(preProcessedImage, pyramidImage, copy, 0, 0);
 
             if (signFound) {
-                ImageIO.displayImage(copy);
+                ImageIO.displayImage(pyramidImage, copy);
                 break;
             }
 
@@ -123,11 +131,11 @@ public class Pipeline {
                     windowPoints.add(new Point(x, y +windowSize));
                     PipelineHelper.drawEdgesAndFill(g, windowPoints);
 
-                    // crop and mask sign from original image
-                    BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(image, windowMask);
+                    // crop and mask sign from original pyramidImage
+                    BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(pyramidImage, windowMask);
                     if (maskedWindow == null) continue;
 
-                    // preprocess image
+                    // preprocess pyramidImage
                     preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
                     if (preProcessedImage == null) continue;
 
@@ -140,16 +148,19 @@ public class Pipeline {
             }
 
             if (signFound) {
-                ImageIO.displayImage(copy);
+                ImageIO.displayImage(pyramidImage, copy);
                 break;
             }
 
-            // 6. upscale image
+            // 6. upscale pyramidImage
             if (i == 5){
                 BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
                 pyramid.add(level0);
             }
         }
+
+        long end_time = System.nanoTime();
+        System.out.println("Image processed in " + (end_time - start_time) / 1000000 + " ms.");
     }
 
     /**
@@ -162,7 +173,7 @@ public class Pipeline {
      * @param maskedWindow BufferedImage original input
      * @return boolean if sign found
      */
-    private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage originalImage, int windowX, int windowY){
+    private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage pyramidImage, int windowX, int windowY){
 
         // 1. make edge black
         int width = preProcessedImage.getWidth();
@@ -245,13 +256,13 @@ public class Pipeline {
         // 6. threads for parallel form checks
 
         //rectangle
-        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 0), THREAD_POOL);
+        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 0), THREAD_POOL);
 
         // triangle
-        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 1), THREAD_POOL);
+        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 1), THREAD_POOL);
 
         //octagon
-        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, originalImage, windowX, windowY, 2), THREAD_POOL);
+        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 2), THREAD_POOL);
 
         CompletableFuture.allOf(triangleThread, rectangleThread, octagonThread).join();
 
@@ -259,10 +270,7 @@ public class Pipeline {
         boolean rectangleFound = rectangleThread.join();
         boolean octagonFound = octagonThread.join();
 
-        boolean signFound = triangleFound || rectangleFound || octagonFound;
-        if (signFound) System.out.println(">>>>>>>>>>>>>>>>>>>>> valid sign found!");
-
-        return signFound;
+        return triangleFound || rectangleFound || octagonFound;
     }
 
     /**

@@ -94,14 +94,14 @@ public class ColorCheckHelper {
                     stats.countRed++;
                     stats.sumXRed += x;
                     stats.sumYRed += y;
-                    if (innerShape != null && !isCenterPixel) stats.redPixelsAtEdge++;
+                    if (!isCenterPixel) stats.redPixelsAtEdge++;
                 }
 
                 if (isWhite) {
                     stats.countWhite++;
                     stats.sumXWhite += x;
                     stats.sumYWhite += y;
-                    if (innerShape != null && isCenterPixel) stats.whitePixelsInCenter++;
+                    if (isCenterPixel) stats.whitePixelsInCenter++;
                 }
 
                 if (isBlack && isCenterPixel) {
@@ -126,7 +126,7 @@ public class ColorCheckHelper {
     }
 
     public static boolean isBlack(double s, double v) {
-        return (s < 0.25) && (v < 0.20);
+        return (v < 0.25);
     }
 
     /**
