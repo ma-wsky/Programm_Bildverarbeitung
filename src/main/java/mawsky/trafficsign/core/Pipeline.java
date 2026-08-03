@@ -65,7 +65,7 @@ public class Pipeline {
 
         int maxDimensionForProcessing = 650;
         int stepSize = 25;
-        boolean signFound = false;
+        boolean signFound;
 
         // 3. traverse pyramid
         for (int i = 0; i < pyramid.size(); i++) {
@@ -158,11 +158,12 @@ public class Pipeline {
                 BufferedImage level0 = PipelineHelper.upscaleColorImageNearestNeighbour(originalImage, 2);
                 pyramid.add(level0);
             }
-        }
 
-        if (!signFound){
-            ImageIO.displayImage(originalImage);
-            System.out.println(">>>>> no sign found! <<<<<");
+            if (i == 6){
+                ImageIO.displayImage(pyramidImage);
+                System.out.println(">>>>> no sign found! <<<<<");
+                break;
+            }
         }
 
         long end_time = System.nanoTime();
