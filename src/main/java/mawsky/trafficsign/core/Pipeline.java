@@ -80,7 +80,7 @@ public class Pipeline {
             }
 
             // early continue
-            int windowSize = Math.min(200, Math.min(width, height));
+            int windowSize = Math.min(200, Math.min(originalImage.getWidth(), originalImage.getHeight()));
             if (windowSize < 100) continue;
 
             BufferedImage copy = ImageIO.copyBufferedImage(pyramidImage);
