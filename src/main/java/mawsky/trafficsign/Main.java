@@ -21,7 +21,7 @@ void main() {
     // achten
 //    Pipeline.findSign("src/main/resources/achten/achtenTest1.jpg"); // success
 //    Pipeline.findSign("src/main/resources/achten/achtenTest2.jpg"); // success
-//    Pipeline.findSign("src/main/resources/achten/achtenTest3.jpg"); // no success, too distorted
+//    Pipeline.findSign("src/main/resources/achten/achtenTest3.jpg"); // success
 //    Pipeline.findSign("src/main/resources/achten/achtenTest4.jpg"); // success
 //    Pipeline.findSign("src/main/resources/achten/achtenTest5.jpg"); // success
 //    Pipeline.findSign("src/main/resources/achten/achtenTest6.jpg"); // success

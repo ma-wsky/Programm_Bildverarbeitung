@@ -77,7 +77,7 @@ public class ColorCheckHelper {
                 boolean isRed = ColorCheckHelper.isRed(h, s, v);
                 boolean isYellow = ColorCheckHelper.isYellow(h, s, v);
                 boolean isWhite = ColorCheckHelper.isWhite(s, v);
-                boolean isBlack = ColorCheckHelper.isBlack(s, v);
+                boolean isBlack = ColorCheckHelper.isBlack(v);
 
                 boolean isCenterPixel = (innerShape != null) && innerShape.contains(x, y);
 
@@ -125,7 +125,7 @@ public class ColorCheckHelper {
         return (s <= 0.30) && (v >= 0.30);
     }
 
-    public static boolean isBlack(double s, double v) {
+    public static boolean isBlack(double v) {
         return (v < 0.25);
     }
 
