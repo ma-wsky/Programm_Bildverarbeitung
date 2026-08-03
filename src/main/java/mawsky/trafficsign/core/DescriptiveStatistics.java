@@ -1,4 +1,4 @@
-package classes;
+package main.java.mawsky.trafficsign.core;
 
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
@@ -70,7 +70,7 @@ public class DescriptiveStatistics {
      * {@code @Link} #timestep(String, Runnable)
      */
     void timeCalculationOfAllStatistics() {
-        System.out.println("\n--- Starting Statistics classes.Pipeline ---\n");
+        System.out.println("\n--- Starting Statistics main.java.mawsky.trafficsign.Pipeline ---\n");
 
         timeStep("Gray Value Matrix",     this::calculateGrayValueMatrix);
         timeStep("Co-occurrence Matrix",  this::calculateCoOccurrenceMatrix);
@@ -100,7 +100,7 @@ public class DescriptiveStatistics {
      * Calculates the gray-value-matrix from a BufferedImage.
      * Extracts rgb-values and calculates gray-value for each pixel.
      */
-    void calculateGrayValueMatrix() {
+    public void calculateGrayValueMatrix() {
 
         for (int y = 0; y < this.height; y++) {
             for (int x = 0; x < this.width; x++) {
@@ -134,7 +134,7 @@ public class DescriptiveStatistics {
 
     /**
      * Calculates the co-occurrence-matrix from a given gray-value-matrix.
-     * Traverses gray-value-matrix and increments corresponding co-occurrence (right neighbour).
+     * Traverses gray-value-matrix and increments corresponding co-occurrence (right neighbor).
      * @param numGrays number of different gray values
      */
     void calcCoOcMat(int numGrays){
@@ -184,7 +184,7 @@ public class DescriptiveStatistics {
         }
     }
 
-    void calculateMean() {
+    public void calculateMean() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
@@ -202,7 +202,7 @@ public class DescriptiveStatistics {
      * Calculates the variance of an array.
      * Uses {@link #calculateMean()} for mean^2
      */
-    void calculateVariance() {
+    public void calculateVariance() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
@@ -274,7 +274,7 @@ public class DescriptiveStatistics {
         this.relativeFrequency = amountsD;
     }
 
-    void calculateRelativeCumulativeFrequencyArray() {
+    public void calculateRelativeCumulativeFrequencyArray() {
         if (this.grayValueMatrix[0][0] == -1){
             this.calculateGrayValueMatrix();
         }
