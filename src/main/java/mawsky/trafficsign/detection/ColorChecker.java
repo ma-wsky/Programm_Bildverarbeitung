@@ -154,7 +154,7 @@ public class ColorChecker {
 
         // 2. check ratio red white
         double ratioRedWhite = (double) stats.countRed / stats.countWhite;
-        if (ratioRedWhite < 1.8 || ratioRedWhite > 6.0) return false;
+        if (ratioRedWhite < 1.8 || ratioRedWhite > 5.0) return false;
 
         // 3. check sign coverage
         double signCoverage = (double) (stats.countRed + stats.countWhite) / stats.totalPixels;

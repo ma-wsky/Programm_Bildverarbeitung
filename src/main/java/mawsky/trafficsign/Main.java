@@ -40,7 +40,7 @@ void main() {
 
 
     // stopp
-//    Pipeline.findSign("src/main/resources/stopp/stoppTest1.jpg"); // false positive
+//    Pipeline.findSign("src/main/resources/stopp/stoppTest1.jpg"); // false positive triangle
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest2.jpg"); // success
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest3.jpg"); // success
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest4.jpg"); // success
