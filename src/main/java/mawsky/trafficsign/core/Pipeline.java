@@ -1,5 +1,8 @@
 package main.java.mawsky.trafficsign.core;
 
+import main.java.mawsky.trafficsign.ui.ImageCollection;
+import main.java.mawsky.trafficsign.ui.preProcessedImageCollection;
+import main.java.mawsky.trafficsign.utils.DebuggingLinesAndWindowHelper;
 import main.java.mawsky.trafficsign.utils.PipelineHelper;
 import main.java.mawsky.trafficsign.io.ImageIO;
 import main.java.mawsky.trafficsign.detection.FormChecker;
@@ -7,9 +10,11 @@ import main.java.mawsky.trafficsign.processing.ColorManipulation;
 import main.java.mawsky.trafficsign.processing.MorphologicalOperations;
 import main.java.mawsky.trafficsign.processing.EdgeDetection;
 import main.java.mawsky.trafficsign.processing.ImageManipulation;
+import main.java.mawsky.trafficsign.utils.UIHelper;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.lang.classfile.attribute.ModuleRequireInfo;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -31,18 +36,21 @@ public class Pipeline {
      * Checks the whole level for a sign.
      * Traverses the image with a moving window and checks for a sign.
      * Constructs a mask and cuts the image to the window. {@link PipelineHelper#cropAndMaskSign(BufferedImage, BufferedImage)}
-     * Uses  {@link Pipeline#imagePreprocessing(BufferedImage)} and {@link Pipeline#checkForSign(BufferedImage, BufferedImage, BufferedImage, int, int)}
+     * Uses  {@link Pipeline#imagePreprocessing(BufferedImage, preProcessedImageCollection)} and {@link Pipeline#checkForSign(BufferedImage, BufferedImage, BufferedImage, ImageCollection, int, int)}
      * to check for signs
      * @param filename name of file
      */
-    public static void findSign(String filename) {
+    public static ImageCollection findSign(String filename) {
         long start_time = System.nanoTime();
+
+        // ImageCollections
+        ImageCollection imageCollection = new ImageCollection();
 
         // 1. read image
         BufferedImage originalImage = ImageIO.readImage(filename);
         if (originalImage == null) {
             System.err.println("Error reading image " + filename);
-            return;
+            return imageCollection;
         }
 
         System.out.println("\n> Image " + filename + " read successfully!");
@@ -89,12 +97,16 @@ public class Pipeline {
             System.out.println("> Starting search on level " + (i + 1));
 
             // 4. check pyramidImage as a whole
-            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(pyramidImage);
+            BufferedImage preProcessedImage = Pipeline.imagePreprocessing(pyramidImage, imageCollection.getWholeImageCollection());
             if (preProcessedImage == null) continue;
-            signFound = Pipeline.checkForSign(preProcessedImage, pyramidImage, copy, 0, 0);
+            signFound = Pipeline.checkForSign(preProcessedImage, pyramidImage, copy, imageCollection, 0, 0);
 
             if (signFound) {
-                ImageIO.displayImage(pyramidImage, copy);
+
+                // fill image collection
+                imageCollection.setOriginalImage(originalImage);
+                imageCollection.setPyramidLevelFound(pyramidImage);
+                imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
                 break;
             }
 
@@ -136,12 +148,15 @@ public class Pipeline {
                     BufferedImage maskedWindow = PipelineHelper.cropAndMaskSign(pyramidImage, windowMask);
                     if (maskedWindow == null) continue;
 
+                    // set windowImage of imageCollection
+                    imageCollection.setWindowImage(DebuggingLinesAndWindowHelper.drawWindow(pyramidImage, x, y, windowSize));
+
                     // preprocess pyramidImage
-                    preProcessedImage = Pipeline.imagePreprocessing(maskedWindow);
+                    preProcessedImage = Pipeline.imagePreprocessing(maskedWindow, imageCollection.getWindowImageCollection());
                     if (preProcessedImage == null) continue;
 
                     // perform checks
-                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, x, y);
+                    signFound = Pipeline.checkForSign(preProcessedImage, maskedWindow, copy, imageCollection, x, y);
 
                     if (signFound) break;
                 }
@@ -149,7 +164,11 @@ public class Pipeline {
             }
 
             if (signFound) {
-                ImageIO.displayImage(pyramidImage, copy);
+
+                // fill image collection
+                imageCollection.setOriginalImage(originalImage);
+                imageCollection.setPyramidLevelFound(pyramidImage);
+                imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
                 break;
             }
 
@@ -168,6 +187,7 @@ public class Pipeline {
 
         long end_time = System.nanoTime();
         System.out.println("Image processed in " + (end_time - start_time) / 1000000 + " ms.");
+        return imageCollection;
     }
 
     /**
@@ -175,12 +195,12 @@ public class Pipeline {
      * Accumulates lines, uses {@link PipelineHelper#isLocalMaximum(int[][], int, int, int)} to determine local maximum of possible line,
      * {@link PipelineHelper#isLineSolid(BufferedImage, HoughLine, int, int)} to determine solidness of possible line.
      * Sorts found lines, merges similar lines and cuts the Array to the top 25 lines by votes.
-     * Calls {@link FormChecker#checkForm(BufferedImage, ArrayList, BufferedImage, int, int, int)} as threads for parallel form checks of rectangle, triangle and octagon.
+     * Calls {@link FormChecker#checkForm(BufferedImage, ArrayList, BufferedImage, ImageCollection, int, int, int)} as threads for parallel form checks of rectangle, triangle and octagon.
      * @param preProcessedImage BufferedImage preprocessed
      * @param maskedWindow BufferedImage original input
      * @return boolean if sign found
      */
-    private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage pyramidImage, int windowX, int windowY){
+    private static boolean checkForSign(BufferedImage preProcessedImage, BufferedImage maskedWindow, BufferedImage pyramidImage, ImageCollection imageCollection, int windowX, int windowY){
 
         // 1. make edge black
         int width = preProcessedImage.getWidth();
@@ -218,6 +238,9 @@ public class Pipeline {
                 }
             }
         }
+
+        // produce houghImage and save in ImageCollection
+        imageCollection.setHoughSpaceImage(UIHelper.createHoughSpaceImage(accumulator));
 
         // 3. sort accumulated lines
         lines.sort((line1, line2) -> Integer.compare(line2.votes(), line1.votes()));
@@ -260,16 +283,25 @@ public class Pipeline {
             bestLines.add(noSimilarLines.get(i));
         }
 
+        // bestLinesImage for ImageCollection
+        BufferedImage bestLinesImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = bestLinesImage.createGraphics();
+        g.drawImage(preProcessedImage, 0, 0, null);
+        g.setColor(Color.RED);
+        DebuggingLinesAndWindowHelper.drawLines(g, bestLines, width, height);
+        imageCollection.setBestLinesImage(bestLinesImage);
+
+
         // 6. threads for parallel form checks
 
         //rectangle
-        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 0), THREAD_POOL);
+        CompletableFuture<Boolean> rectangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, imageCollection, windowX, windowY, 0), THREAD_POOL);
 
         // triangle
-        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 1), THREAD_POOL);
+        CompletableFuture<Boolean> triangleThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, imageCollection, windowX, windowY, 1), THREAD_POOL);
 
         //octagon
-        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage, windowX, windowY, 2), THREAD_POOL);
+        CompletableFuture<Boolean> octagonThread = CompletableFuture.supplyAsync(() -> FormChecker.checkForm(maskedWindow, bestLines, pyramidImage,imageCollection, windowX, windowY, 2), THREAD_POOL);
 
         CompletableFuture.allOf(triangleThread, rectangleThread, octagonThread).join();
 
@@ -290,9 +322,10 @@ public class Pipeline {
      * Calls {@link MorphologicalOperations#dilation(BufferedImage, boolean[][], int)}
      * Calls {@link ColorManipulation#negative(BufferedImage)}
      * @param image BufferedImage to preprocess
+     * @param imageCollection collection class for ImageCollection
      * @return preprocessed BufferedImage
      */
-    private static BufferedImage imagePreprocessing(BufferedImage image){
+    private static BufferedImage imagePreprocessing(BufferedImage image, preProcessedImageCollection imageCollection){
 
         // 1. lowpass
         BufferedImage lowpass = EdgeDetection.gaussianLowPassSeparated(image, 5);
@@ -302,7 +335,9 @@ public class Pipeline {
         BufferedImage histOrNot = lowpass;
         DescriptiveStatistics stats = new DescriptiveStatistics(lowpass);
         stats.calculateEntropy();
-        if (stats.getEntropy() > 5.5) {
+        double entropy = stats.getEntropy();
+        double entropyForHistEqual = 5.5;
+        if (entropy > entropyForHistEqual) {
             histOrNot = ImageManipulation.histogramEqualization(lowpass);
         }
 
@@ -310,16 +345,25 @@ public class Pipeline {
         BufferedImage sobel = EdgeDetection.sobelFilter(histOrNot, 3);
 
         // 3. equidensity
-        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 255, 0, 0);
+        BufferedImage equidensity = ImageManipulation.equidensityFirstOrderGrayImageCustomBounds(sobel, 50, 200, 0, 255, 255);
 
         // 4. closing with dilation and erosion
         boolean[][] mask = {{false, true, false}, {true, true, true}, {false, true, false}};
-        BufferedImage erosion = MorphologicalOperations.erosion(equidensity, mask, 1);
 
-        BufferedImage dilation = MorphologicalOperations.dilation(erosion, mask, 1);
+        BufferedImage dilation = MorphologicalOperations.dilation(equidensity, mask, 1);
 
-        // 5. negative
-        return ColorManipulation.negative(dilation);
+        BufferedImage erosion = MorphologicalOperations.erosion(dilation, mask, 1);
+
+        // set imageCollection
+        imageCollection.setGauss_lowpass(lowpass);
+        if (entropy > entropyForHistEqual) imageCollection.setHistogram_equalization(histOrNot);
+        imageCollection.setSobel_filter(sobel);
+        imageCollection.setEquidensity(equidensity);
+        imageCollection.setErosion(erosion);
+        imageCollection.setDilation(dilation);
+        imageCollection.setPreProcessed(erosion);
+
+        return erosion;
     }
 
 }

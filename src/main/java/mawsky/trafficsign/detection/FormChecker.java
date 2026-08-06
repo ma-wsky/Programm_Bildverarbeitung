@@ -1,5 +1,7 @@
 package main.java.mawsky.trafficsign.detection;
 
+import main.java.mawsky.trafficsign.ui.ImageCollection;
+import main.java.mawsky.trafficsign.utils.ColorCheckHelper;
 import main.java.mawsky.trafficsign.utils.FormCheckHelper;
 import main.java.mawsky.trafficsign.utils.PipelineHelper;
 import main.java.mawsky.trafficsign.core.HoughLine;
@@ -27,7 +29,7 @@ public class FormChecker {
      * @param formFlag flag 0 -> rectangle, 1 -> triangle, 2-> octagon
      * @return boolean if sign is found
      */
-    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage pyramidImage, int windowX, int windowY, int formFlag){
+    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage pyramidImage, ImageCollection imageCollection, int windowX, int windowY, int formFlag){
 
         // 1. detect geometry in validLines
         ArrayList<ArrayList<Point>> allFoundShapes = switch (formFlag) {
@@ -83,6 +85,29 @@ public class FormChecker {
                 gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
             }
             gOriginal.dispose();
+
+            // create geometry image
+            Graphics2D gf = maskedWindow.createGraphics();
+            gf.setColor(Color.GREEN);
+            gf.setStroke(new BasicStroke(3));
+            for (int j = 0; j < numPoints; j++) {
+                Point pStart = currentShape.get(j);
+                Point pEnd = currentShape.get((j + 1) % numPoints);
+                gf.drawLine(pStart.x , pStart.y , pEnd.x , pEnd.y );
+            }
+            imageCollection.setFoundGeometryImage(maskedWindow);
+
+            // create color image
+            if (formFlag == 2) imageCollection.setFoundColorImage(maskedSign);
+
+            Graphics2D gc = maskedSign.createGraphics();
+            gc.setColor(Color.CYAN);
+            gc.setStroke(new BasicStroke(2));
+            Polygon innerShape = ColorCheckHelper.createScaledPolygon(currentShape, 0.50);
+            Polygon outerShape = ColorCheckHelper.createScaledPolygon(currentShape, 1.0);
+            gc.drawPolygon(innerShape);
+            gc.drawPolygon(outerShape);
+            imageCollection.setFoundColorImage(maskedSign);
 
             return true;
         }

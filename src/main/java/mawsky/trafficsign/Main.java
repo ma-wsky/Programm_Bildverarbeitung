@@ -1,19 +1,23 @@
 import main.java.mawsky.trafficsign.core.Pipeline;
+import main.java.mawsky.trafficsign.ui.ImageCollection;
+import main.java.mawsky.trafficsign.ui.PipelineViewer;
+
+import javax.swing.*;
 
 void main() {
 
     // samples
-    Pipeline.findSign("src/main/resources/sample/V.jpg");
-    Pipeline.findSign("src/main/resources/sample/A.jpg");
-    Pipeline.findSign("src/main/resources/sample/P.jpg");
-    Pipeline.findSign("src/main/resources/sample/S.jpg");
+//    Pipeline.findSign("src/main/resources/sample/V.jpg");
+//    Pipeline.findSign("src/main/resources/sample/A.jpg");
+//    Pipeline.findSign("src/main/resources/sample/P.jpg");
+//    Pipeline.findSign("src/main/resources/sample/S.jpg");
 
 
     // Vorfahrtsstraße
-//    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest1.jpg"); // success
+//    ImageCollection collection = Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest1.jpg"); // success
 //    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest2.jpg"); // success
 //    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest3.jpg"); // success
-//    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest4.jpg"); // success
+    ImageCollection collection = Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest4.jpg"); // success
 //    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest5.jpg"); // success
 //    Pipeline.findSign("src/main/resources/vorfahrtsstraße/vorfahrtTest6.jpg"); // success
 
@@ -48,4 +52,9 @@ void main() {
 //    Pipeline.findSign("src/main/resources/stopp/stoppTest6.jpg"); // success
 
     Pipeline.shutdown();
+
+    SwingUtilities.invokeLater(() -> {
+        PipelineViewer viewer = new PipelineViewer(collection);
+        viewer.setVisible(true);
+    });
 }
