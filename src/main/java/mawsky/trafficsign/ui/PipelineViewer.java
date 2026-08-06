@@ -1,5 +1,7 @@
 package main.java.mawsky.trafficsign.ui;
 
+import main.java.mawsky.trafficsign.MainLauncher;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -9,66 +11,132 @@ public class PipelineViewer extends JFrame {
     public PipelineViewer(ImageCollection data) {
         setTitle("Traffic Sign Detection Pipeline Visualizer");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1200, 800);
-        setLocationRelativeTo(null);
+
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
+        setMinimumSize(new Dimension(1200, 800));
+
+        JPanel mainContainer = new JPanel(new BorderLayout());
+
+        // Header
+        JPanel headerPanel = createHeaderPanel(data);
+        mainContainer.add(headerPanel, BorderLayout.NORTH);
 
         JTabbedPane mainTabs = new JTabbedPane();
+        mainTabs.setFont(new Font("SansSerif", Font.BOLD, 18)); // Tabs-Schrift auf 18pt erhöht
 
-        // 1. Tab: Original & Preprocessing (Ganzes Bild)
-        mainTabs.addTab("Vorverarbeitung (ganzes Bild)", createPipelineTab(buildFullImageSteps(data)));
+        // 1. Tab: preprocessing whole image
+        mainTabs.addTab("  Vorverarbeitung (ganzes Bild)  ", createPipelineTab(buildFullImageSteps(data)));
 
-        // 2. Tab: Preprocessing (Moving Window / ROI)
+        // 2. Tab: preprocessing window
         if (data.getWindowImageCollection() != null) {
-            mainTabs.addTab("Vorverarbeitung (Suchfenster)", createPipelineTab(buildWindowSteps(data)));
+            mainTabs.addTab("  Vorverarbeitung (Suchfenster)  ", createPipelineTab(buildWindowSteps(data)));
         }
 
-        // 3. Tab: Hough, Geometrie & Farbe
-        mainTabs.addTab("Analyse & Detektion", createPipelineTab(buildAnalysisSteps(data)));
+        // 3. Tab: geometry and color
+        mainTabs.addTab("  Analyse & Detektion  ", createPipelineTab(buildAnalysisSteps(data)));
 
-        add(mainTabs);
+        mainContainer.add(mainTabs, BorderLayout.CENTER);
+        add(mainContainer);
     }
 
-    // --- Tab-Layout (Links Liste, Rechts Bild + Text) ---
+    private JPanel createHeaderPanel(ImageCollection data) {
+        JPanel panel = new JPanel(new BorderLayout(20, 0));
+        panel.setBackground(new Color(240, 242, 245));
+        panel.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, Color.LIGHT_GRAY),
+                new EmptyBorder(18, 25, 18, 25)
+        ));
+
+        JPanel infoPanel = getInfoPanel(data);
+
+        panel.add(infoPanel, BorderLayout.WEST);
+
+        // button
+        JButton newImageButton = new JButton("📁 Neues Bild wählen");
+        newImageButton.setFont(new Font("SansSerif", Font.BOLD, 16));
+        newImageButton.setPreferredSize(new Dimension(230, 52));
+        newImageButton.setFocusable(false);
+        newImageButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        newImageButton.addActionListener(_ -> {
+            this.dispose();
+            SwingUtilities.invokeLater(() -> new MainLauncher().setVisible(true));
+        });
+
+        panel.add(newImageButton, BorderLayout.EAST);
+
+        return panel;
+    }
+
+    private static JPanel getInfoPanel(ImageCollection data) {
+        String signInfo = data.getDetectedSignName() != null ? data.getDetectedSignName() : "Kein Schild erkannt";
+        long timeMs = data.getRuntimeMS();
+        double timeSec = timeMs / 1000.0;
+
+        JPanel infoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+        infoPanel.setOpaque(false);
+
+        // detected sign
+        JLabel signLabel = new JLabel("Erkanntes Schild: " + signInfo);
+        signLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        signLabel.setForeground(new Color(0, 122, 204));
+
+        // separator
+        JLabel sepLabel = new JLabel("|");
+        sepLabel.setFont(new Font("SansSerif", Font.PLAIN, 22));
+        sepLabel.setForeground(Color.GRAY);
+
+        // runtime
+        JLabel timeLabel = new JLabel(String.format("Verarbeitungszeit: %d ms (%.2f s)", timeMs, timeSec));
+        timeLabel.setFont(new Font("SansSerif", Font.BOLD, 22));
+        timeLabel.setForeground(Color.DARK_GRAY);
+
+        infoPanel.add(signLabel);
+        infoPanel.add(sepLabel);
+        infoPanel.add(timeLabel);
+        return infoPanel;
+    }
+
+    // tab layout
     private JPanel createPipelineTab(DefaultListModel<StepItem> steps) {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         JList<StepItem> stepList = new JList<>(steps);
         stepList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        stepList.setFixedCellHeight(40);
-        stepList.setFont(new Font("SansSerif", Font.BOLD, 14));
+        stepList.setFixedCellHeight(45);
+        stepList.setFont(new Font("SansSerif", Font.BOLD, 15));
 
-        // Rechte Seite
-        JLabel imageLabel = new JLabel("", SwingConstants.CENTER);
+        // right side
+        ZoomableImagePanel imagePanel = new ZoomableImagePanel();
         JLabel titleLabel = new JLabel("", SwingConstants.LEFT);
-        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 18));
+        titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
 
         JTextArea descArea = new JTextArea();
         descArea.setEditable(false);
         descArea.setLineWrap(true);
         descArea.setWrapStyleWord(true);
         descArea.setBackground(panel.getBackground());
-        descArea.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        descArea.setFont(new Font("SansSerif", Font.PLAIN, 15));
 
-        JPanel infoPanel = new JPanel(new BorderLayout(5, 5));
+        JPanel infoPanel = new JPanel(new BorderLayout(8, 8));
+        infoPanel.setBorder(new EmptyBorder(12, 15, 12, 15));
         infoPanel.add(titleLabel, BorderLayout.NORTH);
         infoPanel.add(descArea, BorderLayout.CENTER);
 
         JPanel rightPanel = new JPanel(new BorderLayout(10, 10));
-        rightPanel.add(new JScrollPane(imageLabel), BorderLayout.CENTER);
+        rightPanel.add(imagePanel, BorderLayout.CENTER);
         rightPanel.add(infoPanel, BorderLayout.SOUTH);
 
-        // Selection Listener
-        stepList.addListSelectionListener(e -> {
+        stepList.addListSelectionListener(_ -> {
             StepItem selected = stepList.getSelectedValue();
             if (selected != null) {
                 titleLabel.setText(selected.title());
                 descArea.setText(selected.description());
                 if (selected.image() != null) {
-                    imageLabel.setIcon(new ImageIcon(selected.image()));
+                    imagePanel.setImage(selected.image());
                 } else {
-                    imageLabel.setIcon(null);
-                    imageLabel.setText("Kein Bild verfügbar");
+                    imagePanel.setImage(null);
                 }
             }
         });
@@ -76,13 +144,13 @@ public class PipelineViewer extends JFrame {
         stepList.setSelectedIndex(0);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, new JScrollPane(stepList), rightPanel);
-        splitPane.setDividerLocation(300);
+        splitPane.setDividerLocation(350);
         panel.add(splitPane, BorderLayout.CENTER);
 
         return panel;
     }
 
-    // --- 1. Preprocessing-Schritte ---
+    // image preprocessing
     private DefaultListModel<StepItem> buildFullImageSteps(ImageCollection data) {
         DefaultListModel<StepItem> model = new DefaultListModel<>();
         var c = data.getWholeImageCollection();
@@ -100,7 +168,7 @@ public class PipelineViewer extends JFrame {
         return model;
     }
 
-    // --- 2. ROI-Schritte ---
+    // window preprocessing
     private DefaultListModel<StepItem> buildWindowSteps(ImageCollection data) {
         DefaultListModel<StepItem> model = new DefaultListModel<>();
         var c = data.getWindowImageCollection();
@@ -118,7 +186,7 @@ public class PipelineViewer extends JFrame {
         return model;
     }
 
-    // --- 3. Hough & Erkennung ---
+    // analysis and detection
     private DefaultListModel<StepItem> buildAnalysisSteps(ImageCollection data) {
         DefaultListModel<StepItem> model = new DefaultListModel<>();
 

@@ -37,7 +37,6 @@ public class UIHelper {
     public static BufferedImage createPyramidFromSmallestToFound(ArrayList<BufferedImage> pyramid, int foundIndex, BufferedImage found) {
         if (pyramid == null || pyramid.isEmpty()) return null;
 
-        // Sicherheitshalber den Index im gültigen Bereich halten
         if (foundIndex < 0) foundIndex = 0;
         if (foundIndex >= pyramid.size()) foundIndex = pyramid.size() - 1;
 
@@ -45,30 +44,27 @@ public class UIHelper {
         int totalWidth = 0;
         int maxHeight = 0;
 
-        // 1. Maße berechnen: Von 0 (kleinstes Bild) bis foundIndex
         for (int i = 0; i <= foundIndex; i++) {
             BufferedImage img = pyramid.get(i);
             totalWidth += img.getWidth() + padding;
-            maxHeight = Math.max(maxHeight, img.getHeight() + 40); // 40px Platz für Beschriftung
+            maxHeight = Math.max(maxHeight, img.getHeight() + 40);
         }
 
-        // 2. Ziel-Canvas mit ALPHA-Kanal (Transparenz) erstellen
         BufferedImage canvas = new BufferedImage(totalWidth, maxHeight, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = canvas.createGraphics();
 
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 3. Bilder von Index 0 bis foundIndex nebeneinander zeichnen
+        // draw levels
         int currentX = 10;
         for (int i = 0; i <= foundIndex; i++) {
             BufferedImage img = pyramid.get(i);
             boolean isFoundLevel = (i == foundIndex);
 
-            // Bild zeichnen
             if (isFoundLevel) g2d.drawImage(found, currentX, 35, null);
             else g2d.drawImage(img, currentX, 35, null);
 
-            // Rahmen zeichnen (Grün für den Treffer!)
+            // border
             if (isFoundLevel) {
                 g2d.setColor(Color.GREEN);
                 g2d.setStroke(new BasicStroke(3));
@@ -78,8 +74,8 @@ public class UIHelper {
             }
             g2d.drawRect(currentX - 1, 34, img.getWidth() + 2, img.getHeight() + 2);
 
-            // Beschriftung
-            g2d.setColor(isFoundLevel ? Color.GREEN : Color.BLACK);
+            // text
+            g2d.setColor(isFoundLevel ? Color.GREEN : Color.WHITE);
             g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
 
             String label = "Index " + i + " (" + img.getWidth() + "x" + img.getHeight() + ")";

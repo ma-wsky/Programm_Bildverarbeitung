@@ -14,7 +14,6 @@ import main.java.mawsky.trafficsign.utils.UIHelper;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.lang.classfile.attribute.ModuleRequireInfo;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -53,7 +52,6 @@ public class Pipeline {
             return imageCollection;
         }
 
-        System.out.println("\n> Image " + filename + " read successfully!");
 
         // 2. construct pyramid
         BufferedImage level2 = PipelineHelper.scaleColorImageBoxDownsampling(originalImage, 0.5);
@@ -69,7 +67,6 @@ public class Pipeline {
         pyramid.add(level2);
         pyramid.add(originalImage);
 
-        System.out.println("> Pyramid constructed successfully!");
 
         int maxDimensionForProcessing = 650;
         int stepSize = 25;
@@ -84,7 +81,6 @@ public class Pipeline {
             // early exit
             if (width > maxDimensionForProcessing || height > maxDimensionForProcessing) {
                 ImageIO.displayImage(pyramidImage);
-                System.out.println(">>>>> no sign found! <<<<<");
                 break;
             }
 
@@ -94,18 +90,12 @@ public class Pipeline {
 
             BufferedImage copy = ImageIO.copyBufferedImage(pyramidImage);
 
-            System.out.println("> Starting search on level " + (i + 1));
-
             // 4. check pyramidImage as a whole
             BufferedImage preProcessedImage = Pipeline.imagePreprocessing(pyramidImage, imageCollection.getWholeImageCollection());
             if (preProcessedImage == null) continue;
             signFound = Pipeline.checkForSign(preProcessedImage, pyramidImage, copy, imageCollection, 0, 0);
 
             if (signFound) {
-
-                // fill image collection
-                imageCollection.setOriginalImage(originalImage);
-                imageCollection.setPyramidLevelFound(pyramidImage);
                 imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
                 break;
             }
@@ -164,10 +154,6 @@ public class Pipeline {
             }
 
             if (signFound) {
-
-                // fill image collection
-                imageCollection.setOriginalImage(originalImage);
-                imageCollection.setPyramidLevelFound(pyramidImage);
                 imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
                 break;
             }
@@ -179,14 +165,13 @@ public class Pipeline {
             }
 
             if (i == 6){
-                ImageIO.displayImage(pyramidImage);
-                System.out.println(">>>>> no sign found! <<<<<");
                 break;
             }
         }
 
         long end_time = System.nanoTime();
-        System.out.println("Image processed in " + (end_time - start_time) / 1000000 + " ms.");
+        long runtimeMS = (end_time - start_time) / 1000000;
+        imageCollection.setRuntimeMS(runtimeMS);
         return imageCollection;
     }
 
