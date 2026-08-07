@@ -1,7 +1,6 @@
 package main.java.mawsky.trafficsign.ui;
 
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 
 public class preProcessedImageCollection {
 
@@ -14,6 +13,15 @@ public class preProcessedImageCollection {
     private BufferedImage preProcessed;
 
 
+    public void removeAll(){
+        this.gauss_lowpass = null;
+        this.histogram_equalization = null;
+        this.sobel_filter = null;
+        this.equidensity = null;
+        this.dilation = null;
+        this.erosion = null;
+        this.preProcessed = null;
+    }
 
 
     public BufferedImage getGauss_lowpass() {

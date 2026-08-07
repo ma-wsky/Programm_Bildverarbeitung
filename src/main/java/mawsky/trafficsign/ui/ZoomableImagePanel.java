@@ -8,6 +8,7 @@ import java.awt.image.BufferedImage;
 
 public class ZoomableImagePanel extends JPanel {
 
+    private Object interpolationHint = RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR;
     private BufferedImage image;
     private double zoomFactor = 1.0;
     private double prevZoomFactor = 1.0;
@@ -17,20 +18,30 @@ public class ZoomableImagePanel extends JPanel {
     private Point startDragPoint;
 
     public ZoomableImagePanel() {
-        setBackground(new Color(40, 40, 40)); // Dunkler Hintergrund bringt Kantenbilder besser zur Geltung
+        setBackground(new Color(40, 40, 40));
 
-        // 1. Mausrad zum Zoomen
+        // reset zoom on resize
+        addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                if (image != null) {
+                    resetZoom();
+                }
+            }
+        });
+
+        // zoom
         addMouseWheelListener(e -> {
             double zoomFactorMultiplier = (e.getWheelRotation() < 0) ? 1.15 : 0.85;
 
-            // Zoom-Limits (max 20x vergrößern, min 0.1x verkleinern)
+            // limits
             double newZoom = zoomFactor * zoomFactorMultiplier;
             if (newZoom < 0.1 || newZoom > 20.0) return;
 
             prevZoomFactor = zoomFactor;
             zoomFactor = newZoom;
 
-            // Zoomen an der aktuellen Mausposition fokussieren
+            // focus on cursor position
             Point mousePt = e.getPoint();
             xOffset = mousePt.x - (mousePt.x - xOffset) * (zoomFactor / prevZoomFactor);
             yOffset = mousePt.y - (mousePt.y - yOffset) * (zoomFactor / prevZoomFactor);
@@ -38,7 +49,7 @@ public class ZoomableImagePanel extends JPanel {
             repaint();
         });
 
-        // 2. Drag & Drop zum Verschieben
+        // drag to move
         MouseAdapter mouseHandler = new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
@@ -60,7 +71,7 @@ public class ZoomableImagePanel extends JPanel {
 
             @Override
             public void mouseClicked(MouseEvent e) {
-                // Doppelklick setzt den Zoom zurück
+                // reset zoom level
                 if (e.getClickCount() == 2) {
                     resetZoom();
                 }
@@ -73,7 +84,7 @@ public class ZoomableImagePanel extends JPanel {
 
     public void setImage(BufferedImage newImage) {
         this.image = newImage;
-        resetZoom(); // Beim Bildwechsel automatisch zentrieren/einpassen
+        resetZoom();
     }
 
     public void resetZoom() {
@@ -85,12 +96,11 @@ public class ZoomableImagePanel extends JPanel {
             return;
         }
 
-        // Automatisch so skalieren, dass das Bild perfekt ins Panel passt
+        // fit image to panel
         double widthScale = (double) getWidth() / image.getWidth();
         double heightScale = (double) getHeight() / image.getHeight();
-        zoomFactor = Math.min(widthScale, heightScale) * 0.95; // 95% der Fläche nutzen
+        zoomFactor = Math.min(widthScale, heightScale) * 0.95;
 
-        // Zentrieren
         xOffset = (getWidth() - (image.getWidth() * zoomFactor)) / 2.0;
         yOffset = (getHeight() - (image.getHeight() * zoomFactor)) / 2.0;
 
@@ -104,22 +114,27 @@ public class ZoomableImagePanel extends JPanel {
 
         Graphics2D g2d = (Graphics2D) g.create();
 
-        // Hohe Skalierungsqualität aktivieren
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+        // nearest neighbor interpolation
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, interpolationHint);
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // Transformation anwenden (Position Offset + Skalierung)
         AffineTransform at = new AffineTransform();
         at.translate(xOffset, yOffset);
         at.scale(zoomFactor, zoomFactor);
 
         g2d.drawImage(image, at, null);
 
-        // Zoom-Info unten links einblenden
+        // zoom info
         g2d.setColor(new Color(255, 255, 255, 180));
         g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
         g2d.drawString(String.format("Zoom: %.0f%% (Doppelklick = Reset)", zoomFactor * 100), 10, getHeight() - 10);
 
         g2d.dispose();
+    }
+
+    public void setInterpolationMode(Object hint){
+        this.interpolationHint = hint;
+        repaint();
     }
 }

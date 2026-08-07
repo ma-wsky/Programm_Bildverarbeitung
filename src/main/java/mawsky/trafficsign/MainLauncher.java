@@ -3,6 +3,8 @@ package main.java.mawsky.trafficsign;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.io.File;
 import main.java.mawsky.trafficsign.ui.ImageCollection;
 import main.java.mawsky.trafficsign.core.Pipeline;
@@ -59,6 +61,14 @@ public class MainLauncher extends JFrame {
             if (result == JFileChooser.APPROVE_OPTION) {
                 File selectedFile = chooser.getSelectedFile();
                 pathTextField.setText(selectedFile.getAbsolutePath());
+            }
+        });
+
+        // shutdown Pipeline Treads on closing window
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e){
+                Pipeline.shutdown();
             }
         });
 

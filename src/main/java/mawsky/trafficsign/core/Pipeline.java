@@ -97,6 +97,8 @@ public class Pipeline {
 
             if (signFound) {
                 imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
+                imageCollection.setWindowImage(null);
+                imageCollection.getWindowImageCollection().removeAll();
                 break;
             }
 

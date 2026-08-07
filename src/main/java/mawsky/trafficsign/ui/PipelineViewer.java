@@ -2,9 +2,13 @@ package main.java.mawsky.trafficsign.ui;
 
 import main.java.mawsky.trafficsign.MainLauncher;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 
 public class PipelineViewer extends JFrame {
 
@@ -24,15 +28,18 @@ public class PipelineViewer extends JFrame {
         JTabbedPane mainTabs = new JTabbedPane();
         mainTabs.setFont(new Font("SansSerif", Font.BOLD, 18)); // Tabs-Schrift auf 18pt erhöht
 
-        // 1. Tab: preprocessing whole image
+        // 1. Tab: architecture and workflow
+        mainTabs.addTab("Architektur & Workflow", createFlowchartTab());
+
+        // 2. Tab: preprocessing whole image
         mainTabs.addTab("  Vorverarbeitung (ganzes Bild)  ", createPipelineTab(buildFullImageSteps(data)));
 
-        // 2. Tab: preprocessing window
+        // 3. Tab: preprocessing window
         if (data.getWindowImageCollection() != null) {
             mainTabs.addTab("  Vorverarbeitung (Suchfenster)  ", createPipelineTab(buildWindowSteps(data)));
         }
 
-        // 3. Tab: geometry and color
+        // 4. Tab: geometry and color
         mainTabs.addTab("  Analyse & Detektion  ", createPipelineTab(buildAnalysisSteps(data)));
 
         mainContainer.add(mainTabs, BorderLayout.CENTER);
@@ -97,6 +104,29 @@ public class PipelineViewer extends JFrame {
         return infoPanel;
     }
 
+    private JPanel createFlowchartTab(){
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
+
+        ZoomableImagePanel flowchartPanel = new ZoomableImagePanel();
+        flowchartPanel.setInterpolationMode(RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+
+        try {
+            File file = new File("src/main/resources/pipeline_flowchart.png");
+            if (file.exists()){
+                BufferedImage rawImg = ImageIO.read(file);
+                flowchartPanel.setImage(rawImg);
+            } else {
+                System.err.println("Flussdiagramm nicht im Ordner gefunden");
+            }
+        } catch (IOException e) {
+            System.err.println("IOException");
+        }
+
+        panel.add(flowchartPanel, BorderLayout.CENTER);
+        return panel;
+    }
+
     // tab layout
     private JPanel createPipelineTab(DefaultListModel<StepItem> steps) {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -112,6 +142,7 @@ public class PipelineViewer extends JFrame {
         JLabel titleLabel = new JLabel("", SwingConstants.LEFT);
         titleLabel.setFont(new Font("SansSerif", Font.BOLD, 20));
 
+        // bottom
         JTextArea descArea = new JTextArea();
         descArea.setEditable(false);
         descArea.setLineWrap(true);
@@ -155,14 +186,14 @@ public class PipelineViewer extends JFrame {
         DefaultListModel<StepItem> model = new DefaultListModel<>();
         var c = data.getWholeImageCollection();
 
-        model.addElement(new StepItem("Bildpyramide", "Bildpyramide vom kleinsten Level bis zum Level auf dem das Schild gefunden wurde.", data.getImage_pyramid()));
+        model.addElement(new StepItem("Bildpyramide", "Sammlung unterschiedlicher Skalierungsstufen. Jedes Bild ist mit dem Faktor 0.5 skaliert", data.getImage_pyramid()));
         if (c != null) {
             model.addElement(new StepItem("Gauss-Tiefpass", "Glättet das Bild und entfernt hochfrequentes Rauschen.", c.getGauss_lowpass()));
             if (c.getHistogram_equalization() != null) model.addElement(new StepItem("Histogrammausgleich", "Erhöht den Kontrast durch gleichmäßige Verteilung der Helligkeitswerte.", c.getHistogram_equalization()));
             model.addElement(new StepItem("Sobel-Filter", "Hebt hochfrequente Bildpunkte hervor -> Hochpass", c.getSobel_filter()));
             model.addElement(new StepItem("Äquidistanten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
-            model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen / Schließt kleine Lücken in Kanten.", c.getDilation()));
-            model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen / Entfernt isolierte Rausch-Pixel.", c.getErosion()));
+            model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen -> Schließt kleine Lücken in Kanten.", c.getDilation()));
+            model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen -> Stellt ursprüngliche Dicke der Kanten wieder her.", c.getErosion()));
             model.addElement(new StepItem("Fertige Vorverarbeitung", "Das fertige Graustufenbild für die spätere Liniensuche.", c.getPreProcessed()));
         }
         return model;
@@ -179,8 +210,8 @@ public class PipelineViewer extends JFrame {
             if (c.getHistogram_equalization() != null) model.addElement(new StepItem("Histogrammausgleich", "Histogrammausgleich des Fensters.", c.getHistogram_equalization()));
             model.addElement(new StepItem("Sobel-Filter", "Hebt hochfrequente Bildpunkte hervor -> Hochpass", c.getSobel_filter()));
             model.addElement(new StepItem("Äquidistanten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
-            model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen / Schließt kleine Lücken in Kanten.", c.getDilation()));
-            model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen / Entfernt isolierte Rausch-Pixel.", c.getErosion()));
+            model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen -> Schließt kleine Lücken in Kanten.", c.getDilation()));
+            model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen -> Stellt ursprüngliche Dicke der Kanten wieder her.", c.getErosion()));
             model.addElement(new StepItem("Fertige Vorverarbeitung", "Das fertige Graustufenbild für die spätere Liniensuche.", c.getPreProcessed()));
         }
         return model;
@@ -190,7 +221,7 @@ public class PipelineViewer extends JFrame {
     private DefaultListModel<StepItem> buildAnalysisSteps(ImageCollection data) {
         DefaultListModel<StepItem> model = new DefaultListModel<>();
 
-        model.addElement(new StepItem("Hough-Raum", "Akkumulator-Matrix (phi/r). Helle Punkte repräsentieren dominante Geraden im Bild.", data.getHoughSpaceImage()));
+        model.addElement(new StepItem("Hough-Raum", "Akkumulator-Matrix: Helle Punkte repräsentieren dominante Geraden im Bild.", data.getHoughSpaceImage()));
         model.addElement(new StepItem("Erkannte Linien", "Die aus den Hough-Peaks gefilterten und gruppierten 25 Haupt-Kantenlinien.", data.getBestLinesImage()));
         model.addElement(new StepItem("Geometrie des Schildes", "Rekonstruiertes Polygon basierend auf Schnittpunkten und Polarwinkeln.", data.getFoundGeometryImage()));
         model.addElement(new StepItem("Farbe des Schildes", "Validierung des Schildinneren / Randes auf charakteristische Farben.", data.getFoundColorImage()));

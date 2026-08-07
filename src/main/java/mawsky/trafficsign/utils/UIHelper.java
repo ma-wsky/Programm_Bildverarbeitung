@@ -6,32 +6,96 @@ import java.util.ArrayList;
 
 public class UIHelper {
 
-    public static BufferedImage createHoughSpaceImage(int[][] houghArray){
-        int width = houghArray.length;
-        int heigth = houghArray[0].length;
-        BufferedImage houghSpaceImage = new BufferedImage(width, heigth, BufferedImage.TYPE_BYTE_GRAY);
+    public static BufferedImage createHoughSpaceImage(int[][] houghArray) {
+        if (houghArray == null || houghArray.length == 0 || houghArray[0].length == 0) return null;
 
-        int maxVotes = Integer.MIN_VALUE;
-        for (int x = 0; x < width; x++){
-            for (int y = 0; y < heigth; y++){
-                if (houghArray[x][y] > maxVotes) maxVotes = houghArray[x][y];
+        int phi = houghArray.length;
+        int r = houghArray[0].length;
+
+        // max votes
+        int maxVotes = 0;
+        for (int[] ints : houghArray) {
+            for (int y = 0; y < r; y++) {
+                if (ints[y] > maxVotes) {
+                    maxVotes = ints[y];
+                }
             }
         }
 
-        if (maxVotes == 0) return houghSpaceImage;
+        if (maxVotes == 0) maxVotes = 1;
 
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < heigth; y++) {
+        // hough room in gray values
+        BufferedImage rawHough = new BufferedImage(phi, r, BufferedImage.TYPE_BYTE_GRAY);
+        double logMax = Math.log(1.0 + maxVotes);
+
+        for (int x = 0; x < phi; x++) {
+            for (int y = 0; y < r; y++) {
                 int votes = houghArray[x][y];
-
-                int gray = (int) (((double) votes / maxVotes) * 255.0);
-
-                int rgb = (gray >> 16) | (gray >> 8) | gray;
-                houghSpaceImage.setRGB(x, y, rgb);
+                int gray = (int) ((Math.log(1.0 + votes) / logMax) * 255.0);
+                rawHough.getRaster().setSample(x, y, 0, gray);
             }
         }
 
-        return houghSpaceImage;
+        // canvas
+        int paddingLeft = 65;
+        int paddingBottom = 40;
+        int paddingTop = 20;
+        int paddingRight = 20;
+
+        int imageWidth = 800;
+        int imageHeight = 500;
+
+        int totalWidth = imageWidth + paddingLeft + paddingRight;
+        int totalHeight = imageHeight + paddingTop + paddingBottom;
+
+        BufferedImage canvas = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = canvas.createGraphics();
+
+        // background
+        g2d.setColor(Color.BLACK);
+        g2d.fillRect(0, 0, totalWidth, totalHeight);
+
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        // draw hough
+        g2d.drawImage(rawHough, paddingLeft, paddingTop, imageWidth, imageHeight, null);
+
+        // border
+        g2d.setColor(Color.WHITE);
+        g2d.drawRect(paddingLeft, paddingTop, imageWidth, imageHeight);
+
+        g2d.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        // x-axis
+        String[] xTicks = {"0°", "45°", "90°", "135°", "180°"};
+        for (int i = 0; i < xTicks.length; i++) {
+            double ratio = (double) i / (xTicks.length - 1);
+            int xPos = paddingLeft + (int) (ratio * imageWidth);
+
+            g2d.drawLine(xPos, paddingTop + imageHeight, xPos, paddingTop + imageHeight + 5);
+            int textWidth = g2d.getFontMetrics().stringWidth(xTicks[i]);
+            g2d.drawString(xTicks[i], xPos - (textWidth / 2), paddingTop + imageHeight + 20);
+        }
+
+        String xTitle = "Winkel θ (Theta)";
+        g2d.drawString(xTitle, paddingLeft + (imageWidth / 2) - (g2d.getFontMetrics().stringWidth(xTitle) / 2), totalHeight - 5);
+
+        // y-axis
+        String[] yTicks = {"-ρ_max", "-ρ/2", "0", "+ρ/2", "+ρ_max"};
+        for (int i = 0; i < yTicks.length; i++) {
+            double ratio = (double) i / (yTicks.length - 1);
+            int yPos = paddingTop + (int) (ratio * imageHeight);
+
+            g2d.drawLine(paddingLeft - 5, yPos, paddingLeft, yPos);
+
+            int textWidth = g2d.getFontMetrics().stringWidth(yTicks[i]);
+            g2d.drawString(yTicks[i], paddingLeft - textWidth - 8, yPos + 4);
+        }
+
+        g2d.dispose();
+        return canvas;
     }
 
     public static BufferedImage createPyramidFromSmallestToFound(ArrayList<BufferedImage> pyramid, int foundIndex, BufferedImage found) {
@@ -44,8 +108,7 @@ public class UIHelper {
         int totalWidth = 0;
         int maxHeight = 0;
 
-        for (int i = 0; i <= foundIndex; i++) {
-            BufferedImage img = pyramid.get(i);
+        for (BufferedImage img : pyramid) {
             totalWidth += img.getWidth() + padding;
             maxHeight = Math.max(maxHeight, img.getHeight() + 40);
         }
@@ -57,7 +120,7 @@ public class UIHelper {
 
         // draw levels
         int currentX = 10;
-        for (int i = 0; i <= foundIndex; i++) {
+        for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage img = pyramid.get(i);
             boolean isFoundLevel = (i == foundIndex);
 
