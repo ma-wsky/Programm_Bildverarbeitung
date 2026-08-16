@@ -1,5 +1,7 @@
 package main.java.mawsky.trafficsign.detection;
 
+import main.java.mawsky.trafficsign.ui.ImageCollection;
+import main.java.mawsky.trafficsign.utils.ColorCheckHelper;
 import main.java.mawsky.trafficsign.utils.FormCheckHelper;
 import main.java.mawsky.trafficsign.utils.PipelineHelper;
 import main.java.mawsky.trafficsign.core.HoughLine;
@@ -15,9 +17,9 @@ public class FormChecker {
      * Uses formFlag to differentiate between rectangle (0), triangle (1), and octagon (2).
      * Validates geometry of selected shape by calling {@link FormChecker#detectRectangleForm(ArrayList, int, int)},
      * {@link FormChecker#detectTriangleForm(ArrayList, int, int)} or {@link FormChecker#detectOctagonForm(ArrayList, int, int)}.
-     * For each found geometry: cuts a mask of the sign from pyramidImage, calls {@link ColorChecker#isVorfahrtsstrasseColors(BufferedImage, ArrayList)},
-     * {@link ColorChecker#isTriangleSignColors(BufferedImage, ArrayList)},
-     * or {@link ColorChecker#isStoppColors(BufferedImage)}.
+     * For each found geometry: cuts a mask of the sign from pyramidImage, calls {@link ColorChecker#isVorfahrtsstrasseColors(BufferedImage, ArrayList, ImageCollection)},
+     * {@link ColorChecker#isTriangleSignColors(BufferedImage, ArrayList, ImageCollection)},
+     * or {@link ColorChecker#isStoppColors(BufferedImage, ImageCollection)}.
      * Draws bounds of sign on original if found.
      * @param maskedWindow BufferedImage window
      * @param validLines ArrayList<HoughLine>
@@ -27,7 +29,7 @@ public class FormChecker {
      * @param formFlag flag 0 -> rectangle, 1 -> triangle, 2-> octagon
      * @return boolean if sign is found
      */
-    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage pyramidImage, int windowX, int windowY, int formFlag){
+    public static boolean checkForm(BufferedImage maskedWindow, ArrayList<HoughLine> validLines, BufferedImage pyramidImage, ImageCollection imageCollection, int windowX, int windowY, int formFlag){
 
         // 1. detect geometry in validLines
         ArrayList<ArrayList<Point>> allFoundShapes = switch (formFlag) {
@@ -64,9 +66,9 @@ public class FormChecker {
 
             // 5. check mask for the right colors
             boolean colorMatch = switch (formFlag) {
-                case 0 -> ColorChecker.isVorfahrtsstrasseColors(maskedSign, currentShape);
-                case 1 -> ColorChecker.isTriangleSignColors(maskedSign, currentShape);
-                case 2 -> ColorChecker.isStoppColors(maskedSign);
+                case 0 -> ColorChecker.isVorfahrtsstrasseColors(maskedSign, currentShape, imageCollection);
+                case 1 -> ColorChecker.isTriangleSignColors(maskedSign, currentShape, imageCollection);
+                case 2 -> ColorChecker.isStoppColors(maskedSign, imageCollection);
                 default -> false;
             };
             if (!colorMatch) continue;
@@ -83,6 +85,32 @@ public class FormChecker {
                 gOriginal.drawLine(pStart.x + windowX, pStart.y + windowY, pEnd.x + windowX, pEnd.y + windowY);
             }
             gOriginal.dispose();
+
+            // create geometry image
+            Graphics2D gf = maskedWindow.createGraphics();
+            gf.setColor(Color.GREEN);
+            gf.setStroke(new BasicStroke(3));
+            for (int j = 0; j < numPoints; j++) {
+                Point pStart = currentShape.get(j);
+                Point pEnd = currentShape.get((j + 1) % numPoints);
+                gf.drawLine(pStart.x , pStart.y , pEnd.x , pEnd.y );
+            }
+            imageCollection.setFoundGeometryImage(maskedWindow);
+
+            // create color image
+            if (formFlag == 2) {
+                imageCollection.setFoundColorImage(maskedSign);
+                return true;
+            }
+
+            Graphics2D gc = maskedSign.createGraphics();
+            gc.setColor(Color.CYAN);
+            gc.setStroke(new BasicStroke(2));
+            Polygon innerShape = ColorCheckHelper.createScaledPolygon(currentShape, 0.50);
+            Polygon outerShape = ColorCheckHelper.createScaledPolygon(currentShape, 1.0);
+            gc.drawPolygon(innerShape);
+            gc.drawPolygon(outerShape);
+            imageCollection.setFoundColorImage(maskedSign);
 
             return true;
         }

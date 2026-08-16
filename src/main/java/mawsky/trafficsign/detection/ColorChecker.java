@@ -1,5 +1,6 @@
 package main.java.mawsky.trafficsign.detection;
 
+import main.java.mawsky.trafficsign.ui.ImageCollection;
 import main.java.mawsky.trafficsign.utils.ColorCheckHelper;
 
 import java.awt.*;
@@ -17,7 +18,7 @@ public class ColorChecker {
      * @param rectangle ArrayList<Point>
      * @return boolean if maskedSign is a valid sign
      */
-    public static boolean isVorfahrtsstrasseColors(BufferedImage maskedSign, ArrayList<Point> rectangle){
+    public static boolean isVorfahrtsstrasseColors(BufferedImage maskedSign, ArrayList<Point> rectangle, ImageCollection imageCollection){
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
@@ -45,7 +46,7 @@ public class ColorChecker {
 
         // 6. check center is yellow
         boolean isCenterYellow = stats.totalCenterPixels > 0 && ((double) stats.whitePixelsInCenter / stats.totalCenterPixels < 0.50);
-        if (isCenterYellow) System.out.println(">>>>> valid Vorfahrtsstraßenschild found! <<<<<");
+        if (isCenterYellow) imageCollection.setDetectedSignName("Vorfahrtstraße");
         return isCenterYellow;
     }
 
@@ -61,7 +62,7 @@ public class ColorChecker {
      * @param triangle ArrayList<Point>
      * @return boolean if maskedSign is a valid sign
      */
-    public static boolean isTriangleSignColors(BufferedImage maskedSign, ArrayList<Point> triangle){
+    public static boolean isTriangleSignColors(BufferedImage maskedSign, ArrayList<Point> triangle, ImageCollection imageCollection){
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
@@ -129,8 +130,8 @@ public class ColorChecker {
                 (centerWhiteRatio > 0.30) &&
                 ((double) stats.blackPixelsInCenter / stats.totalCenterPixels > 0.1);
 
-        if (isVorfahrt) System.out.println(">>>>> valid Vorfahrtschild found! <<<<<");
-        if (isVorfahrtAchten) System.out.println(">>>>> valid Vorfahrt-Achten Schild found! <<<<<");
+        if (isVorfahrt) imageCollection.setDetectedSignName("Vorfahrt");
+        if (isVorfahrtAchten) imageCollection.setDetectedSignName("Vorfahrt Achten");
         return isVorfahrtAchten || isVorfahrt;
     }
 
@@ -142,7 +143,7 @@ public class ColorChecker {
      * @param maskedSign BufferedImage
      * @return boolean if maskedSign is a valid sign
      */
-    public static boolean isStoppColors(BufferedImage maskedSign){
+    public static boolean isStoppColors(BufferedImage maskedSign, ImageCollection imageCollection){
         int width = maskedSign.getWidth();
         int height = maskedSign.getHeight();
 
@@ -170,7 +171,7 @@ public class ColorChecker {
         double tolerance = Math.max(width, height) * 0.07;
         double distanceSquared = distanceX * distanceX + distanceY * distanceY;
         boolean isCenterRed = distanceSquared <= (tolerance * tolerance);
-        if (isCenterRed) System.out.println(">>>>> valid Stopp Schild found! <<<<<");
+        if (isCenterRed) imageCollection.setDetectedSignName("Stopp");
         return isCenterRed;
     }
 
