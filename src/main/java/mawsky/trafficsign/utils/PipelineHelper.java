@@ -234,7 +234,7 @@ public class PipelineHelper {
         int newWidth = (int) (image.getWidth() * factor);
         int newHeight = (int) (image.getHeight() * factor);
 
-        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, image.getType());
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
 
         double stepX = 1.0 / factor;
         double stepY = 1.0 / factor;
