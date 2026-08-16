@@ -96,7 +96,7 @@ public class Pipeline {
             signFound = Pipeline.checkForSign(preProcessedImage, pyramidImage, copy, imageCollection, 0, 0);
 
             if (signFound) {
-                imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
+                imageCollection.setImage_pyramid(UIHelper.createPyramidImage(pyramid, i, copy));
                 imageCollection.setWindowImage(null);
                 imageCollection.getWindowImageCollection().removeAll();
                 break;
@@ -156,7 +156,7 @@ public class Pipeline {
             }
 
             if (signFound) {
-                imageCollection.setImage_pyramid(UIHelper.createPyramidFromSmallestToFound(pyramid, i, copy));
+                imageCollection.setImage_pyramid(UIHelper.createPyramidImage(pyramid, i, copy));
                 break;
             }
 

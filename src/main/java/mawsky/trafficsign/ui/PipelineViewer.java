@@ -2,13 +2,9 @@ package main.java.mawsky.trafficsign.ui;
 
 import main.java.mawsky.trafficsign.MainLauncher;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
 
 public class PipelineViewer extends JFrame {
 
@@ -27,9 +23,6 @@ public class PipelineViewer extends JFrame {
 
         JTabbedPane mainTabs = new JTabbedPane();
         mainTabs.setFont(new Font("SansSerif", Font.BOLD, 18)); // Tabs-Schrift auf 18pt erhöht
-
-        // 1. Tab: architecture and workflow
-        mainTabs.addTab("Architektur & Workflow", createFlowchartTab());
 
         // 2. Tab: preprocessing whole image
         mainTabs.addTab("  Vorverarbeitung (ganzes Bild)  ", createPipelineTab(buildFullImageSteps(data)));
@@ -104,29 +97,6 @@ public class PipelineViewer extends JFrame {
         return infoPanel;
     }
 
-    private JPanel createFlowchartTab(){
-        JPanel panel = new JPanel(new BorderLayout());
-        panel.setBorder(new EmptyBorder(10, 10, 10, 10));
-
-        ZoomableImagePanel flowchartPanel = new ZoomableImagePanel();
-        flowchartPanel.setInterpolationMode(RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-
-        try {
-            File file = new File("src/main/resources/pipeline_flowchart.png");
-            if (file.exists()){
-                BufferedImage rawImg = ImageIO.read(file);
-                flowchartPanel.setImage(rawImg);
-            } else {
-                System.err.println("Flussdiagramm nicht im Ordner gefunden");
-            }
-        } catch (IOException e) {
-            System.err.println("IOException");
-        }
-
-        panel.add(flowchartPanel, BorderLayout.CENTER);
-        return panel;
-    }
-
     // tab layout
     private JPanel createPipelineTab(DefaultListModel<StepItem> steps) {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
@@ -191,7 +161,7 @@ public class PipelineViewer extends JFrame {
             model.addElement(new StepItem("Gauss-Tiefpass", "Glättet das Bild und entfernt hochfrequentes Rauschen.", c.getGauss_lowpass()));
             if (c.getHistogram_equalization() != null) model.addElement(new StepItem("Histogrammausgleich", "Erhöht den Kontrast durch gleichmäßige Verteilung der Helligkeitswerte.", c.getHistogram_equalization()));
             model.addElement(new StepItem("Sobel-Filter", "Hebt hochfrequente Bildpunkte hervor -> Hochpass", c.getSobel_filter()));
-            model.addElement(new StepItem("Äquidistanten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
+            model.addElement(new StepItem("Äquidensiten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
             model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen -> Schließt kleine Lücken in Kanten.", c.getDilation()));
             model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen -> Stellt ursprüngliche Dicke der Kanten wieder her.", c.getErosion()));
             model.addElement(new StepItem("Fertige Vorverarbeitung", "Das fertige Graustufenbild für die spätere Liniensuche.", c.getPreProcessed()));
@@ -209,7 +179,7 @@ public class PipelineViewer extends JFrame {
             model.addElement(new StepItem("Gauss-Tiefpass", "Erhöht den Kontrast durch gleichmäßige Verteilung der Helligkeitswerte.", c.getGauss_lowpass()));
             if (c.getHistogram_equalization() != null) model.addElement(new StepItem("Histogrammausgleich", "Histogrammausgleich des Fensters.", c.getHistogram_equalization()));
             model.addElement(new StepItem("Sobel-Filter", "Hebt hochfrequente Bildpunkte hervor -> Hochpass", c.getSobel_filter()));
-            model.addElement(new StepItem("Äquidistanten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
+            model.addElement(new StepItem("Äquidensiten", "Schwellenwertverfahren zum isolieren bestimmter Grauwert-Bereiche.", c.getEquidensity()));
             model.addElement(new StepItem("Dilatation", "Vergrößert helle Strukturen -> Schließt kleine Lücken in Kanten.", c.getDilation()));
             model.addElement(new StepItem("Erosion", "Schrumpft helle Strukturen -> Stellt ursprüngliche Dicke der Kanten wieder her.", c.getErosion()));
             model.addElement(new StepItem("Fertige Vorverarbeitung", "Das fertige Graustufenbild für die spätere Liniensuche.", c.getPreProcessed()));

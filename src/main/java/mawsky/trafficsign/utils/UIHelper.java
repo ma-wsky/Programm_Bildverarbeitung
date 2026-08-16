@@ -98,36 +98,62 @@ public class UIHelper {
         return canvas;
     }
 
-    public static BufferedImage createPyramidFromSmallestToFound(ArrayList<BufferedImage> pyramid, int foundIndex, BufferedImage found) {
+    public static BufferedImage createPyramidImage(ArrayList<BufferedImage> pyramid, int foundIndex, BufferedImage found) {
         if (pyramid == null || pyramid.isEmpty()) return null;
 
         if (foundIndex < 0) foundIndex = 0;
         if (foundIndex >= pyramid.size()) foundIndex = pyramid.size() - 1;
 
-        int padding = 20;
-        int totalWidth = 0;
+        int minPadding = 20;
+
+        BufferedImage dummy = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D gDummy = dummy.createGraphics();
+        Font labelFont = new Font("SansSerif", Font.BOLD, 12);
+        gDummy.setFont(labelFont);
+        FontMetrics fm = gDummy.getFontMetrics();
+
+        int[] columnWidths = new int[pyramid.size()];
+        String[] labels = new String[pyramid.size()];
+
+        int totalWidth = 20;
         int maxHeight = 0;
 
-        for (BufferedImage img : pyramid) {
-            totalWidth += img.getWidth() + padding;
-            maxHeight = Math.max(maxHeight, img.getHeight() + 40);
-        }
-
-        BufferedImage canvas = new BufferedImage(totalWidth, maxHeight, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = canvas.createGraphics();
-
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        // draw levels
-        int currentX = 10;
         for (int i = 0; i < pyramid.size(); i++) {
             BufferedImage img = pyramid.get(i);
             boolean isFoundLevel = (i == foundIndex);
 
-            if (isFoundLevel) g2d.drawImage(found, currentX, 35, null);
-            else g2d.drawImage(img, currentX, 35, null);
+            String label = "Index " + i + " (" + img.getWidth() + "x" + img.getHeight() + ")";
+            if (isFoundLevel) label += " [GEFUNDEN]";
+            labels[i] = label;
 
-            // border
+            int textWidth = fm.stringWidth(label);
+
+            int requiredWidth = Math.max(img.getWidth(), textWidth);
+            columnWidths[i] = requiredWidth;
+
+            totalWidth += requiredWidth + minPadding;
+            maxHeight = Math.max(maxHeight, img.getHeight() + 45);
+        }
+        gDummy.dispose();
+
+        // canvas
+        BufferedImage canvas = new BufferedImage(totalWidth, maxHeight, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = canvas.createGraphics();
+
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        int currentX = 10;
+        for (int i = 0; i < pyramid.size(); i++) {
+            BufferedImage img = pyramid.get(i);
+            boolean isFoundLevel = (i == foundIndex);
+            int colWidth = columnWidths[i];
+
+            int imgX = currentX + (colWidth - img.getWidth()) / 2;
+
+            if (isFoundLevel) g2d.drawImage(found, imgX, 35, null);
+            else g2d.drawImage(img, imgX, 35, null);
+
             if (isFoundLevel) {
                 g2d.setColor(Color.GREEN);
                 g2d.setStroke(new BasicStroke(3));
@@ -135,18 +161,13 @@ public class UIHelper {
                 g2d.setColor(Color.GRAY);
                 g2d.setStroke(new BasicStroke(1));
             }
-            g2d.drawRect(currentX - 1, 34, img.getWidth() + 2, img.getHeight() + 2);
+            g2d.drawRect(imgX - 1, 34, img.getWidth() + 2, img.getHeight() + 2);
 
-            // text
             g2d.setColor(isFoundLevel ? Color.GREEN : Color.WHITE);
-            g2d.setFont(new Font("SansSerif", Font.BOLD, 12));
+            g2d.setFont(labelFont);
+            g2d.drawString(labels[i], currentX, 25);
 
-            String label = "Index " + i + " (" + img.getWidth() + "x" + img.getHeight() + ")";
-            if (isFoundLevel) label += " [GEFUNDEN]";
-
-            g2d.drawString(label, currentX, 25);
-
-            currentX += img.getWidth() + padding;
+            currentX += colWidth + minPadding;
         }
 
         g2d.dispose();

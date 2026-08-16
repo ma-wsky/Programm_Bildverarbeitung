@@ -98,7 +98,10 @@ public class FormChecker {
             imageCollection.setFoundGeometryImage(maskedWindow);
 
             // create color image
-            if (formFlag == 2) imageCollection.setFoundColorImage(maskedSign);
+            if (formFlag == 2) {
+                imageCollection.setFoundColorImage(maskedSign);
+                return true;
+            }
 
             Graphics2D gc = maskedSign.createGraphics();
             gc.setColor(Color.CYAN);

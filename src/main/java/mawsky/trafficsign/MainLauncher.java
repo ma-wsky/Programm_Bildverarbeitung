@@ -3,9 +3,12 @@ package main.java.mawsky.trafficsign;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.List;
+
 import main.java.mawsky.trafficsign.ui.ImageCollection;
 import main.java.mawsky.trafficsign.core.Pipeline;
 import main.java.mawsky.trafficsign.ui.PipelineViewer;
@@ -50,6 +53,8 @@ public class MainLauncher extends JFrame {
 
         add(panel);
 
+        // drag and drop
+        setupDragAndDrop(panel);
 
         // open file chooser
         browseButton.addActionListener(_ -> {
@@ -73,6 +78,40 @@ public class MainLauncher extends JFrame {
         });
 
         startButton.addActionListener(_ -> runPipeline());
+    }
+
+    private void setupDragAndDrop(JComponent targetComponent){
+        TransferHandler handler = new TransferHandler() {
+            @Override
+            public boolean canImport(TransferSupport support) {
+                return support.isDataFlavorSupported(DataFlavor.javaFileListFlavor);
+            }
+
+            @Override
+            public boolean importData(TransferSupport support) {
+                if (!canImport(support)) return false;
+
+                try {
+                    List<?> files = (List<?>) support.getTransferable().getTransferData(DataFlavor.javaFileListFlavor);
+                    if (!files.isEmpty()) {
+                        File droppedFile = (File) files.getFirst();
+                        // Den Pfad in das Textfeld eintragen
+                        pathTextField.setText(droppedFile.getAbsolutePath());
+                        return true;
+                    }
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> {
+                        JOptionPane.showMessageDialog(null, "Fehler bei Drag and Drop: " + ex.getMessage(), "Drag and Drop Fehler", JOptionPane.ERROR_MESSAGE);
+                        startButton.setEnabled(true);
+                        startButton.setText("Pipeline Starten");
+                    });
+                }
+                return false;
+            }
+        };
+
+        targetComponent.setTransferHandler(handler);
+        pathTextField.setTransferHandler(handler);
     }
 
     private void runPipeline() {

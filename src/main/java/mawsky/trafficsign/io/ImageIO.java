@@ -26,8 +26,8 @@ public class ImageIO {
             readImage = javax.imageio.ImageIO.read(file);
             return readImage;
 
-        } catch (IOException e) {
-            System.err.println("Error reading image file " + filename + e.getMessage());
+        } catch (IOException ex) {
+            SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(null, "Error reading image file " + filename + ex.getMessage(), "Pipeline Fehler", JOptionPane.ERROR_MESSAGE));
             return null;
         }
     }
