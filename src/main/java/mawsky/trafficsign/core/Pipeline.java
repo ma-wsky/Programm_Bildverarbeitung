@@ -80,7 +80,6 @@ public class Pipeline {
 
             // early exit
             if (width > maxDimensionForProcessing || height > maxDimensionForProcessing) {
-                ImageIO.displayImage(pyramidImage);
                 break;
             }
 
