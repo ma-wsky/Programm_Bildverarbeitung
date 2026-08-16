@@ -41,6 +41,7 @@ Die Verarbeitung eines Eingabebildes durchläuft folgende Stufen:
 4. **Klassifizierung & Farbstatistiken:**
    * Prüfen der Farbabdeckung (Kanten des Schildes, Mitte des Schildes).
 
+![Flowchart Pipeline](pipeline_flowchart.png)
 ---
 
 ## Unterstützte Schildtypen
